@@ -1,0 +1,22 @@
+{
+  "name": "clawdbot-vllm",
+  "description": "Clawdbot AI assistant with vLLM for local LLM inference. Includes Telegram integration.",
+  "imageName": "your-dockerhub-username/clawdbot-vllm:latest",
+  "containerDiskInGb": 50,
+  "volumeInGb": 150,
+  "volumeMountPath": "/workspace",
+  "ports": "8000/http,18789/http,22/tcp",
+  "env": {
+    "MODEL_NAME": "Qwen/Qwen2.5-Coder-7B-Instruct",
+    "SERVED_MODEL_NAME": "local-coder",
+    "VLLM_API_KEY": "your-secure-key",
+    "MAX_MODEL_LEN": "16384",
+    "GPU_MEMORY_UTILIZATION": "0.90",
+    "TOOL_CALL_PARSER": "hermes",
+    "TENSOR_PARALLEL_SIZE": "auto",
+    "HF_HOME": "/workspace/huggingface",
+    "CLAWDBOT_STATE_DIR": "/workspace/.clawdbot",
+    "TELEGRAM_BOT_TOKEN": ""
+  },
+  "readme": "# Clawdbot + vLLM\n\nAI coding assistant with local LLM inference.\n\n## Quick Start\n1. Set TELEGRAM_BOT_TOKEN env var (get from @BotFather)\n2. Start the pod - services auto-start\n3. Message your bot on Telegram\n4. First time: approve pairing via SSH: `clawdbot pairing list telegram` then `clawdbot pairing approve telegram CODE --notify`\n\n## Persistence\n- Config & pairings stored in /workspace/.clawdbot (survives restarts)\n- Model cache in /workspace/huggingface\n\n## Environment Variables\n- `MODEL_NAME`: HuggingFace model ID\n- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token\n- `VLLM_API_KEY`: API key for vLLM\n- `MAX_MODEL_LEN`: Context length\n\n## Ports\n- 8000: vLLM API\n- 18789: Clawdbot Gateway"
+}

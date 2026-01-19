@@ -1,0 +1,30 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Data directories
+data/
+*.log
+
+# HuggingFace cache
+huggingface/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (if running Clawdbot locally)
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

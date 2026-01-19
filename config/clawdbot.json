@@ -1,0 +1,70 @@
+{
+  "$schema": "https://clawdbot.com/schema/config.json",
+  "_comment": "Clawdbot configuration for RunPod vLLM integration",
+  "_instructions": [
+    "Replace <POD_ID> with your RunPod pod ID",
+    "Replace <VLLM_API_KEY> with your vLLM API key",
+    "Adjust model settings based on your tier (see templates/clawdbot-vllm.json)"
+  ],
+
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "runpod-vllm/local-coding-model"
+      }
+    }
+  },
+
+  "models": {
+    "providers": {
+      "runpod-vllm": {
+        "baseUrl": "https://<POD_ID>-8000.proxy.runpod.net/v1",
+        "apiKey": "${RUNPOD_VLLM_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "local-coding-model",
+            "name": "Local Coding Model",
+            "contextWindow": 32768,
+            "maxTokens": 8192,
+            "_availableModelIds": {
+              "tier1": "qwen3-30b-a3b",
+              "tier2": "mimo-v2-flash",
+              "tier3": "glm-4.7"
+            }
+          }
+        ]
+      }
+    }
+  },
+
+  "logging": {
+    "level": "info"
+  },
+
+  "gateway": {
+    "_comment": "Configure messaging integrations here",
+    "enabled": false,
+    "integrations": {
+      "telegram": {
+        "enabled": false,
+        "token": "${TELEGRAM_BOT_TOKEN}"
+      },
+      "discord": {
+        "enabled": false,
+        "token": "${DISCORD_BOT_TOKEN}"
+      },
+      "slack": {
+        "enabled": false,
+        "token": "${SLACK_BOT_TOKEN}",
+        "signingSecret": "${SLACK_SIGNING_SECRET}"
+      },
+      "whatsapp": {
+        "enabled": false,
+        "accountSid": "${TWILIO_ACCOUNT_SID}",
+        "authToken": "${TWILIO_AUTH_TOKEN}",
+        "phoneNumber": "${TWILIO_PHONE_NUMBER}"
+      }
+    }
+  }
+}

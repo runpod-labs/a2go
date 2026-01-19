@@ -1,0 +1,87 @@
+# docker-compose.yml - Local development setup for Clawdbot + vLLM
+# Note: This is for local testing only. For production, use RunPod.
+
+version: "3.8"
+
+services:
+  # vLLM Server - requires NVIDIA GPU with sufficient VRAM
+  vllm:
+    image: vllm/vllm-openai:v0.12.0
+    container_name: clawdbot-vllm
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "8000:8000"
+    environment:
+      - HF_HOME=/workspace/huggingface
+      - VLLM_API_KEY=${VLLM_API_KEY:-changeme}
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - ./data/huggingface:/workspace/huggingface
+      - ./scripts:/scripts:ro
+    command: >
+      vllm serve ${MODEL_NAME:-Qwen/Qwen3-30B-A3B-Instruct}
+      --host 0.0.0.0
+      --port 8000
+      --max-model-len ${MAX_MODEL_LEN:-32768}
+      --gpu-memory-utilization 0.90
+      --enable-auto-tool-choice
+      --tool-call-parser ${TOOL_CALL_PARSER:-hermes}
+      --api-key ${VLLM_API_KEY:-changeme}
+      --served-model-name ${SERVED_MODEL_NAME:-local-model}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
+  # Mock vLLM for testing without GPU (uses smaller model)
+  vllm-mock:
+    image: vllm/vllm-openai:v0.12.0
+    container_name: clawdbot-vllm-mock
+    profiles: ["mock"]
+    ports:
+      - "8001:8000"
+    environment:
+      - VLLM_API_KEY=${VLLM_API_KEY:-changeme}
+    command: >
+      vllm serve microsoft/phi-2
+      --host 0.0.0.0
+      --port 8000
+      --max-model-len 2048
+      --api-key ${VLLM_API_KEY:-changeme}
+      --served-model-name mock-model
+    restart: unless-stopped
+
+  # Test runner
+  tests:
+    image: curlimages/curl:latest
+    container_name: clawdbot-tests
+    profiles: ["test"]
+    depends_on:
+      vllm:
+        condition: service_healthy
+    environment:
+      - VLLM_HOST=vllm
+      - VLLM_PORT=8000
+      - VLLM_API_KEY=${VLLM_API_KEY:-changeme}
+    volumes:
+      - ./tests:/tests:ro
+    entrypoint: ["/bin/sh"]
+    command: ["-c", "apk add --no-cache bash jq && bash /tests/test-vllm.sh && bash /tests/test-tool-calling.sh"]
+
+volumes:
+  huggingface_cache:
+    driver: local
+
+networks:
+  default:
+    name: clawdbot-network

@@ -1,0 +1,34 @@
+{
+  "model": "qwen2.5-7b",
+  "messages": [{"role": "user", "content": "Read the contents of package.json and tell me what dependencies are listed"}],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "read_file",
+      "description": "Read the contents of a file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "The path to the file to read"}
+        },
+        "required": ["path"]
+      }
+    }
+  }, {
+    "type": "function",
+    "function": {
+      "name": "write_file",
+      "description": "Write content to a file",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "The path to write to"},
+          "content": {"type": "string", "description": "The content to write"}
+        },
+        "required": ["path", "content"]
+      }
+    }
+  }],
+  "tool_choice": "auto",
+  "max_tokens": 200
+}

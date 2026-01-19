@@ -1,0 +1,69 @@
+# Clawdbot + vLLM Docker Image for RunPod
+# Pre-configured with everything needed for AI coding assistant
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+
+LABEL maintainer="RunPod Clawdbot"
+LABEL description="Clawdbot AI assistant with vLLM for local LLM inference"
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HF_HOME=/workspace/huggingface
+ENV CLAWDBOT_STATE_DIR=/workspace/.clawdbot
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    wget \
+    git \
+    jq \
+    lsof \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22.x
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest
+
+# Install vLLM
+RUN pip install --no-cache-dir vllm
+
+# Install Clawdbot
+RUN npm install -g clawdbot@latest
+
+# Create workspace directories
+RUN mkdir -p /workspace/huggingface \
+    /workspace/.clawdbot \
+    /workspace/clawd \
+    /workspace/scripts
+
+# Copy startup script
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Copy default Clawdbot workspace files
+COPY config/workspace/ /workspace/clawd/
+
+# Expose ports
+# 8000 - vLLM API
+# 18789 - Clawdbot Gateway WebSocket
+# 18790 - Clawdbot Bridge
+# 18793 - Clawdbot Canvas
+# 22 - SSH (RunPod adds this)
+EXPOSE 8000 18789 18790 18793
+
+# Environment variables (can be overridden at runtime)
+ENV VLLM_API_KEY=changeme
+ENV MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct
+ENV SERVED_MODEL_NAME=local-coder
+ENV MAX_MODEL_LEN=16384
+ENV GPU_MEMORY_UTILIZATION=0.90
+ENV TOOL_CALL_PARSER=hermes
+ENV TENSOR_PARALLEL_SIZE=auto
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+WORKDIR /workspace
+
+ENTRYPOINT ["/entrypoint.sh"]
