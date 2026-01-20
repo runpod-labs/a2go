@@ -2,12 +2,16 @@ name: Build and Push Docker Images
 
 on:
   push:
+    branches: [main]
     paths:
       - 'models/**'
       - 'Dockerfile'
       - '.github/workflows/docker-build.yml'
   pull_request:
-    branches: [main]
+    paths:
+      - 'models/**'
+      - 'Dockerfile'
+      - '.github/workflows/docker-build.yml'
   workflow_dispatch:
 
 jobs:
