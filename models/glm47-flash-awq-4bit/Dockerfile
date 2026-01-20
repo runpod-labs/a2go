@@ -18,10 +18,12 @@ FROM runpod/pytorch:1.0.3-cu1290-torch291-ubuntu2404
 # 1. vLLM nightly from wheels.vllm.ai (NOT PyPI stable!) - for glm47 tool parser
 # 2. transformers from git (NOT PyPI!) - for glm4_moe_lite architecture
 # Note: --break-system-packages needed for Ubuntu 24.04 externally managed Python
+# Note: --index-strategy unsafe-best-match allows fallback to PyPI if nightly wheel unavailable
 RUN uv pip install --system --break-system-packages -U vllm \
     --pre \
     --index-url https://pypi.org/simple \
-    --extra-index-url https://wheels.vllm.ai/nightly && \
+    --extra-index-url https://wheels.vllm.ai/nightly \
+    --index-strategy unsafe-best-match && \
     uv pip install --system --break-system-packages huggingface_hub && \
     uv pip install --system --break-system-packages git+https://github.com/huggingface/transformers.git
 
