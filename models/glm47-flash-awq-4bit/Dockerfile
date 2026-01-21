@@ -11,16 +11,15 @@
 #
 # Storage: Uses network volume at /workspace/models/ for persistence
 
-FROM runpod/pytorch:1.0.3-cu1290-torch291-ubuntu2404
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 # Install vLLM nightly and dependencies
 # Note: vLLM nightly is required for native Glm4MoeLiteForCausalLM support
 # The commit-specific wheel URL ensures reproducible builds
-# Note: --break-system-packages needed for Ubuntu 24.04 externally managed Python
 RUN VLLM_WHEEL="vllm-0.14.0rc2.dev187+g22375f8d1-cp38-abi3-manylinux_2_31_x86_64.whl" && \
     curl -L -o "/tmp/${VLLM_WHEEL}" "https://wheels.vllm.ai/22375f8d13dbf5c201c6f1564f72310193930816/vllm-0.14.0rc2.dev187%2Bg22375f8d1-cp38-abi3-manylinux_2_31_x86_64.whl" && \
-    pip install --break-system-packages "/tmp/${VLLM_WHEEL}" huggingface_hub && \
-    pip install --break-system-packages git+https://github.com/huggingface/transformers.git && \
+    pip install "/tmp/${VLLM_WHEEL}" huggingface_hub && \
+    pip install git+https://github.com/huggingface/transformers.git && \
     rm "/tmp/${VLLM_WHEEL}"
 
 # Install Node.js 22.x and GitHub CLI in single layer to reduce image size
