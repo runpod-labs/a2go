@@ -1,39 +1,20 @@
 # Dockerfile for GLM-4.7-Flash NVFP4 on RTX 5090 (Blackwell SM120)
-# Model: Gadflyll/GLM-4.7-Flash-NVFP4 (~20.4GB on disk, ~30GB VRAM total with MLA)
+# Using vLLM official image - much smaller than NGC (~8GB vs 17GB)
 #
-# VERSIONS:
-# - Base: nvcr.io/nvidia/pytorch:25.02-py3 (CUDA 12.8)
-# - PyTorch: 2.9 nightly (cu128) - required for vLLM 0.14+
-# - vLLM: Latest (0.14+)
-# - Transformers: 5.0.0rc2 (pre-release with glm4_moe_lite support)
-#
-# Specifications:
-# - Model Size: ~20.4GB on disk (NVFP4 quantization)
-# - VRAM (model): ~20GB
-# - VRAM (KV cache with MLA): ~10GB for 200K context
-# - Total VRAM: ~30GB -> fits in RTX 5090 32GB
-# - Context Window: 200,000 tokens
-# - Cost: ~$0.89/hr (RTX 5090) vs $1.39/hr (A100 80GB)
-#
-# Storage: Uses network volume at /workspace/models/ for persistence
+# Model: GadflyII/GLM-4.7-Flash-NVFP4
+# Context: 200,000 tokens
+# Cost: ~$0.89/hr (RTX 5090)
 
-FROM nvcr.io/nvidia/pytorch:25.02-py3
+FROM vllm/vllm-openai:latest
 
 # Critical: Force Flash Attention v2 (v3 doesn't work on Blackwell yet)
 ENV VLLM_FLASH_ATTN_VERSION=2
 
-# Install uv for fast package management
-RUN pip install uv
+# Install additional dependencies
+RUN pip install --no-cache-dir "transformers>=5.0.0rc2" --pre && \
+    pip install --no-cache-dir "huggingface_hub[cli]"
 
-# Upgrade PyTorch to 2.9 nightly (required for vLLM 0.14+ and SM120)
-# Then install vLLM and dependencies
-# --break-system-packages needed for NGC containers with externally-managed Python
-RUN uv pip install --system --break-system-packages --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128 && \
-    uv pip install --system --break-system-packages vllm && \
-    uv pip install --system --break-system-packages "transformers>=5.0.0rc2" --pre && \
-    uv pip install --system --break-system-packages "huggingface_hub[cli]"
-
-# Install Node.js 22.x and GitHub CLI in single layer to reduce image size
+# Install Node.js 22.x and GitHub CLI
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
     dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
