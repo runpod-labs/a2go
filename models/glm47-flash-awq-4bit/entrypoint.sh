@@ -112,8 +112,12 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
         "api": "openai-completions",
         "models": [{
           "id": "$SERVED_MODEL_NAME",
+          "name": "GLM-4.7-Flash AWQ 4-bit",
           "contextWindow": $MAX_MODEL_LEN,
-          "maxTokens": 8192
+          "maxTokens": 8192,
+          "reasoning": false,
+          "input": ["text"],
+          "cost": { "input": 0, "output": 0 }
         }]
       }
     }
