@@ -5,26 +5,12 @@ echo "================================================"
 echo "  GLM-4.7-Flash AWQ (4-bit) on A100 80GB"
 echo "================================================"
 
-# Start SSH for RunPod - setup authorized_keys and start sshd
-echo "Setting up SSH..."
-mkdir -p /var/run/sshd /root/.ssh
-chmod 700 /root/.ssh
-
-# Add PUBLIC_KEY to authorized_keys if provided
-if [ -n "$PUBLIC_KEY" ]; then
-    echo "$PUBLIC_KEY" > /root/.ssh/authorized_keys
-    chmod 600 /root/.ssh/authorized_keys
-    echo "SSH key configured"
+# RunPod's /start.sh handles SSH setup using PUBLIC_KEY env var
+# We just need to run it if it exists
+if [ -f /start.sh ]; then
+    echo "Running RunPod start script..."
+    /start.sh
 fi
-
-# Generate host keys if missing
-if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-    ssh-keygen -A
-fi
-
-# Start SSH daemon
-/usr/sbin/sshd
-echo "SSH server started"
 
 # Download model if not present
 MODEL_PATH="${MODEL_PATH:-/workspace/models/GLM-4.7-Flash-AWQ-4bit}"
@@ -105,6 +91,7 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
+    # Create a minimal config - clawdbot doctor will fix any missing fields
     cat > "$CLAWDBOT_HOME/clawdbot.json" << EOF
 {
   "models": {
@@ -143,6 +130,10 @@ EOF
     chmod 600 "$CLAWDBOT_HOME/clawdbot.json"
 fi
 
+# Auto-fix config to match current Clawdbot version's schema
+echo "Running clawdbot doctor to validate/fix config..."
+CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot doctor --fix || true
+
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
     echo "Configuring GitHub CLI..."
@@ -161,7 +152,7 @@ fi
 export OPENAI_API_KEY="$VLLM_API_KEY"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 
-# Start Clawdbot gateway if Telegram token provided or config exists
+# Start Clawdbot gateway
 echo ""
 echo "Starting Clawdbot gateway..."
 CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot gateway &
