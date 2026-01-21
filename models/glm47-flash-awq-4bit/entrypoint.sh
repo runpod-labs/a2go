@@ -6,10 +6,12 @@ echo "  GLM-4.7-Flash AWQ (4-bit) on A100 80GB"
 echo "================================================"
 
 # RunPod's /start.sh handles SSH setup using PUBLIC_KEY env var
-# We just need to run it if it exists
+# It ends with 'sleep infinity' so we run it in background
 if [ -f /start.sh ]; then
-    echo "Running RunPod start script..."
-    /start.sh
+    echo "Running RunPod start script (background)..."
+    /start.sh &
+    # Give it a moment to set up SSH
+    sleep 5
 fi
 
 # Download model if not present
