@@ -65,7 +65,9 @@ vllm serve "$MODEL_PATH" \
     --tool-call-parser glm47 \
     --reasoning-parser glm45 \
     --block-size 32 \
-    --disable-log-requests &
+    --disable-log-requests \
+    --enable-prefix-caching \
+    --max-num-batched-tokens 8192 &
 
 VLLM_PID=$!
 

@@ -128,6 +128,30 @@ export OPENAI_BASE_URL="http://localhost:8000/v1"
 claude
 ```
 
+## Benchmark Results
+
+Tested on A100 80GB PCIe:
+
+| Test | Prompt Tokens | Output Tokens | Time | Speed |
+|------|---------------|---------------|------|-------|
+| Medium message | 17 | 100 | 1.5s | **68.6 tok/s** |
+| Code generation | 15 | 127 | 1.8s | **69.1 tok/s** |
+| Long generation | 14 | 400 | 4.2s | **94.2 tok/s** |
+| Tool calling | 150 | 79 | 1.3s | **59.3 tok/s** |
+
+**Typical throughput: 60-95 tokens/second**
+
+Run the benchmark yourself:
+```bash
+# On the pod
+./benchmark.sh
+
+# Or remotely
+API_URL="https://<pod-id>-8000.proxy.runpod.net" \
+API_KEY="your-key" \
+./benchmark.sh
+```
+
 ## Performance Tuning
 
 The entrypoint is optimized for A100 80GB:
@@ -138,7 +162,11 @@ The entrypoint is optimized for A100 80GB:
 | `--kv-cache-dtype fp8` | FP8 | Fits 114k context in VRAM |
 | `--block-size 32` | 32 | Optimal for AWQ models |
 | `--disable-log-requests` | - | Cleaner logs |
+| `--enable-prefix-caching` | - | Reuse KV cache for repeated prefixes |
+| `--max-num-batched-tokens` | 8192 | Better throughput |
 | `XDG_CACHE_HOME` | `/workspace/.cache` | Persist CUDA graphs between restarts |
+
+**Note:** MTP (Multi-Token Prediction) is NOT supported in the AWQ 4-bit version.
 
 ## Known Issues
 
