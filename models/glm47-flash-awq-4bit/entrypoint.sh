@@ -5,23 +5,26 @@ echo "================================================"
 echo "  GLM-4.7-Flash AWQ (4-bit) on A100 80GB"
 echo "================================================"
 
-# Start SSH for RunPod
-echo "Starting SSH server..."
-if [ -f /start.sh ]; then
-    # RunPod's startup script handles SSH setup
-    /start.sh &
-    sleep 2
-elif [ -d /etc/ssh ]; then
-    # Fallback: start SSH manually
-    mkdir -p /var/run/sshd
-    if [ -n "$PUBLIC_KEY" ]; then
-        mkdir -p /root/.ssh
-        echo "$PUBLIC_KEY" > /root/.ssh/authorized_keys
-        chmod 700 /root/.ssh
-        chmod 600 /root/.ssh/authorized_keys
-    fi
-    /usr/sbin/sshd -D &
+# Start SSH for RunPod - setup authorized_keys and start sshd
+echo "Setting up SSH..."
+mkdir -p /var/run/sshd /root/.ssh
+chmod 700 /root/.ssh
+
+# Add PUBLIC_KEY to authorized_keys if provided
+if [ -n "$PUBLIC_KEY" ]; then
+    echo "$PUBLIC_KEY" > /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+    echo "SSH key configured"
 fi
+
+# Generate host keys if missing
+if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+    ssh-keygen -A
+fi
+
+# Start SSH daemon
+/usr/sbin/sshd
+echo "SSH server started"
 
 # Download model if not present
 MODEL_PATH="${MODEL_PATH:-/workspace/models/GLM-4.7-Flash-AWQ-4bit}"
