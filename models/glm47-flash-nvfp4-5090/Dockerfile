@@ -1,13 +1,10 @@
 # Dockerfile for GLM-4.7-Flash NVFP4 on RTX 5090 (Blackwell SM120)
 # Model: Gadflyll/GLM-4.7-Flash-NVFP4 (~20.4GB on disk, ~30GB VRAM total with MLA)
 #
-# EXACT VERSIONS:
-# - Base: nvcr.io/nvidia/pytorch:25.12-py3
-# - CUDA: 13.1.0.36
-# - PyTorch: 2.10.0a0+b4e4ee81d3
-# - Python: 3.12
+# VERSIONS:
+# - Base: nvcr.io/nvidia/pytorch:25.02-py3 (CUDA 12.8, PyTorch 2.7 - proven for RTX 5090)
+# - vLLM: Latest prebuilt wheel (has SM120 support since CUDA 12.8)
 # - Transformers: 5.0.0rc2 (pre-release with glm4_moe_lite support)
-# - vLLM: Built from source (latest main, required for SM120)
 #
 # Specifications:
 # - Model Size: ~20.4GB on disk (NVFP4 quantization)
@@ -19,28 +16,17 @@
 #
 # Storage: Uses network volume at /workspace/models/ for persistence
 
-FROM nvcr.io/nvidia/pytorch:25.12-py3
+FROM nvcr.io/nvidia/pytorch:25.02-py3
 
-# Critical: Force Flash Attention v2 (v3 doesn't work on Blackwell)
+# Critical: Force Flash Attention v2 (v3 doesn't work on Blackwell yet)
 ENV VLLM_FLASH_ATTN_VERSION=2
-# Target SM120 (Blackwell) during compilation
-ENV TORCH_CUDA_ARCH_LIST="12.0"
 
-# Install Transformers 5.0.0rc2 (pre-release with glm4_moe_lite support)
-# and huggingface_hub for model downloads
+# Install vLLM (prebuilt wheels now support SM120 with CUDA 12.8+)
+# Also install Transformers 5.0.0rc2 for glm4_moe_lite support
 RUN pip install --upgrade pip && \
+    pip install vllm && \
     pip install "transformers>=5.0.0rc2" --pre && \
     pip install "huggingface_hub[cli]"
-
-# Build vLLM from source (precompiled wheels don't support SM120)
-# This takes ~20-30 minutes but is required for Blackwell support
-RUN pip install packaging ninja cmake wheel setuptools_scm && \
-    git clone https://github.com/vllm-project/vllm.git /tmp/vllm && \
-    cd /tmp/vllm && \
-    python use_existing_torch.py && \
-    pip install -r requirements/build.txt && \
-    MAX_JOBS=6 pip install --no-build-isolation -e . && \
-    rm -rf /tmp/vllm/.git
 
 # Install Node.js 22.x and GitHub CLI in single layer to reduce image size
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \

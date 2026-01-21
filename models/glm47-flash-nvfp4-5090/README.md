@@ -66,36 +66,33 @@ curl https://<pod-id>-8000.proxy.runpod.net/v1/chat/completions \
 
 ### Build Requirements
 
-- CUDA 13.1+ (NGC 25.12 container)
-- PyTorch 2.10+ (included in NGC)
+- CUDA 12.8+ (NGC 25.02 container)
+- PyTorch 2.7+ (included in NGC)
 - Transformers 5.0.0rc2+ (glm4_moe_lite support)
-- vLLM built from source (SM120 not in precompiled wheels)
+- vLLM prebuilt wheel (has SM120 support since CUDA 12.8)
 - Flash Attention v2 (v3 doesn't work on Blackwell yet)
 
 ### Exact Dependency Versions
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| Base Image | `nvcr.io/nvidia/pytorch:25.12-py3` | NVIDIA NGC |
-| CUDA | 13.1.0.36 | Included in NGC |
-| PyTorch | 2.10.0a0+b4e4ee81d3 | Included in NGC |
+| Base Image | `nvcr.io/nvidia/pytorch:25.02-py3` | NVIDIA NGC |
+| CUDA | 12.8.0.38 | Included in NGC |
+| PyTorch | 2.7.0a0+6c54963f75 | Included in NGC |
 | Python | 3.12 | Included in NGC |
 | Transformers | 5.0.0rc2+ | pip install --pre |
-| vLLM | latest main | Built from source |
+| vLLM | latest | pip install vllm |
 
 ### Build Environment Variables
 
 ```bash
 VLLM_FLASH_ATTN_VERSION=2    # Force Flash Attention v2
-TORCH_CUDA_ARCH_LIST="12.0"  # Target SM120 (Blackwell)
-MAX_JOBS=6                    # Limit parallel jobs to avoid OOM
 ```
 
 ## Known Issues
 
 1. **Flash Attention 3 incompatible** - Using v2 via `VLLM_FLASH_ATTN_VERSION=2`
-2. **Long build time** - vLLM source compilation takes ~20-30 min
-3. **First-start delay** - CUDA graph compilation on first run
+2. **First-start delay** - CUDA graph compilation on first run
 
 ### Potential Issues
 
