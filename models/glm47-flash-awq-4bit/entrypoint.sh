@@ -5,6 +5,24 @@ echo "================================================"
 echo "  GLM-4.7-Flash AWQ (4-bit) on A100 80GB"
 echo "================================================"
 
+# Start SSH for RunPod
+echo "Starting SSH server..."
+if [ -f /start.sh ]; then
+    # RunPod's startup script handles SSH setup
+    /start.sh &
+    sleep 2
+elif [ -d /etc/ssh ]; then
+    # Fallback: start SSH manually
+    mkdir -p /var/run/sshd
+    if [ -n "$PUBLIC_KEY" ]; then
+        mkdir -p /root/.ssh
+        echo "$PUBLIC_KEY" > /root/.ssh/authorized_keys
+        chmod 700 /root/.ssh
+        chmod 600 /root/.ssh/authorized_keys
+    fi
+    /usr/sbin/sshd -D &
+fi
+
 # Download model if not present
 MODEL_PATH="${MODEL_PATH:-/workspace/models/GLM-4.7-Flash-AWQ-4bit}"
 if [ ! -d "$MODEL_PATH" ]; then
@@ -61,7 +79,8 @@ done
 
 if [ $WAITED -ge $MAX_WAIT ]; then
     echo "ERROR: vLLM failed to start within $MAX_WAIT seconds"
-    exit 1
+    echo "Container will stay running for debugging. Check logs with: ps aux; cat /var/log/*"
+    # Don't exit - keep container running for debugging
 fi
 
 # Setup Clawdbot config
@@ -153,5 +172,10 @@ cleanup() {
 }
 trap cleanup SIGTERM SIGINT
 
-# Keep running
-wait $VLLM_PID
+# Keep running - wait for vLLM or sleep forever if it failed
+if [ -n "$VLLM_PID" ] && kill -0 $VLLM_PID 2>/dev/null; then
+    wait $VLLM_PID
+else
+    echo "vLLM not running, keeping container alive for debugging..."
+    sleep infinity
+fi
