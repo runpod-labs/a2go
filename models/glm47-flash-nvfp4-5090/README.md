@@ -7,7 +7,7 @@ Full 200K context window with MLA for reduced KV cache memory.
 
 | Property | Value |
 |----------|-------|
-| Model | `Gadflyll/GLM-4.7-Flash-NVFP4` |
+| Model | `GadflyII/GLM-4.7-Flash-NVFP4` |
 | Model Size | ~20.4GB on disk |
 | VRAM (model) | ~20GB |
 | VRAM (KV cache) | ~10GB (200K context with MLA + FP8) |
@@ -124,7 +124,7 @@ If NVFP4 on RTX 5090 doesn't work:
 
 ## References
 
-- [GLM-4.7-Flash-NVFP4 Model](https://huggingface.co/Gadflyll/GLM-4.7-Flash-NVFP4)
+- [GLM-4.7-Flash-NVFP4 Model](https://huggingface.co/GadflyII/GLM-4.7-Flash-NVFP4)
 - [vLLM RTX 5090 Setup Guide](https://github.com/vllm-project/vllm/issues/14452)
 - [vLLM SM120 Support](https://github.com/vllm-project/vllm/issues/13306)
 - [NVIDIA NGC PyTorch 25.12](https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-25-12.html)

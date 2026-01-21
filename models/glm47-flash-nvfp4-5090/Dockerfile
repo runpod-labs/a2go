@@ -50,7 +50,7 @@ RUN npm install -g --prefer-offline @anthropic-ai/claude-code clawdbot && \
     npm cache clean --force
 
 # Environment defaults
-ENV MODEL_NAME="Gadflyll/GLM-4.7-Flash-NVFP4"
+ENV MODEL_NAME="GadflyII/GLM-4.7-Flash-NVFP4"
 ENV MODEL_PATH="/workspace/models/GLM-4.7-Flash-NVFP4"
 ENV SERVED_MODEL_NAME="glm-4.7-flash"
 ENV MAX_MODEL_LEN="200000"
