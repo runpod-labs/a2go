@@ -28,7 +28,7 @@ MODEL_PATH="${MODEL_PATH:-/workspace/models/GLM-4.7-Flash-AWQ-4bit}"
 if [ ! -d "$MODEL_PATH" ]; then
     echo "Downloading model to $MODEL_PATH..."
     mkdir -p /workspace/models
-    huggingface-cli download cyankiwi/GLM-4.7-Flash-AWQ-4bit \
+    python -m huggingface_hub.cli download cyankiwi/GLM-4.7-Flash-AWQ-4bit \
         --local-dir "$MODEL_PATH" \
         --local-dir-use-symlinks False
 fi
