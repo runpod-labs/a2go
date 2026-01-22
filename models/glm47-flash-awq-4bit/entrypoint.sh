@@ -25,6 +25,14 @@ MODEL_PATH="${MODEL_PATH:-/workspace/models/GLM-4.7-Flash-AWQ-4bit}"
 if [ ! -d "$MODEL_PATH" ]; then
     echo "Downloading model to $MODEL_PATH..."
     mkdir -p /workspace/models
+
+    # Check for HF_TOKEN for faster downloads
+    if [ -z "$HF_TOKEN" ]; then
+        echo "TIP: Set HF_TOKEN env var for faster downloads (https://huggingface.co/settings/tokens)"
+    else
+        echo "Using HF_TOKEN for authenticated downloads"
+    fi
+
     # Use 'hf download' - the modern Hugging Face CLI command
     # Falls back to python module if 'hf' command not in PATH
     if command -v hf &> /dev/null; then

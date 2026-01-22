@@ -1,17 +1,15 @@
 # Dockerfile for GLM-4.7-Flash NVFP4 on RTX 5090 (Blackwell SM120)
-# Using vLLM v0.8.5 (CUDA 12.8) - latest requires CUDA 12.9 which RunPod doesn't support yet
 #
 # Model: GadflyII/GLM-4.7-Flash-NVFP4
 # Context: 200,000 tokens
 # Cost: ~$0.89/hr (RTX 5090)
 
-FROM vllm/vllm-openai:latest
+FROM runpod/pytorch:1.0.3-cu1290-torch291-ubuntu2404
 
-# Critical: Force Flash Attention v2 (v3 doesn't work on Blackwell yet)
-ENV VLLM_FLASH_ATTN_VERSION=2
-
-# Install additional dependencies
-RUN pip install --no-cache-dir "transformers>=5.0.0rc2" --pre && \
+# Install vLLM nightly (required for glm47/glm45 parsers)
+# Install Transformers from git main (required for GLM-4.7 support)
+RUN pip install --no-cache-dir vllm --pre --extra-index-url https://wheels.vllm.ai/nightly && \
+    pip install --no-cache-dir git+https://github.com/huggingface/transformers.git && \
     pip install --no-cache-dir "huggingface_hub[cli]"
 
 # Install Node.js 22.x and GitHub CLI

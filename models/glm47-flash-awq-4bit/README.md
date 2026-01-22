@@ -34,6 +34,7 @@ Quantized version of GLM-4.7-Flash for **A100 80GB** GPUs. Best value for GLM-4.
 |----------|----------|---------|-------------|
 | `PUBLIC_KEY` | Yes | - | Your SSH public key |
 | `VLLM_API_KEY` | Yes | `changeme` | API key for vLLM |
+| `HF_TOKEN` | Recommended | - | [HuggingFace token](https://huggingface.co/settings/tokens) for faster model downloads |
 | `TELEGRAM_BOT_TOKEN` | No | - | Telegram bot token for chat integration |
 | `GITHUB_TOKEN` | No | - | GitHub token for `gh` CLI |
 | `CLAWDBOT_WEB_PASSWORD` | No | `clawdbot` | Password for web UI |
