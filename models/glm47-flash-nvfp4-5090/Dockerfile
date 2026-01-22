@@ -37,9 +37,12 @@ RUN apt-get update && \
 ENV PATH="/usr/lib/ccache:${PATH}"
 ENV CCACHE_DIR="/workspace/.ccache"
 
-# Clone and build vLLM from source
+# Clone and build vLLM from source (with retry for transient GitHub errors)
 WORKDIR /tmp/vllm-build
-RUN git clone --depth 1 --branch ${VLLM_VERSION} https://github.com/vllm-project/vllm.git . \
+RUN for i in 1 2 3 4 5; do \
+        git clone --depth 1 --branch ${VLLM_VERSION} https://github.com/vllm-project/vllm.git . && break || \
+        (echo "Git clone attempt $i failed, retrying in 10s..." && sleep 10); \
+    done \
     && python use_existing_torch.py \
     && pip install --no-cache-dir -r requirements/build.txt \
     && pip install --no-cache-dir setuptools_scm \
