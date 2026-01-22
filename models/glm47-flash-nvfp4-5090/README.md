@@ -1,5 +1,14 @@
 # GLM-4.7-Flash NVFP4 on RTX 5090
 
+> **STATUS: NOT WORKING** (Jan 2026)
+>
+> vLLM has unresolved bugs with GLM-4.7's MLA attention architecture on Blackwell.
+> **Use [glm47-flash-gguf-llamacpp](../glm47-flash-gguf-llamacpp/) instead** - it works with 200k context!
+>
+> See [ISSUES.md](./ISSUES.md) for detailed error analysis and when to retry.
+
+---
+
 Native NVFP4 quantization optimized for **RTX 5090 32GB** (Blackwell SM120).
 Full 200K context window with MLA for reduced KV cache memory.
 
