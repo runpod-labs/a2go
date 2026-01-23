@@ -2,18 +2,36 @@
 # Don't exit on error - we want the container to stay alive for debugging
 set +e
 
+# ============================================================
+# Setup SSH server FIRST so we can always connect
+# ============================================================
+echo "Setting up SSH server..."
+
+# Generate host keys if they don't exist
+if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
+    ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
+    ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N ''
+    ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
+fi
+
+# Setup authorized_keys from PUBLIC_KEY env var
+if [ -n "$PUBLIC_KEY" ]; then
+    mkdir -p ~/.ssh
+    echo "$PUBLIC_KEY" > ~/.ssh/authorized_keys
+    chmod 700 ~/.ssh
+    chmod 600 ~/.ssh/authorized_keys
+    echo "SSH public key configured"
+fi
+
+# Start SSH daemon
+mkdir -p /var/run/sshd
+/usr/sbin/sshd
+echo "SSH server started on port 22"
+
+echo ""
 echo "================================================"
 echo "  GLM-4.7-Flash GGUF on RTX 5090 (llama.cpp)"
 echo "================================================"
-
-# RunPod's /start.sh handles SSH setup using PUBLIC_KEY env var
-# Run it first and wait for SSH to be ready
-if [ -f /start.sh ]; then
-    echo "Running RunPod start script..."
-    /start.sh &
-    sleep 10
-    echo "SSH should be available now"
-fi
 
 # ============================================================
 # Download model if not present
