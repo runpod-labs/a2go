@@ -59,7 +59,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install huggingface-cli for model downloads
-RUN pip install --no-cache-dir "huggingface_hub[cli]"
+RUN python3 -m pip install --no-cache-dir "huggingface_hub[cli]"
 
 # Install Clawdbot and Claude Code
 RUN npm install -g --prefer-offline @anthropic-ai/claude-code clawdbot && \
