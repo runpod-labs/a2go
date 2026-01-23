@@ -1,16 +1,18 @@
 #!/bin/bash
-set -e
+# Don't exit on error - we want the container to stay alive for debugging
+set +e
 
 echo "================================================"
 echo "  GLM-4.7-Flash GGUF on RTX 5090 (llama.cpp)"
 echo "================================================"
 
 # RunPod's /start.sh handles SSH setup using PUBLIC_KEY env var
-# It ends with 'sleep infinity' so we run it in background
+# Run it first and wait for SSH to be ready
 if [ -f /start.sh ]; then
-    echo "Running RunPod start script (background)..."
+    echo "Running RunPod start script..."
     /start.sh &
-    sleep 5
+    sleep 10
+    echo "SSH should be available now"
 fi
 
 # ============================================================
@@ -31,9 +33,9 @@ if [ ! -f "$MODEL_PATH/$MODEL_FILE" ]; then
     fi
 
     # Download specific GGUF file using Python API (huggingface-cli not available in newer versions)
+    echo "Attempting download with Python huggingface_hub..."
     python3 -c "
 from huggingface_hub import hf_hub_download
-import os
 hf_hub_download(
     repo_id='$MODEL_NAME',
     filename='$MODEL_FILE',
@@ -41,7 +43,16 @@ hf_hub_download(
     local_dir_use_symlinks=False
 )
 print('Download complete!')
-"
+" || {
+        echo "ERROR: Model download failed!"
+        echo "Debug info:"
+        echo "  python3 location: $(which python3)"
+        echo "  pip packages:"
+        python3 -m pip list | grep -i hugging || echo "  huggingface not found"
+        echo ""
+        echo "Container staying alive for debugging. SSH in and fix manually."
+        sleep infinity
+    }
 fi
 
 # Set defaults
