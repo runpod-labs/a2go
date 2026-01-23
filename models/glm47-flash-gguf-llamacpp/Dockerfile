@@ -1,4 +1,5 @@
 # Dockerfile for GLM-4.7-Flash GGUF on RTX 5090 (Blackwell SM120)
+# Build: v2 - 2026-01-23 - Python API for model download
 # Using llama.cpp for inference - works where vLLM NVFP4 fails
 #
 # Specifications:
