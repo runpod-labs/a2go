@@ -1,5 +1,5 @@
 #!/bin/bash
-# start-vllm.sh - vLLM startup script for Clawdbot on RunPod
+# start-vllm.sh - vLLM startup script for Moltbot on RunPod
 # Handles model download, GPU detection, and vLLM server startup
 
 set -e
@@ -36,7 +36,7 @@ export HF_HOME
 # Print banner
 echo ""
 echo "==========================================="
-echo "  Clawdbot vLLM Server Startup"
+echo "  Moltbot vLLM Server Startup"
 echo "==========================================="
 echo ""
 

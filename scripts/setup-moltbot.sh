@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-clawdbot.sh - Install and configure Clawdbot on RunPod
+# setup-moltbot.sh - Install and configure Moltbot on RunPod
 # Prerequisites: vLLM server running on port 8000
 
 set -e
@@ -21,13 +21,13 @@ VLLM_HOST="${VLLM_HOST:-localhost}"
 VLLM_PORT="${VLLM_PORT:-8000}"
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-qwen3-30b-a3b}"
-CLAWDBOT_CONFIG_DIR="${CLAWDBOT_CONFIG_DIR:-$HOME/.clawdbot}"
+MOLTBOT_CONFIG_DIR="${MOLTBOT_CONFIG_DIR:-$HOME/.clawdbot}"
 RUNPOD_POD_ID="${RUNPOD_POD_ID:-}"
 
 # Print banner
 echo ""
 echo "==========================================="
-echo "  Clawdbot Setup Script"
+echo "  Moltbot Setup Script"
 echo "==========================================="
 echo ""
 
@@ -55,10 +55,14 @@ if ! command -v npm &> /dev/null; then
 fi
 log_info "npm version: $(npm --version)"
 
-# Step 2: Install Clawdbot
-log_info "Installing Clawdbot..."
-npm install -g clawdbot@latest
-log_success "Clawdbot installed: $(clawdbot --version 2>/dev/null || echo 'version check failed')"
+# Step 2: Install Moltbot
+log_info "Installing Moltbot..."
+npm install -g moltbot@latest
+BOT_CMD="moltbot"
+if ! command -v "$BOT_CMD" &> /dev/null; then
+    BOT_CMD="clawdbot"
+fi
+log_success "Moltbot installed: $("$BOT_CMD" --version 2>/dev/null || echo 'version check failed')"
 
 # Step 3: Wait for vLLM to be ready
 log_info "Waiting for vLLM server to be ready..."
@@ -86,9 +90,9 @@ MODELS_RESPONSE=$(curl -s "http://${VLLM_HOST}:${VLLM_PORT}/v1/models" \
     -H "Authorization: Bearer ${VLLM_API_KEY}")
 echo "Available models: $MODELS_RESPONSE"
 
-# Step 4: Create Clawdbot configuration directory
-log_info "Creating Clawdbot configuration..."
-mkdir -p "$CLAWDBOT_CONFIG_DIR"
+# Step 4: Create Moltbot configuration directory
+log_info "Creating Moltbot configuration..."
+mkdir -p "$MOLTBOT_CONFIG_DIR"
 
 # Determine the base URL for the vLLM endpoint
 if [ -n "$RUNPOD_POD_ID" ]; then
@@ -99,8 +103,8 @@ else
     VLLM_BASE_URL="http://${VLLM_HOST}:${VLLM_PORT}/v1"
 fi
 
-# Step 5: Create Clawdbot configuration file
-cat > "$CLAWDBOT_CONFIG_DIR/clawdbot.json" << EOF
+# Step 5: Create Moltbot configuration file
+cat > "$MOLTBOT_CONFIG_DIR/clawdbot.json" << EOF
 {
   "agents": {
     "defaults": {
@@ -132,15 +136,15 @@ cat > "$CLAWDBOT_CONFIG_DIR/clawdbot.json" << EOF
 }
 EOF
 
-log_success "Clawdbot configuration created at $CLAWDBOT_CONFIG_DIR/clawdbot.json"
+log_success "Moltbot configuration created at $MOLTBOT_CONFIG_DIR/clawdbot.json (legacy file name)"
 
-# Step 6: Test Clawdbot connection
-log_info "Testing Clawdbot configuration..."
+# Step 6: Test Moltbot connection
+log_info "Testing Moltbot configuration..."
 echo ""
 echo "Configuration summary:"
 echo "  vLLM URL: $VLLM_BASE_URL"
 echo "  Model: $SERVED_MODEL_NAME"
-echo "  Config dir: $CLAWDBOT_CONFIG_DIR"
+echo "  Config dir: $MOLTBOT_CONFIG_DIR"
 echo ""
 
 # Test a simple completion
@@ -166,11 +170,11 @@ echo "==========================================="
 echo "  Setup Complete!"
 echo "==========================================="
 echo ""
-echo "To start Clawdbot, run:"
-echo "  clawdbot"
+echo "To start Moltbot, run:"
+echo "  moltbot"
 echo ""
 echo "To start with daemon mode:"
-echo "  clawdbot onboard --install-daemon"
+echo "  moltbot onboard --install-daemon"
 echo ""
-echo "Configuration file: $CLAWDBOT_CONFIG_DIR/clawdbot.json"
+echo "Configuration file: $MOLTBOT_CONFIG_DIR/clawdbot.json"
 echo ""

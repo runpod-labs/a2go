@@ -30,13 +30,13 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-13.1/lib64:$LD_LIBRARY_PATH
 # Install vLLM nightly (required for GLM-4.7 support)
 RUN uv pip install --system -U vllm --pre
 
-# Install Clawdbot
-RUN npm install -g --prefer-offline clawdbot@latest && \
+# Install Moltbot
+RUN npm install -g --prefer-offline moltbot@latest && \
     npm cache clean --force
 
 # Environment variables
 ENV HF_HOME=/workspace/huggingface
-ENV CLAWDBOT_STATE_DIR=/workspace/.clawdbot
+ENV MOLTBOT_STATE_DIR=/workspace/.clawdbot
 ENV MODEL_NAME=0xSero/GLM-4.7-REAP-40-W4A16
 ENV SERVED_MODEL_NAME=glm-4.7-reap
 ENV VLLM_API_KEY=changeme
@@ -53,7 +53,7 @@ RUN chmod +x /entrypoint.sh
 
 # Expose ports
 # 8000: vLLM API
-# 18789: Clawdbot Gateway
+# 18789: Moltbot Gateway
 # 22: SSH
 EXPOSE 8000 18789 22
 

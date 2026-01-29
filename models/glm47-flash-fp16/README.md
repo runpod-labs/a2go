@@ -29,7 +29,7 @@ Best quality with auto-detected context based on GPU.
 
 ### 1. Create RunPod Pod
 
-- **Image**: `yourusername/clawdbot-glm47-flash-fp16:latest`
+- **Image**: `yourusername/moltbot-glm47-flash-fp16:latest`
 - **GPU**: 1x H100 80GB or A100 80GB
 - **Volume**: 50GB at `/workspace`
 - **Container Disk**: 100GB (model stored here)
@@ -67,7 +67,7 @@ Model is stored on container disk (100GB required), state persists on workspace 
 ```
 /root/.cache/huggingface/          # Model files (container disk)
 /workspace/
-├── .clawdbot/
+├── .clawdbot/                     # Legacy Moltbot state path
 │   ├── clawdbot.json              # Config
 │   ├── agents/                    # State
 │   └── telegram/                  # Session

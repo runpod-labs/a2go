@@ -1,9 +1,9 @@
 #!/bin/bash
-# entrypoint.sh - Clawdbot + vLLM startup script for RunPod
+# entrypoint.sh - Moltbot + vLLM startup script for RunPod
 set -e
 
 echo "============================================"
-echo "  Clawdbot + vLLM Startup"
+echo "  Moltbot + vLLM Startup"
 echo "============================================"
 
 # Configuration from environment
@@ -15,14 +15,19 @@ GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-hermes}"
 TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-auto}"
 HF_HOME="${HF_HOME:-/workspace/huggingface}"
-CLAWDBOT_STATE_DIR="${CLAWDBOT_STATE_DIR:-/workspace/.clawdbot}"
+MOLTBOT_STATE_DIR="${MOLTBOT_STATE_DIR:-/workspace/.clawdbot}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 
 export HF_HOME
-export CLAWDBOT_STATE_DIR
+export MOLTBOT_STATE_DIR
+
+BOT_CMD="moltbot"
+if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
+    BOT_CMD="clawdbot"
+fi
 
 # Ensure directories exist
-mkdir -p "$HF_HOME" "$CLAWDBOT_STATE_DIR" /workspace/clawd
+mkdir -p "$HF_HOME" "$MOLTBOT_STATE_DIR" /workspace/clawd
 
 # Auto-detect tensor parallel size
 if [ "$TENSOR_PARALLEL_SIZE" = "auto" ]; then
@@ -39,9 +44,9 @@ echo "  Tensor parallel: $TENSOR_PARALLEL_SIZE"
 echo "  Tool parser: $TOOL_CALL_PARSER"
 echo ""
 
-# Initialize Clawdbot config if not exists
-if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
-    echo "Creating Clawdbot configuration..."
+# Initialize Moltbot config if not exists
+if [ ! -f "$MOLTBOT_STATE_DIR/clawdbot.json" ]; then
+    echo "Creating Moltbot configuration (legacy clawdbot.json)..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -50,7 +55,7 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    cat > "$CLAWDBOT_STATE_DIR/clawdbot.json" << EOF
+    cat > "$MOLTBOT_STATE_DIR/clawdbot.json" << EOF
 {
   "agents": {
     "defaults": {
@@ -85,16 +90,16 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_STATE_DIR/clawdbot.json"
+    chmod 600 "$MOLTBOT_STATE_DIR/clawdbot.json"
     echo "Config created. Telegram token: ${TELEGRAM_BOT_TOKEN:+provided}${TELEGRAM_BOT_TOKEN:-NOT SET - add manually}"
 else
-    echo "Existing config found at $CLAWDBOT_STATE_DIR/clawdbot.json - preserving it"
+    echo "Existing config found at $MOLTBOT_STATE_DIR/clawdbot.json - preserving it"
 fi
 
-# Initialize Clawdbot workspace if empty
+# Initialize Moltbot workspace if empty
 if [ ! -f "/workspace/clawd/AGENTS.md" ]; then
-    echo "Initializing Clawdbot workspace..."
-    clawdbot setup --non-interactive --accept-risk --workspace /workspace/clawd 2>/dev/null || true
+    echo "Initializing Moltbot workspace..."
+    "$BOT_CMD" setup --non-interactive --accept-risk --workspace /workspace/clawd 2>/dev/null || true
 fi
 
 # Build vLLM command
@@ -138,10 +143,10 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Start Clawdbot gateway
+# Start Moltbot gateway
 echo ""
-echo "Starting Clawdbot gateway..."
-clawdbot gateway &
+echo "Starting Moltbot gateway..."
+"$BOT_CMD" gateway &
 GATEWAY_PID=$!
 
 echo ""
@@ -149,7 +154,7 @@ echo "============================================"
 echo "  Services Running"
 echo "============================================"
 echo "  vLLM API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
+echo "  Moltbot Gateway: ws://localhost:18789"
 echo ""
 echo "  vLLM PID: $VLLM_PID"
 echo "  Gateway PID: $GATEWAY_PID"

@@ -53,7 +53,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 
 # Install tools
 RUN uv pip install --system "huggingface_hub[cli]" && \
-    npm install -g --prefer-offline @anthropic-ai/claude-code clawdbot && \
+    npm install -g --prefer-offline @anthropic-ai/claude-code moltbot && \
     npm cache clean --force
 
 WORKDIR /
@@ -63,8 +63,8 @@ ENV MODEL_NAME="GadflyII/GLM-4.7-Flash-NVFP4" \
     SERVED_MODEL_NAME="glm-4.7-flash" \
     MAX_MODEL_LEN="200000" \
     VLLM_API_KEY="changeme" \
-    CLAWDBOT_HOME="/workspace/.clawdbot" \
-    CLAWDBOT_WORKSPACE="/workspace/clawd"
+    MOLTBOT_HOME="/workspace/.clawdbot" \
+    MOLTBOT_WORKSPACE="/workspace/clawd"
 
 COPY entrypoint.sh benchmark.sh /
 RUN chmod +x /entrypoint.sh /benchmark.sh

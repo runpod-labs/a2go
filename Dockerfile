@@ -1,14 +1,14 @@
-# Clawdbot + vLLM Docker Image for RunPod
+# Moltbot + vLLM Docker Image for RunPod
 # Pre-configured with everything needed for AI coding assistant
 FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
-LABEL maintainer="RunPod Clawdbot"
-LABEL description="Clawdbot AI assistant with vLLM for local LLM inference"
+LABEL maintainer="RunPod Moltbot"
+LABEL description="Moltbot AI assistant with vLLM for local LLM inference"
 
 # Avoid interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HF_HOME=/workspace/huggingface
-ENV CLAWDBOT_STATE_DIR=/workspace/.clawdbot
+ENV MOLTBOT_STATE_DIR=/workspace/.clawdbot
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,8 +27,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install vLLM
 RUN pip install --no-cache-dir vllm
 
-# Install Clawdbot
-RUN npm install -g clawdbot@latest
+# Install Moltbot
+RUN npm install -g moltbot@latest
 
 # Create workspace directories
 RUN mkdir -p /workspace/huggingface \
@@ -40,14 +40,14 @@ RUN mkdir -p /workspace/huggingface \
 COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy default Clawdbot workspace files
+# Copy default Moltbot workspace files
 COPY config/workspace/ /workspace/clawd/
 
 # Expose ports
 # 8000 - vLLM API
-# 18789 - Clawdbot Gateway WebSocket
-# 18790 - Clawdbot Bridge
-# 18793 - Clawdbot Canvas
+# 18789 - Moltbot Gateway WebSocket
+# 18790 - Moltbot Bridge
+# 18793 - Moltbot Canvas
 # 22 - SSH (RunPod adds this)
 EXPOSE 8000 18789 18790 18793
 

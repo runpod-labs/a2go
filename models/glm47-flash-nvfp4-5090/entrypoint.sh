@@ -75,11 +75,16 @@ fi
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-200000}"
-CLAWDBOT_HOME="${CLAWDBOT_HOME:-/workspace/.clawdbot}"
+MOLTBOT_HOME="${MOLTBOT_HOME:-/workspace/.clawdbot}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-# Web UI password - users enter this to access the Clawdbot control panel
-CLAWDBOT_WEB_PASSWORD="${CLAWDBOT_WEB_PASSWORD:-clawdbot}"
+# Web UI password - users enter this to access the Moltbot control panel
+MOLTBOT_WEB_PASSWORD="${MOLTBOT_WEB_PASSWORD:-moltbot}"
+
+BOT_CMD="moltbot"
+if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
+    BOT_CMD="clawdbot"
+fi
 
 echo "Starting vLLM server..."
 echo "  Model: $MODEL_PATH"
@@ -128,11 +133,11 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     # Don't exit - keep container running for debugging
 fi
 
-# Setup Clawdbot config
-mkdir -p "$CLAWDBOT_HOME"
+# Setup Moltbot config
+mkdir -p "$MOLTBOT_HOME"
 
-if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
-    echo "Creating Clawdbot config..."
+if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
+    echo "Creating Moltbot config (legacy clawdbot.json)..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -141,9 +146,9 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    # Create a minimal config - clawdbot doctor will fix any missing fields
+    # Create a minimal config - moltbot doctor will fix any missing fields
     # contextTokens: 180000 leaves room for output within 200K context
-    cat > "$CLAWDBOT_HOME/clawdbot.json" << EOF
+    cat > "$MOLTBOT_HOME/clawdbot.json" << EOF
 {
   "models": {
     "providers": {
@@ -179,12 +184,12 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_HOME/clawdbot.json"
+    chmod 600 "$MOLTBOT_HOME/clawdbot.json"
 fi
 
-# Auto-fix config to match current Clawdbot version's schema
-echo "Running clawdbot doctor to validate/fix config..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot doctor --fix 2>/dev/null || true
+# Auto-fix config to match current Moltbot version's schema
+echo "Running moltbot doctor to validate/fix config..."
+MOLTBOT_STATE_DIR=$MOLTBOT_HOME "$BOT_CMD" doctor --fix 2>/dev/null || true
 
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -204,19 +209,19 @@ fi
 export OPENAI_API_KEY="$VLLM_API_KEY"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 
-# Start Clawdbot gateway with password auth for web UI access
+# Start Moltbot gateway with password auth for web UI access
 echo ""
-echo "Starting Clawdbot gateway..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot gateway --auth password --password "$CLAWDBOT_WEB_PASSWORD" 2>/dev/null &
+echo "Starting Moltbot gateway..."
+MOLTBOT_STATE_DIR=$MOLTBOT_HOME "$BOT_CMD" gateway --auth password --password "$MOLTBOT_WEB_PASSWORD" 2>/dev/null &
 GATEWAY_PID=$!
 
 echo ""
 echo "================================================"
 echo "  Ready! (RTX 5090 Blackwell SM120)"
 echo "  vLLM API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
+echo "  Moltbot Gateway: ws://localhost:18789"
 echo "  Web UI: https://<pod-id>-18789.proxy.runpod.net"
-echo "  Web UI Password: $CLAWDBOT_WEB_PASSWORD"
+echo "  Web UI Password: $MOLTBOT_WEB_PASSWORD"
 echo "  Model: $SERVED_MODEL_NAME (NVFP4)"
 echo "  Context: $MAX_MODEL_LEN tokens"
 echo "  Cost: ~\$0.89/hr (36% savings vs A100)"

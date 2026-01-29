@@ -4,19 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-RunPod-optimized Docker deployment for running Clawdbot (AI coding assistant) with GLM-4.7 language models using vLLM for inference. Multiple model variants are optimized for different GPU tiers (A100, H100, B200, RTX 5090).
+RunPod-optimized Docker deployment for running Moltbot (AI coding assistant) with GLM-4.7 language models using vLLM for inference. Multiple model variants are optimized for different GPU tiers (A100, H100, B200, RTX 5090).
 
 ## Build Commands
 
 ```bash
 # Build a specific model variant
-docker build -t clawdbot-glm47-flash-awq-4bit models/glm47-flash-awq-4bit/
-docker build -t clawdbot-glm47-flash-fp16 models/glm47-flash-fp16/
-docker build -t clawdbot-glm47-flash-nvfp4-5090 models/glm47-flash-nvfp4-5090/
+docker build -t moltbot-glm47-flash-awq-4bit models/glm47-flash-awq-4bit/
+docker build -t moltbot-glm47-flash-fp16 models/glm47-flash-fp16/
+docker build -t moltbot-glm47-flash-nvfp4-5090 models/glm47-flash-nvfp4-5090/
 
 # Push to Docker Hub
-docker tag clawdbot-glm47-flash-awq-4bit yourusername/clawdbot-glm47-flash-awq-4bit:latest
-docker push yourusername/clawdbot-glm47-flash-awq-4bit:latest
+docker tag moltbot-glm47-flash-awq-4bit yourusername/moltbot-glm47-flash-awq-4bit:latest
+docker push yourusername/moltbot-glm47-flash-awq-4bit:latest
 ```
 
 ## Local Development
@@ -56,12 +56,12 @@ models/                    # Model-specific Dockerfiles and configs
 └── glm47-reap-w4a16/      # REAP W4A16 (B200)
 
 scripts/                   # Startup orchestration
-├── entrypoint.sh          # Docker entrypoint (starts vLLM + Clawdbot)
+├── entrypoint.sh          # Docker entrypoint (starts vLLM + Moltbot)
 ├── start-vllm.sh          # vLLM server with GPU detection
-└── setup-clawdbot.sh      # Clawdbot installation
+└── setup-moltbot.sh       # Moltbot installation
 
 config/                    # Runtime configuration
-├── clawdbot.json          # Clawdbot config template
+├── moltbot.json           # Moltbot config template
 └── workspace/             # Agent identity and system docs
 ```
 
@@ -70,9 +70,9 @@ config/                    # Runtime configuration
 | Port  | Service           |
 |-------|-------------------|
 | 8000  | vLLM API          |
-| 18789 | Clawdbot Gateway  |
-| 18790 | Clawdbot Bridge   |
-| 18793 | Clawdbot Canvas   |
+| 18789 | Moltbot Gateway  |
+| 18790 | Moltbot Bridge   |
+| 18793 | Moltbot Canvas   |
 | 22    | SSH               |
 
 ## CI/CD (GitHub Actions)
@@ -98,10 +98,10 @@ Key variables from `.env.example`:
 ## Entrypoint Flow
 
 1. Configure environment and detect GPU count
-2. Generate `clawdbot.json` with vLLM provider settings
+2. Generate `clawdbot.json` with vLLM provider settings (legacy file name used by Moltbot)
 3. Start vLLM server in background
 4. Wait for health check (max 5 minutes)
-5. Start Clawdbot gateway
+5. Start Moltbot gateway
 6. Handle graceful shutdown on SIGTERM/SIGINT
 
 ## RunPod SSH Access

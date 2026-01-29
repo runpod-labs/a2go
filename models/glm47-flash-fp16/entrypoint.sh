@@ -1,9 +1,9 @@
 #!/bin/bash
-# entrypoint.sh - GLM-4.7-Flash FP16 + Clawdbot startup script
+# entrypoint.sh - GLM-4.7-Flash FP16 + Moltbot startup script
 set -e
 
 echo "============================================"
-echo "  GLM-4.7-Flash FP16 + Clawdbot Startup"
+echo "  GLM-4.7-Flash FP16 + Moltbot Startup"
 echo "============================================"
 echo ""
 echo "IMPORTANT: This requires vLLM NIGHTLY (not PyPI stable)!"
@@ -50,7 +50,7 @@ GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.92}"
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-glm47}"
 # Keep model on container disk (requires 100GB containerDiskInGb)
 HF_HOME="${HF_HOME:-/root/.cache/huggingface}"
-CLAWDBOT_STATE_DIR="${CLAWDBOT_STATE_DIR:-/workspace/.clawdbot}"
+MOLTBOT_STATE_DIR="${MOLTBOT_STATE_DIR:-/workspace/.clawdbot}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
@@ -63,8 +63,13 @@ else
 fi
 
 export HF_HOME
-export CLAWDBOT_STATE_DIR
+export MOLTBOT_STATE_DIR
 export MAX_MODEL_LEN
+
+BOT_CMD="moltbot"
+if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
+    BOT_CMD="clawdbot"
+fi
 
 # Set CUDA 13.1 paths for B200 (no-op on other GPUs if not installed)
 if [ -d "/usr/local/cuda-13.1" ]; then
@@ -75,7 +80,7 @@ if [ -d "/usr/local/cuda-13.1" ]; then
 fi
 
 # Ensure directories exist (HF cache on container disk, state on workspace)
-mkdir -p "$HF_HOME" "$CLAWDBOT_STATE_DIR" /workspace/clawd
+mkdir -p "$HF_HOME" "$MOLTBOT_STATE_DIR" /workspace/clawd
 
 # Configure GitHub CLI
 # Priority: 1) GITHUB_TOKEN env var, 2) Persisted config in /workspace/.config/gh
@@ -115,9 +120,9 @@ if command -v nvcc &> /dev/null; then
 fi
 echo ""
 
-# Initialize Clawdbot config if not exists
-if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
-    echo "Creating Clawdbot configuration..."
+# Initialize Moltbot config if not exists
+if [ ! -f "$MOLTBOT_STATE_DIR/clawdbot.json" ]; then
+    echo "Creating Moltbot configuration (legacy clawdbot.json)..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -135,7 +140,7 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
     # Reserve tokens for compaction: 15% of context
     RESERVE_TOKENS=$((MAX_MODEL_LEN * 15 / 100))
 
-    cat > "$CLAWDBOT_STATE_DIR/clawdbot.json" << EOF
+    cat > "$MOLTBOT_STATE_DIR/clawdbot.json" << EOF
 {
   "agents": {
     "defaults": {
@@ -180,10 +185,10 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_STATE_DIR/clawdbot.json"
+    chmod 600 "$MOLTBOT_STATE_DIR/clawdbot.json"
     echo "Config created. Telegram token: ${TELEGRAM_BOT_TOKEN:+provided}${TELEGRAM_BOT_TOKEN:-NOT SET - add manually}"
 else
-    echo "Existing config found at $CLAWDBOT_STATE_DIR/clawdbot.json - preserving it"
+    echo "Existing config found at $MOLTBOT_STATE_DIR/clawdbot.json - preserving it"
 fi
 
 # Build vLLM command
@@ -232,10 +237,10 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Start Clawdbot gateway
+# Start Moltbot gateway
 echo ""
-echo "Starting Clawdbot gateway..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_STATE_DIR clawdbot gateway &
+echo "Starting Moltbot gateway..."
+MOLTBOT_STATE_DIR=$MOLTBOT_STATE_DIR "$BOT_CMD" gateway &
 GATEWAY_PID=$!
 
 echo ""
@@ -243,7 +248,7 @@ echo "============================================"
 echo "  Services Running"
 echo "============================================"
 echo "  vLLM API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
+echo "  Moltbot Gateway: ws://localhost:18789"
 echo ""
 echo "  vLLM PID: $VLLM_PID"
 echo "  Gateway PID: $GATEWAY_PID"

@@ -1,6 +1,6 @@
-# Clawdbot on RunPod with vLLM
+# Moltbot on RunPod with vLLM
 
-Run Clawdbot with GLM-4.7 and other open-source coding models on RunPod using vLLM. Chat with your AI assistant via Telegram!
+Run Moltbot with GLM-4.7 and other open-source coding models on RunPod using vLLM. Chat with your AI assistant via Telegram!
 
 ## Model Comparison
 
@@ -21,16 +21,16 @@ Best value option with full 114k context window at $1.19/hr on A100 80GB.
 
 ```bash
 # GLM-4.7-Flash AWQ 4-bit (Best value, A100 80GB)
-IMAGE=yourusername/clawdbot-glm47-flash-awq-4bit:latest
+IMAGE=yourusername/moltbot-glm47-flash-awq-4bit:latest
 
 # GLM-4.7-Flash FP16 (Full precision, H100/A100 80GB)
-IMAGE=yourusername/clawdbot-glm47-flash-fp16:latest
+IMAGE=yourusername/moltbot-glm47-flash-fp16:latest
 
 # GLM-4.7-REAP W4A16 (High-end, B200)
-IMAGE=yourusername/clawdbot-glm47-reap-w4a16:latest
+IMAGE=yourusername/moltbot-glm47-reap-w4a16:latest
 
 # Base (Qwen2.5-7B, any GPU)
-IMAGE=yourusername/clawdbot-vllm:latest
+IMAGE=yourusername/moltbot-vllm:latest
 ```
 
 ### 2. Create RunPod Pod
@@ -71,15 +71,15 @@ Images are automatically built and pushed to Docker Hub via GitHub Actions.
 
 | Image | Description |
 |-------|-------------|
-| `clawdbot-glm47-flash-awq-4bit` | GLM-4.7-Flash AWQ 4-bit for A100 80GB |
-| `clawdbot-glm47-flash-fp16` | GLM-4.7-Flash FP16 for H100/A100 80GB |
-| `clawdbot-glm47-reap-w4a16` | GLM-4.7-REAP W4A16 for B200 |
-| `clawdbot-vllm` | Base image with Qwen2.5-7B |
+| `moltbot-glm47-flash-awq-4bit` | GLM-4.7-Flash AWQ 4-bit for A100 80GB |
+| `moltbot-glm47-flash-fp16` | GLM-4.7-Flash FP16 for H100/A100 80GB |
+| `moltbot-glm47-reap-w4a16` | GLM-4.7-REAP W4A16 for B200 |
+| `moltbot-vllm` | Base image with Qwen2.5-7B |
 
 ## Project Structure
 
 ```
-runpod-clawdbot/
+runpod-moltbot/
 ├── README.md                           # This file
 ├── .github/
 │   └── workflows/
@@ -102,15 +102,15 @@ runpod-clawdbot/
 │       └── entrypoint.sh
 │
 ├── scripts/
-│   ├── setup-clawdbot.sh
+│   ├── setup-moltbot.sh
 │   └── start-vllm.sh
 │
 ├── config/
-│   ├── clawdbot.json
+│   ├── moltbot.json
 │   └── workspace/
 │
 ├── templates/
-│   └── clawdbot-vllm.json
+│   └── moltbot-vllm.json
 │
 ├── tests/
 │   ├── test-vllm.sh
@@ -149,13 +149,13 @@ Images are built automatically on:
 
 ```bash
 # Build locally
-docker build -t clawdbot-glm47-flash-awq-4bit models/glm47-flash-awq-4bit/
-docker build -t clawdbot-glm47-flash-fp16 models/glm47-flash-fp16/
-docker build -t clawdbot-glm47-reap-w4a16 models/glm47-reap-w4a16/
+docker build -t moltbot-glm47-flash-awq-4bit models/glm47-flash-awq-4bit/
+docker build -t moltbot-glm47-flash-fp16 models/glm47-flash-fp16/
+docker build -t moltbot-glm47-reap-w4a16 models/glm47-reap-w4a16/
 
 # Push to Docker Hub
-docker tag clawdbot-glm47-flash-awq-4bit yourusername/clawdbot-glm47-flash-awq-4bit:latest
-docker push yourusername/clawdbot-glm47-flash-awq-4bit:latest
+docker tag moltbot-glm47-flash-awq-4bit yourusername/moltbot-glm47-flash-awq-4bit:latest
+docker push yourusername/moltbot-glm47-flash-awq-4bit:latest
 ```
 
 ## Configuration
@@ -172,9 +172,9 @@ docker push yourusername/clawdbot-glm47-flash-awq-4bit:latest
 | `TELEGRAM_BOT_TOKEN` | | Telegram bot token from @BotFather |
 | `GITHUB_TOKEN` | | GitHub PAT for git/gh operations |
 
-### Clawdbot Configuration
+### Moltbot Configuration
 
-Config is auto-generated at `/workspace/.clawdbot/clawdbot.json`:
+Config is auto-generated at `/workspace/.clawdbot/clawdbot.json` (legacy path used by Moltbot):
 
 ```json
 {
@@ -282,7 +282,7 @@ curl http://localhost:8000/v1/chat/completions \
 
 ## Resources
 
-- [Clawdbot Documentation](https://github.com/clawdbot/clawdbot)
+- [Moltbot Documentation](https://github.com/moltbot/moltbot)
 - [vLLM Documentation](https://docs.vllm.ai/)
 - [RunPod Documentation](https://docs.runpod.io/)
 - [GLM-4.7 Announcement](https://z.ai/blog/glm-4.7)

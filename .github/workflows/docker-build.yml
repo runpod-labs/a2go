@@ -53,7 +53,7 @@ jobs:
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           else
             BRANCH_NAME=$(echo ${GITHUB_REF##refs/heads/} | sed 's/\//-/g')
-            echo "VERSION=dev-${BRANCH_NAME}" >> $GITHUB_ENV
+            echo "VERSION=${BRANCH_NAME}" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           fi
 
@@ -63,11 +63,11 @@ jobs:
           context: models/glm47-flash-awq-4bit
           push: true
           tags: |
-            ${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-awq-4bit:${{ env.VERSION }}
-            ${{ env.ALSO_LATEST == 'true' && format('{0}/clawdbot-glm47-flash-awq-4bit:latest', env.DOCKERHUB_REPO) || '' }}
+            ${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-awq-4bit:${{ env.VERSION }}
+            ${{ env.ALSO_LATEST == 'true' && format('{0}/moltbot-glm47-flash-awq-4bit:latest', env.DOCKERHUB_REPO) || '' }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-awq-4bit:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-awq-4bit:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-awq-4bit:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-awq-4bit:buildcache,mode=max
 
   # Disabled - vLLM NVFP4 has bugs with GLM-4.7 MLA on Blackwell
   # See models/glm47-flash-nvfp4-5090/ISSUES.md
@@ -108,7 +108,7 @@ jobs:
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           else
             BRANCH_NAME=$(echo ${GITHUB_REF##refs/heads/} | sed 's/\//-/g')
-            echo "VERSION=dev-${BRANCH_NAME}" >> $GITHUB_ENV
+            echo "VERSION=${BRANCH_NAME}" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           fi
 
@@ -118,11 +118,11 @@ jobs:
           context: models/glm47-flash-nvfp4-5090
           push: true
           tags: |
-            ${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-nvfp4-5090:${{ env.VERSION }}
-            ${{ env.ALSO_LATEST == 'true' && format('{0}/clawdbot-glm47-flash-nvfp4-5090:latest', env.DOCKERHUB_REPO) || '' }}
+            ${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-nvfp4-5090:${{ env.VERSION }}
+            ${{ env.ALSO_LATEST == 'true' && format('{0}/moltbot-glm47-flash-nvfp4-5090:latest', env.DOCKERHUB_REPO) || '' }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-nvfp4-5090:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-nvfp4-5090:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-nvfp4-5090:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-nvfp4-5090:buildcache,mode=max
 
   # GLM-4.7-Flash GGUF with llama.cpp - WORKING on RTX 5090!
   build-glm47-flash-gguf-llamacpp:
@@ -161,7 +161,7 @@ jobs:
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           else
             BRANCH_NAME=$(echo ${GITHUB_REF##refs/heads/} | sed 's/\//-/g')
-            echo "VERSION=dev-${BRANCH_NAME}" >> $GITHUB_ENV
+            echo "VERSION=${BRANCH_NAME}" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           fi
 
@@ -171,11 +171,11 @@ jobs:
           context: models/glm47-flash-gguf-llamacpp
           push: true
           tags: |
-            ${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-gguf:${{ env.VERSION }}
-            ${{ env.ALSO_LATEST == 'true' && format('{0}/clawdbot-glm47-flash-gguf:latest', env.DOCKERHUB_REPO) || '' }}
+            ${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-gguf:${{ env.VERSION }}
+            ${{ env.ALSO_LATEST == 'true' && format('{0}/moltbot-glm47-flash-gguf:latest', env.DOCKERHUB_REPO) || '' }}
           platforms: linux/amd64
-          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-gguf:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/clawdbot-glm47-flash-gguf:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-gguf:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-gguf:buildcache,mode=max
 
   # Disabled for now
   # build-glm47-flash-fp16:

@@ -1,4 +1,4 @@
-# docker-compose.yml - Local development setup for Clawdbot + vLLM
+# docker-compose.yml - Local development setup for Moltbot + vLLM
 # Note: This is for local testing only. For production, use RunPod.
 
 version: "3.8"
@@ -7,7 +7,7 @@ services:
   # vLLM Server - requires NVIDIA GPU with sufficient VRAM
   vllm:
     image: vllm/vllm-openai:v0.12.0
-    container_name: clawdbot-vllm
+    container_name: moltbot-vllm
     runtime: nvidia
     deploy:
       resources:
@@ -46,7 +46,7 @@ services:
   # Mock vLLM for testing without GPU (uses smaller model)
   vllm-mock:
     image: vllm/vllm-openai:v0.12.0
-    container_name: clawdbot-vllm-mock
+    container_name: moltbot-vllm-mock
     profiles: ["mock"]
     ports:
       - "8001:8000"
@@ -64,7 +64,7 @@ services:
   # Test runner
   tests:
     image: curlimages/curl:latest
-    container_name: clawdbot-tests
+    container_name: moltbot-tests
     profiles: ["test"]
     depends_on:
       vllm:
@@ -84,4 +84,4 @@ volumes:
 
 networks:
   default:
-    name: clawdbot-network
+    name: moltbot-network

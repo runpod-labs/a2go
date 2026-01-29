@@ -20,7 +20,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Node (if running Clawdbot locally)
+# Node (if running Moltbot locally)
 node_modules/
 
 # Python

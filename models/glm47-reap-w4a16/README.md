@@ -21,7 +21,7 @@ High-end option for maximum performance.
 
 ### 1. Create RunPod Pod
 
-- **Image**: `yourusername/clawdbot-glm47-reap-w4a16:latest`
+- **Image**: `yourusername/moltbot-glm47-reap-w4a16:latest`
 - **GPU**: 1x B200 180GB
 - **Volume**: 200GB at `/workspace`
 - **Container Disk**: 50GB
@@ -59,7 +59,7 @@ Files persist on network volume `/workspace`:
 ```
 /workspace/
 ├── huggingface/                   # Model cache
-├── .clawdbot/
+├── .clawdbot/                     # Legacy Moltbot state path
 │   ├── clawdbot.json              # Config
 │   ├── agents/                    # State
 │   └── telegram/                  # Session
