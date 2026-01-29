@@ -78,6 +78,9 @@ LLAMA_API_KEY="${LLAMA_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-200000}"
 MOLTBOT_HOME="${MOLTBOT_HOME:-/workspace/.clawdbot}"
+CLAWDBOT_STATE_DIR="$MOLTBOT_HOME"
+MOLTBOT_STATE_DIR="$MOLTBOT_HOME"
+export CLAWDBOT_STATE_DIR MOLTBOT_STATE_DIR
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 MOLTBOT_WEB_PASSWORD="${MOLTBOT_WEB_PASSWORD:-moltbot}"
@@ -190,7 +193,7 @@ fi
 
 # Auto-fix config
 echo "Running moltbot doctor to validate/fix config..."
-MOLTBOT_STATE_DIR=$MOLTBOT_HOME "$BOT_CMD" doctor --fix || true
+CLAWDBOT_STATE_DIR=$MOLTBOT_HOME "$BOT_CMD" doctor --fix || true
 
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -213,7 +216,7 @@ export OPENAI_BASE_URL="http://localhost:8000/v1"
 # Start Moltbot gateway (use token auth for URL parameter support)
 echo ""
 echo "Starting Moltbot gateway..."
-MOLTBOT_STATE_DIR=$MOLTBOT_HOME MOLTBOT_GATEWAY_TOKEN="$MOLTBOT_WEB_PASSWORD" \
+CLAWDBOT_STATE_DIR=$MOLTBOT_HOME MOLTBOT_GATEWAY_TOKEN="$MOLTBOT_WEB_PASSWORD" \
 "$BOT_CMD" gateway --auth token --token "$MOLTBOT_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
