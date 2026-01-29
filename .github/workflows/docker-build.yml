@@ -2,7 +2,8 @@ name: Build and Push Docker Images
 
 on:
   push:
-    branches: [main, feat/add-model-folders, gguf-v3]
+    branches: ['**']
+    tags: ['*']
     paths:
       - 'models/**'
       - 'Dockerfile'
@@ -26,12 +27,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Determine build type
         id: build_type
         run: |
@@ -44,6 +39,12 @@ jobs:
       - name: Set environment variables
         run: |
           echo "DOCKERHUB_REPO=${{ vars.DOCKERHUB_REPO || secrets.DOCKERHUB_USERNAME }}" >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+          else
+            BRANCH_NAME="${GITHUB_REF##refs/heads/}"
+          fi
+          BRANCH_TAG=$(echo "$BRANCH_NAME" | sed 's|/|-|g')
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "VERSION=${GITHUB_REF##refs/tags/}" >> $GITHUB_ENV
@@ -52,16 +53,27 @@ jobs:
             echo "VERSION=latest" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           else
-            BRANCH_NAME=$(echo ${GITHUB_REF##refs/heads/} | sed 's/\//-/g')
-            echo "VERSION=${BRANCH_NAME}" >> $GITHUB_ENV
+            echo "VERSION=${BRANCH_TAG}" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           fi
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]]; then
+            echo "PUSH_IMAGES=false" >> $GITHUB_ENV
+          else
+            echo "PUSH_IMAGES=true" >> $GITHUB_ENV
+          fi
+
+      - name: Login to Docker Hub
+        if: env.PUSH_IMAGES == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: models/glm47-flash-awq-4bit
-          push: true
+          push: ${{ env.PUSH_IMAGES == 'true' }}
           tags: |
             ${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-awq-4bit:${{ env.VERSION }}
             ${{ env.ALSO_LATEST == 'true' && format('{0}/moltbot-glm47-flash-awq-4bit:latest', env.DOCKERHUB_REPO) || '' }}
@@ -81,12 +93,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Determine build type
         id: build_type
         run: |
@@ -99,6 +105,12 @@ jobs:
       - name: Set environment variables
         run: |
           echo "DOCKERHUB_REPO=${{ vars.DOCKERHUB_REPO || secrets.DOCKERHUB_USERNAME }}" >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+          else
+            BRANCH_NAME="${GITHUB_REF##refs/heads/}"
+          fi
+          BRANCH_TAG=$(echo "$BRANCH_NAME" | sed 's|/|-|g')
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "VERSION=${GITHUB_REF##refs/tags/}" >> $GITHUB_ENV
@@ -107,16 +119,27 @@ jobs:
             echo "VERSION=latest" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           else
-            BRANCH_NAME=$(echo ${GITHUB_REF##refs/heads/} | sed 's/\//-/g')
-            echo "VERSION=${BRANCH_NAME}" >> $GITHUB_ENV
+            echo "VERSION=${BRANCH_TAG}" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           fi
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]]; then
+            echo "PUSH_IMAGES=false" >> $GITHUB_ENV
+          else
+            echo "PUSH_IMAGES=true" >> $GITHUB_ENV
+          fi
+
+      - name: Login to Docker Hub
+        if: env.PUSH_IMAGES == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: models/glm47-flash-nvfp4-5090
-          push: true
+          push: ${{ env.PUSH_IMAGES == 'true' }}
           tags: |
             ${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-nvfp4-5090:${{ env.VERSION }}
             ${{ env.ALSO_LATEST == 'true' && format('{0}/moltbot-glm47-flash-nvfp4-5090:latest', env.DOCKERHUB_REPO) || '' }}
@@ -134,12 +157,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Determine build type
         id: build_type
         run: |
@@ -152,6 +169,12 @@ jobs:
       - name: Set environment variables
         run: |
           echo "DOCKERHUB_REPO=${{ vars.DOCKERHUB_REPO || secrets.DOCKERHUB_USERNAME }}" >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+          else
+            BRANCH_NAME="${GITHUB_REF##refs/heads/}"
+          fi
+          BRANCH_TAG=$(echo "$BRANCH_NAME" | sed 's|/|-|g')
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "VERSION=${GITHUB_REF##refs/tags/}" >> $GITHUB_ENV
@@ -160,16 +183,27 @@ jobs:
             echo "VERSION=latest" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           else
-            BRANCH_NAME=$(echo ${GITHUB_REF##refs/heads/} | sed 's/\//-/g')
-            echo "VERSION=${BRANCH_NAME}" >> $GITHUB_ENV
+            echo "VERSION=${BRANCH_TAG}" >> $GITHUB_ENV
             echo "ALSO_LATEST=false" >> $GITHUB_ENV
           fi
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]]; then
+            echo "PUSH_IMAGES=false" >> $GITHUB_ENV
+          else
+            echo "PUSH_IMAGES=true" >> $GITHUB_ENV
+          fi
+
+      - name: Login to Docker Hub
+        if: env.PUSH_IMAGES == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: models/glm47-flash-gguf-llamacpp
-          push: true
+          push: ${{ env.PUSH_IMAGES == 'true' }}
           tags: |
             ${{ env.DOCKERHUB_REPO }}/moltbot-glm47-flash-gguf:${{ env.VERSION }}
             ${{ env.ALSO_LATEST == 'true' && format('{0}/moltbot-glm47-flash-gguf:latest', env.DOCKERHUB_REPO) || '' }}
