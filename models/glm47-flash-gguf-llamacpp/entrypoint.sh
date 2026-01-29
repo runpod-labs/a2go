@@ -84,7 +84,10 @@ MOLTBOT_WEB_PASSWORD="${MOLTBOT_WEB_PASSWORD:-moltbot}"
 
 BOT_CMD="moltbot"
 if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
-    BOT_CMD="clawdbot"
+    echo "ERROR: moltbot command not found in PATH"
+    echo "PATH=$PATH"
+    echo "Container staying alive for debugging."
+    sleep infinity
 fi
 
 echo "Starting llama.cpp server..."
