@@ -66,6 +66,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 # Install huggingface_hub for model downloads (using Python API, not CLI)
 RUN python3 -m pip install --no-cache-dir huggingface_hub
 
+# Image generation dependencies (SDNQ + Diffusers + Torch)
+RUN python3 -m pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu124 && \
+    python3 -m pip install --no-cache-dir sdnq diffusers transformers accelerate safetensors
+
 # Install OpenClaw and Claude Code
 RUN npm install -g --prefer-offline @anthropic-ai/claude-code openclaw@latest && \
     npm cache clean --force
@@ -82,9 +86,11 @@ ENV MODEL_NAME="unsloth/GLM-4.7-Flash-GGUF" \
     OPENCLAW_STATE_DIR="/workspace/.openclaw" \
     OPENCLAW_WORKSPACE="/workspace/openclaw"
 
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
 COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
 COPY models/glm47-flash-gguf-llamacpp/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
 
 EXPOSE 8000 18789 22
 ENTRYPOINT ["/entrypoint.sh"]

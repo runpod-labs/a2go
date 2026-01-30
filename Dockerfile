@@ -28,6 +28,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install vLLM
 RUN pip install --no-cache-dir vllm
 
+# Image generation dependencies (SDNQ + Diffusers)
+RUN python3 -m pip install --no-cache-dir sdnq diffusers transformers accelerate safetensors
+
 # Install OpenClaw
 RUN npm install -g openclaw@latest
 
@@ -37,10 +40,12 @@ RUN mkdir -p /workspace/huggingface \
     /workspace/openclaw \
     /workspace/scripts
 
-# Copy startup scripts
+# Copy startup scripts + skills + CLI
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
 COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
 
 # Copy default OpenClaw workspace files
 COPY config/workspace/ /workspace/openclaw/

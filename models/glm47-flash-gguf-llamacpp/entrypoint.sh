@@ -162,6 +162,9 @@ if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
   "channels": {
     ${TELEGRAM_CONFIG}
   },
+  "skills": {
+    "load": { "extraDirs": ["/opt/openclaw/skills"] }
+  },
   "gateway": {
     "mode": "local",
     "bind": "lan",

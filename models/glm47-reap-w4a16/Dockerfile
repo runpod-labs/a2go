@@ -30,6 +30,9 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-13.1/lib64:$LD_LIBRARY_PATH
 # Install vLLM nightly (required for GLM-4.7 support)
 RUN uv pip install --system -U vllm --pre
 
+# Image generation dependencies (SDNQ + Diffusers)
+RUN uv pip install --system sdnq diffusers accelerate safetensors
+
 # Install OpenClaw
 RUN npm install -g --prefer-offline openclaw@latest && \
     npm cache clean --force
@@ -48,10 +51,12 @@ ENV TOOL_CALL_PARSER=glm45
 # Create directories
 RUN mkdir -p /workspace/huggingface /workspace/.openclaw /workspace/openclaw
 
-# Copy entrypoint script
+# Copy entrypoint script + skills + CLI
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
 COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
 COPY models/glm47-reap-w4a16/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
 
 # Expose ports
 # 8000: vLLM API

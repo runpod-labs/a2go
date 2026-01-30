@@ -22,6 +22,9 @@ RUN VLLM_WHEEL="vllm-0.14.0rc2.dev187+g22375f8d1-cp38-abi3-manylinux_2_31_x86_64
     pip install git+https://github.com/huggingface/transformers.git && \
     rm "/tmp/${VLLM_WHEEL}"
 
+# Image generation dependencies (SDNQ + Diffusers)
+RUN python3 -m pip install --no-cache-dir sdnq diffusers transformers accelerate safetensors
+
 # Install Node.js 22.x and GitHub CLI in single layer to reduce image size
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
@@ -49,9 +52,11 @@ ENV VLLM_API_KEY="changeme"
 ENV OPENCLAW_STATE_DIR="/workspace/.openclaw"
 ENV OPENCLAW_WORKSPACE="/workspace/openclaw"
 
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
 COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
 COPY models/glm47-flash-awq-4bit/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
 
 EXPOSE 8000 18789 22
 ENTRYPOINT ["/entrypoint.sh"]

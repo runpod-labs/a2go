@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+import argparse
+import math
+import os
+import sys
+from pathlib import Path
+
+
+def parse_aspect(aspect):
+    if ":" in aspect:
+        parts = aspect.split(":")
+    elif "x" in aspect:
+        parts = aspect.split("x")
+    else:
+        raise ValueError("Aspect ratio must be like 1:1 or 16:9.")
+    if len(parts) != 2:
+        raise ValueError("Aspect ratio must have two parts.")
+    w = float(parts[0])
+    h = float(parts[1])
+    if w <= 0 or h <= 0:
+        raise ValueError("Aspect ratio values must be positive.")
+    return w / h
+
+
+def round_to_multiple(value, multiple=8):
+    return int(math.ceil(value / multiple) * multiple)
+
+
+def resolve_size(width, height, aspect, long_side):
+    if width and height:
+        w = width
+        h = height
+    elif aspect:
+        ratio = parse_aspect(aspect)
+        if ratio >= 1:
+            w = long_side
+            h = long_side / ratio
+        else:
+            h = long_side
+            w = long_side * ratio
+    else:
+        w = long_side
+        h = long_side
+
+    w = round_to_multiple(max(256, int(w)))
+    h = round_to_multiple(max(256, int(h)))
+    return w, h
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate an image with FLUX.2 Klein SDNQ.")
+    parser.add_argument("--prompt", required=True, help="Prompt text.")
+    parser.add_argument("--width", type=int, help="Output width in pixels.")
+    parser.add_argument("--height", type=int, help="Output height in pixels.")
+    parser.add_argument("--aspect", help="Aspect ratio, e.g. 1:1 or 16:9.")
+    parser.add_argument("--long-side", type=int, default=1024, help="Long side size when using aspect.")
+    parser.add_argument("--steps", type=int, default=4, help="Inference steps.")
+    parser.add_argument("--guidance", type=float, default=1.0, help="Guidance scale.")
+    parser.add_argument("--seed", type=int, default=0, help="Random seed.")
+    parser.add_argument("--output", default="flux-klein-sdnq.png", help="Output file path.")
+    parser.add_argument(
+        "--model",
+        default="Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic",
+        help="Hugging Face model ID.",
+    )
+    parser.add_argument("--cpu-offload", action="store_true", help="Enable CPU offload.")
+    parser.add_argument("--no-quant-matmul", action="store_true", help="Disable quantized matmul.")
+    args = parser.parse_args()
+
+    try:
+        import torch
+        import diffusers
+        import sdnq  # noqa: F401
+        from sdnq.loader import apply_sdnq_options_to_model
+    except Exception as exc:
+        print(f"ERROR: Missing dependencies: {exc}", file=sys.stderr)
+        print("Install: pip install sdnq diffusers transformers accelerate safetensors", file=sys.stderr)
+        sys.exit(1)
+
+    width, height = resolve_size(args.width, args.height, args.aspect, args.long_side)
+    print(f"Using size: {width}x{height}")
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    dtype = torch.bfloat16 if device != "cpu" else torch.float32
+
+    pipe = diffusers.Flux2KleinPipeline.from_pretrained(args.model, torch_dtype=dtype)
+
+    triton_available = False
+    try:
+        import triton  # noqa: F401
+
+        triton_available = True
+    except Exception:
+        triton_available = False
+
+    use_quantized = (not args.no_quant_matmul) and triton_available and (
+        torch.cuda.is_available() or getattr(torch, "xpu", None) and torch.xpu.is_available()
+    )
+
+    try:
+        pipe.transformer = apply_sdnq_options_to_model(pipe.transformer, use_quantized_matmul=use_quantized)
+        pipe.text_encoder = apply_sdnq_options_to_model(pipe.text_encoder, use_quantized_matmul=use_quantized)
+    except Exception as exc:
+        print(f"WARNING: SDNQ matmul setup failed: {exc}", file=sys.stderr)
+
+    if args.cpu_offload:
+        pipe.enable_model_cpu_offload()
+    else:
+        try:
+            pipe.to(device)
+        except Exception as exc:
+            print(f"WARNING: Failed to move pipeline to {device}: {exc}", file=sys.stderr)
+
+    generator = torch.Generator(device=device).manual_seed(args.seed)
+
+    result = pipe(
+        prompt=args.prompt,
+        height=height,
+        width=width,
+        guidance_scale=args.guidance,
+        num_inference_steps=args.steps,
+        generator=generator,
+    )
+
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    result.images[0].save(output_path)
+    print(f"Saved image to {output_path}")
+
+
+if __name__ == "__main__":
+    main()
