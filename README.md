@@ -17,7 +17,7 @@ Notes:
 - Context values are defaults; some variants allow tuning via `MAX_MODEL_LEN`.
 - NVFP4 status details live in `models/glm47-flash-nvfp4-5090/ISSUES.md`.
 
-## Quick start
+## Deployment on RunPod
 
 1. **Pick an image** from the table above.
 2. **Create a RunPod pod**:
@@ -25,12 +25,18 @@ Notes:
    - Ports: `8000/http, 18789/http, 22/tcp`
 3. **Set environment variables**:
    - `VLLM_API_KEY` (for vLLM variants)
-  - `OPENCLAW_WEB_PASSWORD` (web UI token)
+   - `OPENCLAW_WEB_PASSWORD` (web UI token)
    - `HF_TOKEN` (optional, faster downloads)
    - `TELEGRAM_BOT_TOKEN` (optional)
    - For GGUF + llama.cpp: use `LLAMA_API_KEY` instead of `VLLM_API_KEY`
-
-4. **Health check**:
+4. **Open the Web UI** (use your RunPod pod ID):
+   - `https://<pod-id>-18789.proxy.runpod.net/?token=<OPENCLAW_WEB_PASSWORD>`
+5. **Approve device pairing** (first time only):
+   - When you see “pairing required”, SSH into the pod and run:
+     - `OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw devices list --json`
+     - `OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw devices approve <requestId>`
+   - Pairing requests expire quickly; refresh the Web UI if it disappears.
+6. **Health check**:
 ```bash
 curl http://localhost:8000/health
 ```
