@@ -1,7 +1,7 @@
 {
-  "name": "moltbot-vllm",
-  "description": "Moltbot AI assistant with vLLM for local LLM inference. Includes Telegram integration.",
-  "imageName": "your-dockerhub-username/moltbot-vllm:latest",
+  "name": "openclaw-vllm",
+  "description": "OpenClaw AI assistant with vLLM for local LLM inference. Includes Telegram integration.",
+  "imageName": "your-dockerhub-username/openclaw-vllm:latest",
   "containerDiskInGb": 50,
   "volumeInGb": 150,
   "volumeMountPath": "/workspace",
@@ -15,8 +15,9 @@
     "TOOL_CALL_PARSER": "hermes",
     "TENSOR_PARALLEL_SIZE": "auto",
     "HF_HOME": "/workspace/huggingface",
-    "MOLTBOT_STATE_DIR": "/workspace/.clawdbot",
+    "OPENCLAW_STATE_DIR": "/workspace/.openclaw",
+    "OPENCLAW_WORKSPACE": "/workspace/openclaw",
     "TELEGRAM_BOT_TOKEN": ""
   },
-  "readme": "# Moltbot + vLLM\n\nAI coding assistant with local LLM inference.\n\n## Quick Start\n1. Set TELEGRAM_BOT_TOKEN env var (get from @BotFather)\n2. Start the pod - services auto-start\n3. Message your bot on Telegram\n4. First time: approve pairing via SSH: `moltbot pairing list telegram` then `moltbot pairing approve telegram CODE --notify`\n\n## Persistence\n- Config & pairings stored in /workspace/.clawdbot (legacy path used by Moltbot)\n- Model cache in /workspace/huggingface\n\n## Environment Variables\n- `MODEL_NAME`: HuggingFace model ID\n- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token\n- `VLLM_API_KEY`: API key for vLLM\n- `MAX_MODEL_LEN`: Context length\n\n## Ports\n- 8000: vLLM API\n- 18789: Moltbot Gateway"
+  "readme": "# OpenClaw + vLLM\n\nAI coding assistant with local LLM inference.\n\n## Quick Start\n1. Set TELEGRAM_BOT_TOKEN env var (get from @BotFather)\n2. Start the pod - services auto-start\n3. Message your bot on Telegram\n4. First time: approve pairing via SSH: `openclaw pairing list telegram` then `openclaw pairing approve telegram CODE --notify`\n\n## Persistence\n- Config & pairings stored in /workspace/.openclaw\n- Model cache in /workspace/huggingface\n\n## Environment Variables\n- `MODEL_NAME`: HuggingFace model ID\n- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token\n- `VLLM_API_KEY`: API key for vLLM\n- `MAX_MODEL_LEN`: Context length\n\n## Ports\n- 8000: vLLM API\n- 18789: OpenClaw Gateway"
 }

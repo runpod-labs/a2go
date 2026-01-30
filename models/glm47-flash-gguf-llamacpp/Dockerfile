@@ -66,10 +66,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 # Install huggingface_hub for model downloads (using Python API, not CLI)
 RUN python3 -m pip install --no-cache-dir huggingface_hub
 
-# Install Clawdbot and Claude Code (moltbot binary is a symlink)
-RUN npm install -g --prefer-offline @anthropic-ai/claude-code clawdbot && \
-    npm cache clean --force && \
-    ln -s "$(npm config get prefix)/bin/clawdbot" "$(npm config get prefix)/bin/moltbot"
+# Install OpenClaw and Claude Code
+RUN npm install -g --prefer-offline @anthropic-ai/claude-code openclaw@latest && \
+    npm cache clean --force
 
 WORKDIR /
 
@@ -80,8 +79,8 @@ ENV MODEL_NAME="unsloth/GLM-4.7-Flash-GGUF" \
     SERVED_MODEL_NAME="glm-4.7-flash" \
     MAX_MODEL_LEN="200000" \
     LLAMA_API_KEY="changeme" \
-    MOLTBOT_HOME="/workspace/.clawdbot" \
-    MOLTBOT_WORKSPACE="/workspace/clawd"
+    OPENCLAW_STATE_DIR="/workspace/.openclaw" \
+    OPENCLAW_WORKSPACE="/workspace/openclaw"
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

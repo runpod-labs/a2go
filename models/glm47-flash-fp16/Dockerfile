@@ -33,18 +33,19 @@ RUN uv pip install --system -U vllm \
     --extra-index-url https://wheels.vllm.ai/nightly && \
     uv pip install --system git+https://github.com/huggingface/transformers.git
 
-# Install Moltbot
-RUN npm install -g --prefer-offline moltbot@latest && \
+# Install OpenClaw
+RUN npm install -g --prefer-offline openclaw@latest && \
     npm cache clean --force
 
 # Keep model files on container disk (requires 100GB)
-# Only use workspace for persistent Moltbot state
-RUN mkdir -p /workspace/.clawdbot /workspace/clawd
+# Only use workspace for persistent OpenClaw state
+RUN mkdir -p /workspace/.openclaw /workspace/openclaw
 
 # Environment variables
-# HF_HOME on container disk (100GB needed), Moltbot state on workspace
+# HF_HOME on container disk (100GB needed), OpenClaw state on workspace
 ENV HF_HOME=/root/.cache/huggingface
-ENV MOLTBOT_STATE_DIR=/workspace/.clawdbot
+ENV OPENCLAW_STATE_DIR=/workspace/.openclaw
+ENV OPENCLAW_WORKSPACE=/workspace/openclaw
 ENV MODEL_NAME=zai-org/GLM-4.7-Flash
 ENV SERVED_MODEL_NAME=glm-4.7-flash
 ENV VLLM_API_KEY=changeme
@@ -58,7 +59,7 @@ RUN chmod +x /entrypoint.sh
 
 # Expose ports
 # 8000: vLLM API
-# 18789: Moltbot Gateway
+# 18789: OpenClaw Gateway
 # 22: SSH
 EXPOSE 8000 18789 22
 

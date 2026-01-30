@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-moltbot.sh - Install and configure Moltbot on RunPod
+# setup-openclaw.sh - Install and configure OpenClaw on RunPod
 # Prerequisites: vLLM server running on port 8000
 
 set -e
@@ -21,13 +21,13 @@ VLLM_HOST="${VLLM_HOST:-localhost}"
 VLLM_PORT="${VLLM_PORT:-8000}"
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-qwen3-30b-a3b}"
-MOLTBOT_CONFIG_DIR="${MOLTBOT_CONFIG_DIR:-$HOME/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
 RUNPOD_POD_ID="${RUNPOD_POD_ID:-}"
 
 # Print banner
 echo ""
 echo "==========================================="
-echo "  Moltbot Setup Script"
+echo "  OpenClaw Setup Script"
 echo "==========================================="
 echo ""
 
@@ -55,14 +55,11 @@ if ! command -v npm &> /dev/null; then
 fi
 log_info "npm version: $(npm --version)"
 
-# Step 2: Install Moltbot
-log_info "Installing Moltbot..."
-npm install -g moltbot@latest
-BOT_CMD="moltbot"
-if ! command -v "$BOT_CMD" &> /dev/null; then
-    BOT_CMD="clawdbot"
-fi
-log_success "Moltbot installed: $("$BOT_CMD" --version 2>/dev/null || echo 'version check failed')"
+# Step 2: Install OpenClaw
+log_info "Installing OpenClaw..."
+npm install -g openclaw@latest
+BOT_CMD="openclaw"
+log_success "OpenClaw installed: $("$BOT_CMD" --version 2>/dev/null || echo 'version check failed')"
 
 # Step 3: Wait for vLLM to be ready
 log_info "Waiting for vLLM server to be ready..."
@@ -90,9 +87,9 @@ MODELS_RESPONSE=$(curl -s "http://${VLLM_HOST}:${VLLM_PORT}/v1/models" \
     -H "Authorization: Bearer ${VLLM_API_KEY}")
 echo "Available models: $MODELS_RESPONSE"
 
-# Step 4: Create Moltbot configuration directory
-log_info "Creating Moltbot configuration..."
-mkdir -p "$MOLTBOT_CONFIG_DIR"
+# Step 4: Create OpenClaw configuration directory
+log_info "Creating OpenClaw configuration..."
+mkdir -p "$OPENCLAW_STATE_DIR"
 
 # Determine the base URL for the vLLM endpoint
 if [ -n "$RUNPOD_POD_ID" ]; then
@@ -103,8 +100,8 @@ else
     VLLM_BASE_URL="http://${VLLM_HOST}:${VLLM_PORT}/v1"
 fi
 
-# Step 5: Create Moltbot configuration file
-cat > "$MOLTBOT_CONFIG_DIR/clawdbot.json" << EOF
+# Step 5: Create OpenClaw configuration file
+cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "agents": {
     "defaults": {
@@ -136,15 +133,15 @@ cat > "$MOLTBOT_CONFIG_DIR/clawdbot.json" << EOF
 }
 EOF
 
-log_success "Moltbot configuration created at $MOLTBOT_CONFIG_DIR/clawdbot.json (legacy file name)"
+log_success "OpenClaw configuration created at $OPENCLAW_STATE_DIR/openclaw.json"
 
-# Step 6: Test Moltbot connection
-log_info "Testing Moltbot configuration..."
+# Step 6: Test OpenClaw connection
+log_info "Testing OpenClaw configuration..."
 echo ""
 echo "Configuration summary:"
 echo "  vLLM URL: $VLLM_BASE_URL"
 echo "  Model: $SERVED_MODEL_NAME"
-echo "  Config dir: $MOLTBOT_CONFIG_DIR"
+echo "  Config dir: $OPENCLAW_STATE_DIR"
 echo ""
 
 # Test a simple completion
@@ -170,11 +167,11 @@ echo "==========================================="
 echo "  Setup Complete!"
 echo "==========================================="
 echo ""
-echo "To start Moltbot, run:"
-echo "  moltbot"
+echo "To start OpenClaw, run:"
+echo "  openclaw"
 echo ""
 echo "To start with daemon mode:"
-echo "  moltbot onboard --install-daemon"
+echo "  openclaw onboard --install-daemon"
 echo ""
-echo "Configuration file: $MOLTBOT_CONFIG_DIR/clawdbot.json"
+echo "Configuration file: $OPENCLAW_STATE_DIR/openclaw.json"
 echo ""

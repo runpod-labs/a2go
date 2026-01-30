@@ -1,14 +1,15 @@
-# Moltbot + vLLM Docker Image for RunPod
+# OpenClaw + vLLM Docker Image for RunPod
 # Pre-configured with everything needed for AI coding assistant
 FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
-LABEL maintainer="RunPod Moltbot"
-LABEL description="Moltbot AI assistant with vLLM for local LLM inference"
+LABEL maintainer="RunPod OpenClaw"
+LABEL description="OpenClaw AI assistant with vLLM for local LLM inference"
 
 # Avoid interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HF_HOME=/workspace/huggingface
-ENV MOLTBOT_STATE_DIR=/workspace/.clawdbot
+ENV OPENCLAW_STATE_DIR=/workspace/.openclaw
+ENV OPENCLAW_WORKSPACE=/workspace/openclaw
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,27 +28,27 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install vLLM
 RUN pip install --no-cache-dir vllm
 
-# Install Moltbot
-RUN npm install -g moltbot@latest
+# Install OpenClaw
+RUN npm install -g openclaw@latest
 
 # Create workspace directories
 RUN mkdir -p /workspace/huggingface \
-    /workspace/.clawdbot \
-    /workspace/clawd \
+    /workspace/.openclaw \
+    /workspace/openclaw \
     /workspace/scripts
 
 # Copy startup script
 COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy default Moltbot workspace files
-COPY config/workspace/ /workspace/clawd/
+# Copy default OpenClaw workspace files
+COPY config/workspace/ /workspace/openclaw/
 
 # Expose ports
 # 8000 - vLLM API
-# 18789 - Moltbot Gateway WebSocket
-# 18790 - Moltbot Bridge
-# 18793 - Moltbot Canvas
+# 18789 - OpenClaw Gateway WebSocket
+# 18790 - OpenClaw Bridge
+# 18793 - OpenClaw Canvas
 # 22 - SSH (RunPod adds this)
 EXPOSE 8000 18789 18790 18793
 

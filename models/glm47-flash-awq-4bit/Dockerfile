@@ -34,8 +34,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install Moltbot and Claude Code
-RUN npm install -g --prefer-offline @anthropic-ai/claude-code moltbot && \
+# Install OpenClaw and Claude Code
+RUN npm install -g --prefer-offline @anthropic-ai/claude-code openclaw@latest && \
     npm cache clean --force
 
 # Environment defaults
@@ -45,9 +45,9 @@ ENV SERVED_MODEL_NAME="glm-4.7-flash"
 ENV MAX_MODEL_LEN="114688"
 ENV VLLM_API_KEY="changeme"
 
-# Moltbot workspace (legacy paths kept for compatibility)
-ENV MOLTBOT_HOME="/workspace/.clawdbot"
-ENV MOLTBOT_WORKSPACE="/workspace/clawd"
+# OpenClaw workspace
+ENV OPENCLAW_STATE_DIR="/workspace/.openclaw"
+ENV OPENCLAW_WORKSPACE="/workspace/openclaw"
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -48,16 +48,14 @@ fi
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-114688}"
-MOLTBOT_HOME="${MOLTBOT_HOME:-/workspace/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-# Web UI password - users enter this to access the Moltbot control panel
-MOLTBOT_WEB_PASSWORD="${MOLTBOT_WEB_PASSWORD:-moltbot}"
+# Web UI token/password - users enter this to access the OpenClaw control panel
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-openclaw}"
 
-BOT_CMD="moltbot"
-if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
-    BOT_CMD="clawdbot"
-fi
+BOT_CMD="openclaw"
 
 echo "Starting vLLM server..."
 echo "  Model: $MODEL_PATH"
@@ -104,11 +102,13 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     # Don't exit - keep container running for debugging
 fi
 
-# Setup Moltbot config
-mkdir -p "$MOLTBOT_HOME"
+# Setup OpenClaw config
+mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
-if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
-    echo "Creating Moltbot config (legacy clawdbot.json)..."
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw config..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -117,8 +117,8 @@ if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    # Create a minimal config - moltbot doctor will fix any missing fields
-    cat > "$MOLTBOT_HOME/clawdbot.json" << EOF
+    # Create a minimal config - openclaw doctor will fix any missing fields
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "models": {
     "providers": {
@@ -141,7 +141,8 @@ if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
   "agents": {
     "defaults": {
       "model": { "primary": "local-vllm/$SERVED_MODEL_NAME" },
-      "contextTokens": 98304
+      "contextTokens": 98304,
+      "workspace": "$OPENCLAW_WORKSPACE"
     }
   },
   "channels": {
@@ -149,17 +150,19 @@ if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
   },
   "gateway": {
     "mode": "local",
-    "bind": "lan"
+    "bind": "lan",
+    "auth": { "mode": "password", "password": "$OPENCLAW_WEB_PASSWORD" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$MOLTBOT_HOME/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
 fi
 
-# Auto-fix config to match current Moltbot version's schema
-echo "Running moltbot doctor to validate/fix config..."
-MOLTBOT_STATE_DIR=$MOLTBOT_HOME "$BOT_CMD" doctor --fix || true
+# Auto-fix config to match current OpenClaw version's schema
+echo "Running openclaw doctor to validate/fix config..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" doctor --fix || true
+chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json" 2>/dev/null || true
 
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -179,19 +182,19 @@ fi
 export OPENAI_API_KEY="$VLLM_API_KEY"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 
-# Start Moltbot gateway with password auth for web UI access
+# Start OpenClaw gateway with password auth for web UI access
 echo ""
-echo "Starting Moltbot gateway..."
-MOLTBOT_STATE_DIR=$MOLTBOT_HOME "$BOT_CMD" gateway --auth password --password "$MOLTBOT_WEB_PASSWORD" &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" gateway --auth password --password "$OPENCLAW_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
 echo ""
 echo "================================================"
 echo "  Ready!"
 echo "  vLLM API: http://localhost:8000"
-echo "  Moltbot Gateway: ws://localhost:18789"
+echo "  OpenClaw Gateway: ws://localhost:18789"
 echo "  Web UI: https://<pod-id>-18789.proxy.runpod.net"
-echo "  Web UI Password: $MOLTBOT_WEB_PASSWORD"
+echo "  Web UI Password: $OPENCLAW_WEB_PASSWORD"
 echo "  Model: $SERVED_MODEL_NAME"
 echo "  Context: $MAX_MODEL_LEN tokens"
 echo "================================================"

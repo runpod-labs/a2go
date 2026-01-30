@@ -23,7 +23,7 @@ llama.cpp has native support for `Glm4MoeLite` architecture (PR #18936 merged Ja
 
 - **200k context** - Full model capacity on 32GB GPU
 - **Q8 KV cache quantization** - Fits 200k context in VRAM
-- **OpenAI-compatible API** - Works with Moltbot, Claude Code, etc.
+- **OpenAI-compatible API** - Works with OpenClaw, Claude Code, etc.
 - **Native chat template** - Uses `--jinja` for correct GLM-4.7 formatting
 
 ## Runpod Deployment
@@ -33,26 +33,26 @@ llama.cpp has native support for `Glm4MoeLite` architecture (PR #18936 merged Ja
 1. **Add your SSH key** to [Runpod Account Settings → SSH Public Keys](https://www.runpod.io/console/user/settings) (required for device pairing later). If you don't have an SSH key, follow the [Runpod SSH guide](https://docs.runpod.io/pods/configuration/use-ssh).
 
 2. **Create a Pod** with:
-   - Image: `runpod/moltbot-glm47-flash-gguf:latest`
+   - Image: `runpod/openclaw-glm47-flash-gguf:latest`
    - GPU: RTX 5090 (or any 32GB+ GPU)
    - Ports: `8000/http`, `18789/http`, `22/tcp`
    - Network Volume: **30GB minimum**, mounted to `/workspace`
      - Required for model download (~17GB) and config persistence
      - Without a network volume, data is lost on pod restart
    - Environment Variables:
-    - `MOLTBOT_WEB_PASSWORD` - Token for Web UI (default: `moltbot`)
+    - `OPENCLAW_WEB_PASSWORD` - Token for Web UI (default: `openclaw`)
      - `LLAMA_API_KEY` - API key for llama.cpp (default: `changeme`)
 
 3. **Wait for startup** - First launch downloads the model (~17GB), which takes a few minutes. Check pod logs for progress.
 
 4. **Access the Web UI**:
    ```
-   https://<pod-id>-18789.proxy.runpod.net/?token=<MOLTBOT_WEB_PASSWORD>
+   https://<pod-id>-18789.proxy.runpod.net/?token=<OPENCLAW_WEB_PASSWORD>
    ```
 
 ### First-Time Device Pairing
 
-Moltbot requires device pairing for security. On first access, you'll see "pairing required".
+OpenClaw requires device pairing for security. On first access, you'll see "pairing required".
 
 **To approve your browser:**
 
@@ -61,10 +61,10 @@ Moltbot requires device pairing for security. On first access, you'll see "pairi
 ssh root@<pod-ip> -p <ssh-port>
 
 # List pending pairing requests
-MOLTBOT_STATE_DIR=/workspace/.clawdbot moltbot devices list
+OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw pairing list telegram
 
 # Approve your device (use the Request ID from the list)
-MOLTBOT_STATE_DIR=/workspace/.clawdbot moltbot devices approve <request-id>
+OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw pairing approve telegram <request-id>
 ```
 
 After approval, refresh the Web UI - it will work permanently for that browser.
@@ -74,7 +74,7 @@ After approval, refresh the Web UI - it will work permanently for that browser.
 | Port | Service |
 |------|---------|
 | 8000 | llama.cpp API (OpenAI-compatible) |
-| 18789 | Moltbot Web UI |
+| 18789 | OpenClaw Web UI |
 | 22 | SSH |
 
 ## Environment Variables
@@ -84,7 +84,7 @@ After approval, refresh the Web UI - it will work permanently for that browser.
 | `MODEL_FILE` | `GLM-4.7-Flash-Q4_K_M.gguf` | GGUF file to use |
 | `MAX_MODEL_LEN` | `200000` | Context length |
 | `LLAMA_API_KEY` | `changeme` | API authentication |
-| `MOLTBOT_WEB_PASSWORD` | `moltbot` | Web UI token |
+| `OPENCLAW_WEB_PASSWORD` | `openclaw` | Web UI token |
 | `TELEGRAM_BOT_TOKEN` | - | Optional Telegram integration |
 | `GITHUB_TOKEN` | - | Optional GitHub CLI auth |
 
@@ -92,13 +92,13 @@ After approval, refresh the Web UI - it will work permanently for that browser.
 
 ```bash
 # Build
-docker build -t moltbot-glm47-gguf-llamacpp .
+docker build -t openclaw-glm47-gguf-llamacpp .
 
 # Run on RTX 5090
 docker run --gpus all -p 8000:8000 -p 18789:18789 \
   -v /path/to/workspace:/workspace \
   -e LLAMA_API_KEY=your-key \
-  moltbot-glm47-gguf-llamacpp
+  openclaw-glm47-gguf-llamacpp
 ```
 
 ## API Usage

@@ -30,13 +30,14 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-13.1/lib64:$LD_LIBRARY_PATH
 # Install vLLM nightly (required for GLM-4.7 support)
 RUN uv pip install --system -U vllm --pre
 
-# Install Moltbot
-RUN npm install -g --prefer-offline moltbot@latest && \
+# Install OpenClaw
+RUN npm install -g --prefer-offline openclaw@latest && \
     npm cache clean --force
 
 # Environment variables
 ENV HF_HOME=/workspace/huggingface
-ENV MOLTBOT_STATE_DIR=/workspace/.clawdbot
+ENV OPENCLAW_STATE_DIR=/workspace/.openclaw
+ENV OPENCLAW_WORKSPACE=/workspace/openclaw
 ENV MODEL_NAME=0xSero/GLM-4.7-REAP-40-W4A16
 ENV SERVED_MODEL_NAME=glm-4.7-reap
 ENV VLLM_API_KEY=changeme
@@ -45,7 +46,7 @@ ENV GPU_MEMORY_UTILIZATION=0.90
 ENV TOOL_CALL_PARSER=glm45
 
 # Create directories
-RUN mkdir -p /workspace/huggingface /workspace/.clawdbot /workspace/clawd
+RUN mkdir -p /workspace/huggingface /workspace/.openclaw /workspace/openclaw
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
@@ -53,7 +54,7 @@ RUN chmod +x /entrypoint.sh
 
 # Expose ports
 # 8000: vLLM API
-# 18789: Moltbot Gateway
+# 18789: OpenClaw Gateway
 # 22: SSH
 EXPOSE 8000 18789 22
 

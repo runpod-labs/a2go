@@ -1,4 +1,4 @@
-# Video Script: Moltbot fully self-hosted on RTX 5090 (GLM‑4.7‑Flash GGUF + llama.cpp)
+# Video Script: OpenClaw fully self-hosted on RTX 5090 (GLM‑4.7‑Flash GGUF + llama.cpp)
 
 This doc turns the repo learnings into a demo-first video script for two audiences:
 
@@ -42,26 +42,26 @@ If you want a single AA page on screen as a citation backdrop, use a comparison 
 **You say**:
 People call these “self-hosted agents”… but then the brain is still a paid API. If your agent stops working the second Claude is down or your token budget runs out, that’s not self-hosted.
 
-Today I’ll show a fully self-contained Moltbot setup: local model, local inference, agent UI—no external model API needed.
+Today I’ll show a fully self-contained OpenClaw setup: local model, local inference, agent UI—no external model API needed.
 
 ### 0:25–0:55 — What you’ll build + requirements (set expectations)
 
-**On screen**: one slide: “Moltbot + GLM‑4.7‑Flash + llama.cpp (OpenAI API)”.
+**On screen**: one slide: “OpenClaw + GLM‑4.7‑Flash + llama.cpp (OpenAI API)”.
 
 **You say**:
-We’re running GLM‑4.7‑Flash locally via llama.cpp and pointing Moltbot at it using an OpenAI-compatible API.
+We’re running GLM‑4.7‑Flash locally via llama.cpp and pointing OpenClaw at it using an OpenAI-compatible API.
 
 If you’ve got an RTX 5090 (32GB), you can run the full 200k context. With 24GB, it can still work, just with a reduced context window—because the model weights alone are ~17GB.
 
 ### 0:55–2:10 — Quick demo first (prove it works before you explain anything)
 
 **On screen**:
-- Open Moltbot web UI
+- Open OpenClaw web UI
 - Show the agent doing a quick code task (small repo change / explanation)
 - Show a raw API call to the model (`/v1/chat/completions`)
 
 **You say**:
-Let me prove it’s real before we talk architecture. This is Moltbot running against a model in the same environment. No Claude key. No OpenAI key.
+Let me prove it’s real before we talk architecture. This is OpenClaw running against a model in the same environment. No Claude key. No OpenAI key.
 
 If you’re using Telegram integration, the same idea applies: messages go to a local model, not a hosted API.
 
@@ -82,12 +82,12 @@ You’ve got two options:
 **You say (walkthrough voice)**:
 Here’s the setup that actually matters:
 
-- **Image**: `runpod/moltbot-glm47-flash-gguf:latest`
-- **Ports**: `8000/http` (llama.cpp), `18789/http` (Moltbot UI), `22/tcp` (SSH)
+- **Image**: `runpod/openclaw-glm47-flash-gguf:latest`
+- **Ports**: `8000/http` (llama.cpp), `18789/http` (OpenClaw UI), `22/tcp` (SSH)
 - **Network volume mounted to `/workspace`** (non-negotiable; model is ~17GB and you want persistence across restarts)
 - **Environment variables**:
   - `LLAMA_API_KEY` (protects the model API)
-  - `MOLTBOT_WEB_PASSWORD` (protects the web UI token)
+  - `OPENCLAW_WEB_PASSWORD` (protects the web UI token)
   - optionally `TELEGRAM_BOT_TOKEN` (Telegram)
 
 ### 5:30–6:40 — Health check + raw chat completion (OpenAI-compat API)
@@ -95,7 +95,7 @@ Here’s the setup that actually matters:
 **On screen**: terminal showing `curl` to `/health` then `/v1/chat/completions`.
 
 **You say**:
-llama.cpp runs an OpenAI-compatible API. That’s the trick: Moltbot doesn’t need to know it’s llama.cpp.
+llama.cpp runs an OpenAI-compatible API. That’s the trick: OpenClaw doesn’t need to know it’s llama.cpp.
 
 **Show (copy/paste):**
 
@@ -112,9 +112,9 @@ First time you open the web UI, it won’t just let any browser control your age
 **On screen (commands):**
 
 - List requests:
-  - `MOLTBOT_STATE_DIR=/workspace/.clawdbot moltbot devices list`
+  - `OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw pairing list telegram`
 - Approve:
-  - `MOLTBOT_STATE_DIR=/workspace/.clawdbot moltbot devices approve <request-id>`
+  - `OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw pairing approve telegram <request-id>`
 
 **You say**:
 This is the right default for something that can run commands and touch repos.
@@ -143,7 +143,7 @@ Quick callout list (keep it fast):
 Architecture is simple:
 
 - llama.cpp (`llama-server`) hosts the model and exposes OpenAI-style endpoints on `:8000`
-- Moltbot points its provider config at `http://localhost:8000/v1`
+- OpenClaw points its provider config at `http://localhost:8000/v1`
 - The container stores everything under `/workspace` so restarts don’t wipe model + state
 
 Then the “why it fits”:

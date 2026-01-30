@@ -1,9 +1,9 @@
 #!/bin/bash
-# entrypoint.sh - GLM-4.7-REAP W4A16 + Moltbot startup script for RunPod B200
+# entrypoint.sh - GLM-4.7-REAP W4A16 + OpenClaw startup script for RunPod B200
 set -e
 
 echo "============================================"
-echo "  GLM-4.7-REAP W4A16 + Moltbot Startup"
+echo "  GLM-4.7-REAP W4A16 + OpenClaw Startup"
 echo "============================================"
 
 # Configuration from environment
@@ -14,23 +14,25 @@ MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-glm45}"
 HF_HOME="${HF_HOME:-/workspace/huggingface}"
-MOLTBOT_STATE_DIR="${MOLTBOT_STATE_DIR:-/workspace/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-openclaw}"
 
 export HF_HOME
-export MOLTBOT_STATE_DIR
+export OPENCLAW_STATE_DIR
 export PATH=/usr/local/cuda-13.1/bin:$PATH
 export CUDA_HOME=/usr/local/cuda-13.1
 export LD_LIBRARY_PATH=/usr/local/cuda-13.1/lib64:$LD_LIBRARY_PATH
 
 # Ensure directories exist
-mkdir -p "$HF_HOME" "$MOLTBOT_STATE_DIR" /workspace/clawd
+mkdir -p "$HF_HOME" "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" \
+    "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
-BOT_CMD="moltbot"
-if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
-    BOT_CMD="clawdbot"
-fi
+BOT_CMD="openclaw"
 
 # Configure GitHub CLI
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -59,9 +61,9 @@ echo "  Tool parser: $TOOL_CALL_PARSER"
 echo "  CUDA: $(nvcc --version | grep release | awk '{print $5}' | tr -d ',')"
 echo ""
 
-# Initialize Moltbot config if not exists
-if [ ! -f "$MOLTBOT_STATE_DIR/clawdbot.json" ]; then
-    echo "Creating Moltbot configuration (legacy clawdbot.json)..."
+# Initialize OpenClaw config if not exists
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw configuration..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -70,12 +72,12 @@ if [ ! -f "$MOLTBOT_STATE_DIR/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    cat > "$MOLTBOT_STATE_DIR/clawdbot.json" << EOF
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "agents": {
     "defaults": {
       "model": { "primary": "local-vllm/${SERVED_MODEL_NAME}" },
-      "workspace": "/workspace/clawd"
+      "workspace": "/workspace/openclaw"
     }
   },
   "models": {
@@ -100,15 +102,17 @@ if [ ! -f "$MOLTBOT_STATE_DIR/clawdbot.json" ]; then
     ${TELEGRAM_CONFIG}
   },
   "gateway": {
-    "mode": "local"
+    "mode": "local",
+    "bind": "lan",
+    "auth": { "mode": "password", "password": "${OPENCLAW_WEB_PASSWORD}" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$MOLTBOT_STATE_DIR/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
     echo "Config created. Telegram token: ${TELEGRAM_BOT_TOKEN:+provided}${TELEGRAM_BOT_TOKEN:-NOT SET - add manually}"
 else
-    echo "Existing config found at $MOLTBOT_STATE_DIR/clawdbot.json - preserving it"
+    echo "Existing config found at $OPENCLAW_STATE_DIR/openclaw.json - preserving it"
 fi
 
 # Build vLLM command
@@ -153,10 +157,10 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Start Moltbot gateway
+# Start OpenClaw gateway
 echo ""
-echo "Starting Moltbot gateway..."
-MOLTBOT_STATE_DIR=$MOLTBOT_STATE_DIR "$BOT_CMD" gateway &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" gateway --auth password --password "$OPENCLAW_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
 echo ""
@@ -164,7 +168,7 @@ echo "============================================"
 echo "  Services Running"
 echo "============================================"
 echo "  vLLM API: http://localhost:8000"
-echo "  Moltbot Gateway: ws://localhost:18789"
+echo "  OpenClaw Gateway: ws://localhost:18789"
 echo ""
 echo "  vLLM PID: $VLLM_PID"
 echo "  Gateway PID: $GATEWAY_PID"

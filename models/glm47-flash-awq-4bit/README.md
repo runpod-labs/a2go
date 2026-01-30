@@ -22,7 +22,7 @@ Quantized version of GLM-4.7-Flash for **A100 80GB** GPUs. Best value for GLM-4.
 ### 1. Create RunPod Pod
 
 **Settings:**
-- **Image**: `runpod/moltbot-glm47-flash-awq-4bit:latest`
+- **Image**: `runpod/openclaw-glm47-flash-awq-4bit:latest`
 - **GPU**: 1x A100 80GB
 - **Volume**: 150GB at `/workspace` (network storage)
 - **Container Disk**: 50GB
@@ -37,7 +37,7 @@ Quantized version of GLM-4.7-Flash for **A100 80GB** GPUs. Best value for GLM-4.
 | `HF_TOKEN` | Recommended | - | [HuggingFace token](https://huggingface.co/settings/tokens) for faster model downloads |
 | `TELEGRAM_BOT_TOKEN` | No | - | Telegram bot token for chat integration |
 | `GITHUB_TOKEN` | No | - | GitHub token for `gh` CLI |
-| `MOLTBOT_WEB_PASSWORD` | No | `moltbot` | Password for web UI |
+| `OPENCLAW_WEB_PASSWORD` | No | `openclaw` | Password for web UI |
 
 ### 3. Access Points
 
@@ -46,7 +46,7 @@ After the pod starts (~90 seconds for cached starts, longer for first start):
 | Service | URL | Auth |
 |---------|-----|------|
 | vLLM API | `https://<pod-id>-8000.proxy.runpod.net` | Bearer token (`VLLM_API_KEY`) |
-| Web UI | `https://<pod-id>-18789.proxy.runpod.net` | Password (`MOLTBOT_WEB_PASSWORD`) |
+| Web UI | `https://<pod-id>-18789.proxy.runpod.net` | Password (`OPENCLAW_WEB_PASSWORD`) |
 | SSH | `ssh root@<public-ip> -p <mapped-port>` | SSH key |
 
 ### 4. Test It
@@ -87,12 +87,12 @@ All persistent data is stored on the network volume `/workspace`:
 ├── .cache/
 │   ├── vllm/                       # CUDA graphs & torch compile cache (~400MB)
 │   └── huggingface/                # HF cache
-├── .clawdbot/                       # Legacy Moltbot state path
-│   ├── clawdbot.json               # Config
+├── .openclaw/                      # OpenClaw state path
+│   ├── openclaw.json               # Config
 │   ├── agents/                     # Agent state
 │   └── telegram/                   # Telegram session
 ├── .config/gh/                     # GitHub CLI config
-└── clawd/                          # Workspace
+└── openclaw/                       # Workspace
 ```
 
 **Startup times:**
@@ -101,9 +101,9 @@ All persistent data is stored on the network volume `/workspace`:
 
 ## Web UI
 
-Access the Moltbot web UI at `https://<pod-id>-18789.proxy.runpod.net`:
+Access the OpenClaw web UI at `https://<pod-id>-18789.proxy.runpod.net`:
 
-1. Enter the password (default: `moltbot` or your `MOLTBOT_WEB_PASSWORD`)
+1. Enter the password (default: `openclaw` or your `OPENCLAW_WEB_PASSWORD`)
 2. Chat with the model through the web interface
 3. No CLI access required
 
@@ -196,7 +196,7 @@ pkill -9 -f vllm
 
 **Web UI won't connect:**
 - Ensure port 18789 is exposed
-- Check that gateway is running: `ps aux | grep moltbot`
+- Check that gateway is running: `ps aux | grep openclaw`
 - Verify bind mode is `lan` in config
 
 **Model download fails:**

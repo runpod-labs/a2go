@@ -1,5 +1,5 @@
 #!/bin/bash
-# start-vllm.sh - vLLM startup script for Moltbot on RunPod
+# start-vllm.sh - vLLM startup script for OpenClaw on RunPod
 # Handles model download, GPU detection, and vLLM server startup
 
 set -e
@@ -36,7 +36,7 @@ export HF_HOME
 # Print banner
 echo ""
 echo "==========================================="
-echo "  Moltbot vLLM Server Startup"
+echo "  OpenClaw vLLM Server Startup"
 echo "==========================================="
 echo ""
 

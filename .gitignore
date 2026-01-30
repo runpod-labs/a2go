@@ -20,7 +20,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Node (if running Moltbot locally)
+# Node (if running OpenClaw locally)
 node_modules/
 
 # Python

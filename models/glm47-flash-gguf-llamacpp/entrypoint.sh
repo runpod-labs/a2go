@@ -77,17 +77,16 @@ fi
 LLAMA_API_KEY="${LLAMA_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-200000}"
-MOLTBOT_HOME="${MOLTBOT_HOME:-/workspace/.clawdbot}"
-CLAWDBOT_STATE_DIR="$MOLTBOT_HOME"
-MOLTBOT_STATE_DIR="$MOLTBOT_HOME"
-export CLAWDBOT_STATE_DIR MOLTBOT_STATE_DIR
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
+export OPENCLAW_STATE_DIR OPENCLAW_WORKSPACE
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-MOLTBOT_WEB_PASSWORD="${MOLTBOT_WEB_PASSWORD:-moltbot}"
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-openclaw}"
 
-BOT_CMD="moltbot"
+BOT_CMD="openclaw"
 if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
-    echo "ERROR: moltbot command not found in PATH"
+    echo "ERROR: openclaw command not found in PATH"
     echo "PATH=$PATH"
     echo "Container staying alive for debugging."
     sleep infinity
@@ -138,13 +137,13 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     echo "Container will stay running for debugging."
 fi
 
-# Setup Moltbot config
-mkdir -p "$MOLTBOT_HOME" "$MOLTBOT_HOME/agents/main/sessions" "$MOLTBOT_HOME/credentials"
-chmod 700 "$MOLTBOT_HOME" "$MOLTBOT_HOME/agents" "$MOLTBOT_HOME/agents/main" \
-    "$MOLTBOT_HOME/agents/main/sessions" "$MOLTBOT_HOME/credentials" 2>/dev/null || true
+# Setup OpenClaw config
+mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
-if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
-    echo "Creating Moltbot config (legacy clawdbot.json)..."
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw config..."
 
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true, \"botToken\": \"${TELEGRAM_BOT_TOKEN}\" }"
@@ -152,7 +151,7 @@ if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    cat > "$MOLTBOT_HOME/clawdbot.json" << EOF
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "models": {
     "providers": {
@@ -175,7 +174,8 @@ if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
   "agents": {
     "defaults": {
       "model": { "primary": "local-llamacpp/$SERVED_MODEL_NAME" },
-      "contextTokens": 180000
+      "contextTokens": 180000,
+      "workspace": "$OPENCLAW_WORKSPACE"
     }
   },
   "channels": {
@@ -184,19 +184,19 @@ if [ ! -f "$MOLTBOT_HOME/clawdbot.json" ]; then
   "gateway": {
     "mode": "local",
     "bind": "lan",
-    "auth": { "token": "$MOLTBOT_WEB_PASSWORD" },
-    "remote": { "token": "$MOLTBOT_WEB_PASSWORD" }
+    "auth": { "mode": "token", "token": "$OPENCLAW_WEB_PASSWORD" },
+    "remote": { "token": "$OPENCLAW_WEB_PASSWORD" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$MOLTBOT_HOME/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
 fi
 
 # Auto-fix config
-echo "Running moltbot doctor to validate/fix config..."
-CLAWDBOT_STATE_DIR=$MOLTBOT_HOME "$BOT_CMD" doctor --fix || true
-chmod 600 "$MOLTBOT_HOME/clawdbot.json" 2>/dev/null || true
+echo "Running openclaw doctor to validate/fix config..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" doctor --fix || true
+chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json" 2>/dev/null || true
 
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -216,20 +216,20 @@ fi
 export OPENAI_API_KEY="$LLAMA_API_KEY"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 
-# Start Moltbot gateway (use token auth for URL parameter support)
+# Start OpenClaw gateway (use token auth for URL parameter support)
 echo ""
-echo "Starting Moltbot gateway..."
-CLAWDBOT_STATE_DIR=$MOLTBOT_HOME MOLTBOT_GATEWAY_TOKEN="$MOLTBOT_WEB_PASSWORD" \
-"$BOT_CMD" gateway --auth token --token "$MOLTBOT_WEB_PASSWORD" &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_WEB_PASSWORD" \
+"$BOT_CMD" gateway --auth token --token "$OPENCLAW_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
 echo ""
 echo "================================================"
 echo "  Ready!"
 echo "  llama.cpp API: http://localhost:8000"
-echo "  Moltbot Gateway: ws://localhost:18789"
-echo "  Web UI: https://<pod-id>-18789.proxy.runpod.net/?token=$MOLTBOT_WEB_PASSWORD"
-echo "  Web UI Token: $MOLTBOT_WEB_PASSWORD"
+echo "  OpenClaw Gateway: ws://localhost:18789"
+echo "  Web UI: https://<pod-id>-18789.proxy.runpod.net/?token=$OPENCLAW_WEB_PASSWORD"
+echo "  Web UI Token: $OPENCLAW_WEB_PASSWORD"
 echo "  Model: $SERVED_MODEL_NAME"
 echo "  Context: $MAX_MODEL_LEN tokens (200k!)"
 echo "  VRAM: ~28GB / 32GB"
