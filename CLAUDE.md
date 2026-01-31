@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **For high-level architecture and onboarding, see [AGENTS.md](./AGENTS.md).**
+
 ## Project Overview
 
 RunPod-optimized Docker deployment for running OpenClaw (AI coding assistant) with GLM-4.7 language models using vLLM for inference. Multiple model variants are optimized for different GPU tiers (A100, H100, B200, RTX 5090).
