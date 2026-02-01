@@ -148,17 +148,18 @@ llama-server \
 
 LLAMA_PID=$!
 
-# Start LFM2.5-Audio server for TTS/STT (CPU inference)
+# Start LFM2.5-Audio server for TTS/STT (GPU inference)
 echo ""
 echo "Starting LFM2.5-Audio server for TTS/STT..."
 echo "  Model: $AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
-echo "  Port: 8001 (CPU inference)"
+echo "  Port: 8001 (GPU accelerated, ~845 MiB VRAM)"
 
 llama-liquid-audio-server \
     -m "$AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
     -mm "$AUDIO_MODEL_PATH/mmproj-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
     -mv "$AUDIO_MODEL_PATH/vocoder-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
     --tts-speaker-file "$AUDIO_MODEL_PATH/tokenizer-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    -ngl 99 \
     --host 0.0.0.0 \
     --port 8001 \
     2>&1 &
