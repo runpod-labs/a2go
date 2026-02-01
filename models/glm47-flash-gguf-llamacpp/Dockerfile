@@ -25,7 +25,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake git curl sudo \
+    build-essential cmake git curl sudo unzip \
     python3 python3-dev python3-venv python3-pip \
     openssh-server \
     && rm -f /etc/ssh/ssh_host_* && mkdir -p /var/run/sshd \
@@ -52,6 +52,27 @@ RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git && \
     cp build/bin/*.so* /usr/local/lib/ 2>/dev/null || true && \
     ldconfig && \
     cd / && rm -rf /workspace/llama.cpp
+
+# Build LFM2.5-Audio runners with CUDA SM120 support (GPU inference)
+# Built from llama.cpp PR #18641 (LiquidAI audio model support)
+# This gives ~80x speedup over CPU-only prebuilt runners
+RUN git clone https://github.com/ggml-org/llama.cpp.git /tmp/llama-audio && \
+    cd /tmp/llama-audio && \
+    git fetch origin pull/18641/head:liquid-audio && \
+    git checkout liquid-audio && \
+    cmake -B build \
+        -DGGML_CUDA=ON \
+        -DGGML_NATIVE=OFF \
+        -DCMAKE_CUDA_ARCHITECTURES="120" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
+        -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
+    cmake --build build --target llama-liquid-audio-cli llama-liquid-audio-server -j$(nproc) && \
+    cp build/bin/llama-liquid-audio-cli /usr/local/bin/ && \
+    cp build/bin/llama-liquid-audio-server /usr/local/bin/ && \
+    cp build/bin/*.so* /usr/local/bin/ 2>/dev/null || true && \
+    chmod +x /usr/local/bin/llama-liquid-audio-cli /usr/local/bin/llama-liquid-audio-server && \
+    rm -rf /tmp/llama-audio
 
 # Install Node.js and GitHub CLI
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
@@ -86,13 +107,18 @@ ENV MODEL_NAME="unsloth/GLM-4.7-Flash-GGUF" \
     MAX_MODEL_LEN="200000" \
     LLAMA_API_KEY="changeme" \
     OPENCLAW_STATE_DIR="/workspace/.openclaw" \
-    OPENCLAW_WORKSPACE="/workspace/openclaw"
+    OPENCLAW_WORKSPACE="/workspace/openclaw" \
+    AUDIO_MODEL_NAME="LiquidAI/LFM2.5-Audio-1.5B-GGUF" \
+    AUDIO_MODEL_PATH="/workspace/models/LFM2.5-Audio-GGUF" \
+    AUDIO_QUANT="Q4_0"
 
 COPY skills/ /opt/openclaw/skills/
 COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
+COPY scripts/openclaw-tts /usr/local/bin/openclaw-tts
+COPY scripts/openclaw-stt /usr/local/bin/openclaw-stt
 COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
 COPY models/glm47-flash-gguf-llamacpp/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen /usr/local/bin/openclaw-tts /usr/local/bin/openclaw-stt
 
-EXPOSE 8000 18789 22
+EXPOSE 8000 8001 18789 22
 ENTRYPOINT ["/entrypoint.sh"]

@@ -21,7 +21,7 @@ Notes:
 
 1. **Pick an image** from the table above.
 2. **Create a RunPod pod**:
-   - Volume: 150GB at `/workspace`
+   - Volume: 30GB minimum at `/workspace` (increase for vLLM models)
    - Ports: `8000/http, 18789/http, 22/tcp`
 3. **Set environment variables**:
    - `VLLM_API_KEY` (for vLLM variants)

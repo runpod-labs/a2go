@@ -54,6 +54,55 @@ print('Download complete!')
     }
 fi
 
+# ============================================================
+# Download LFM2.5-Audio model for TTS/STT
+# ============================================================
+AUDIO_MODEL_PATH="${AUDIO_MODEL_PATH:-/workspace/models/LFM2.5-Audio-GGUF}"
+AUDIO_MODEL_NAME="${AUDIO_MODEL_NAME:-LiquidAI/LFM2.5-Audio-1.5B-GGUF}"
+AUDIO_QUANT="${AUDIO_QUANT:-Q4_0}"
+
+# Files needed for audio model
+AUDIO_FILES=(
+    "LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+    "mmproj-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+    "vocoder-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+    "tokenizer-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+)
+
+# Check if all audio files exist
+AUDIO_DOWNLOAD_NEEDED=false
+for audio_file in "${AUDIO_FILES[@]}"; do
+    if [ ! -f "$AUDIO_MODEL_PATH/$audio_file" ]; then
+        AUDIO_DOWNLOAD_NEEDED=true
+        break
+    fi
+done
+
+if [ "$AUDIO_DOWNLOAD_NEEDED" = true ]; then
+    echo ""
+    echo "Downloading LFM2.5-Audio model for TTS/STT..."
+    mkdir -p "$AUDIO_MODEL_PATH"
+
+    for audio_file in "${AUDIO_FILES[@]}"; do
+        if [ ! -f "$AUDIO_MODEL_PATH/$audio_file" ]; then
+            echo "  Downloading $audio_file..."
+            python3 -c "
+from huggingface_hub import hf_hub_download
+hf_hub_download(
+    repo_id='$AUDIO_MODEL_NAME',
+    filename='$audio_file',
+    local_dir='$AUDIO_MODEL_PATH',
+    local_dir_use_symlinks=False
+)
+print('  Done: $audio_file')
+" || echo "  WARNING: Failed to download $audio_file"
+        fi
+    done
+    echo "Audio model download complete!"
+else
+    echo "Audio model files already present at $AUDIO_MODEL_PATH"
+fi
+
 # Set defaults
 LLAMA_API_KEY="${LLAMA_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
@@ -98,6 +147,23 @@ llama-server \
     2>&1 &
 
 LLAMA_PID=$!
+
+# Start LFM2.5-Audio server for TTS/STT (CPU inference)
+echo ""
+echo "Starting LFM2.5-Audio server for TTS/STT..."
+echo "  Model: $AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+echo "  Port: 8001 (CPU inference)"
+
+llama-liquid-audio-server \
+    -m "$AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    -mm "$AUDIO_MODEL_PATH/mmproj-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    -mv "$AUDIO_MODEL_PATH/vocoder-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    --tts-speaker-file "$AUDIO_MODEL_PATH/tokenizer-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    --host 0.0.0.0 \
+    --port 8001 \
+    2>&1 &
+
+AUDIO_PID=$!
 
 # Wait for llama-server to be ready
 echo "Waiting for llama-server to start..."
@@ -210,11 +276,16 @@ GATEWAY_PID=$!
 echo ""
 oc_print_ready "llama.cpp API" "$SERVED_MODEL_NAME" "$MAX_MODEL_LEN tokens (200k!)" "token" \
     "VRAM: ~28GB / 32GB"
+echo ""
+echo "  Audio Server (TTS/STT): http://localhost:8001"
+echo "    - openclaw-tts \"Hello world\" --output /tmp/hello.wav"
+echo "    - openclaw-stt /path/to/audio.wav"
 
 # Handle shutdown
 cleanup() {
     echo "Shutting down..."
     [ -n "$GATEWAY_PID" ] && kill $GATEWAY_PID 2>/dev/null
+    [ -n "$AUDIO_PID" ] && kill $AUDIO_PID 2>/dev/null
     kill $LLAMA_PID 2>/dev/null
     exit 0
 }

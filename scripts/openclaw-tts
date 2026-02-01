@@ -1,0 +1,138 @@
+#!/bin/bash
+# openclaw-tts - Text-to-Speech using LFM2.5-Audio
+# Converts text to speech audio using the local LFM2.5-Audio model
+#
+# Usage:
+#   openclaw-tts "Hello world" --output /tmp/hello.wav
+#   openclaw-tts --text "Hello world" --output /workspace/openclaw/audio/greeting.wav
+
+set -e
+
+# Default paths from environment or sensible defaults
+AUDIO_MODEL_PATH="${AUDIO_MODEL_PATH:-/workspace/models/LFM2.5-Audio-GGUF}"
+AUDIO_QUANT="${AUDIO_QUANT:-Q4_0}"
+
+# Ensure libs are found (they're in /usr/local/bin with the binary)
+export LD_LIBRARY_PATH=/usr/local/bin:/usr/local/lib:${LD_LIBRARY_PATH:-}
+
+# GPU layers (-1 = auto, 99 = all layers to GPU)
+GPU_LAYERS="${AUDIO_GPU_LAYERS:-99}"
+
+# Parse arguments
+TEXT=""
+OUTPUT=""
+VOICE="US male"
+SYSTEM_PROMPT=""
+
+print_usage() {
+    echo "Usage: openclaw-tts [OPTIONS] [TEXT]"
+    echo ""
+    echo "Convert text to speech audio using LFM2.5-Audio model."
+    echo ""
+    echo "Arguments:"
+    echo "  TEXT                    Text to convert to speech (can also use --text)"
+    echo ""
+    echo "Options:"
+    echo "  -t, --text TEXT         Text to convert to speech"
+    echo "  -o, --output FILE       Output WAV file path (required)"
+    echo "  -v, --voice VOICE       Voice to use: 'US male', 'UK male', 'US female', 'UK female' (default: US male)"
+    echo "  -h, --help              Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  openclaw-tts \"Hello world\" --output /tmp/hello.wav"
+    echo "  openclaw-tts --text \"Welcome\" -o /tmp/welcome.wav --voice \"UK female\""
+    echo ""
+    echo "Environment:"
+    echo "  AUDIO_MODEL_PATH        Path to audio model files (default: /workspace/models/LFM2.5-Audio-GGUF)"
+    echo "  AUDIO_QUANT             Quantization level (default: Q4_0)"
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -t|--text)
+            TEXT="$2"
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT="$2"
+            shift 2
+            ;;
+        -v|--voice)
+            VOICE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        -*)
+            echo "ERROR: Unknown option: $1" >&2
+            print_usage >&2
+            exit 1
+            ;;
+        *)
+            # Positional argument is the text
+            if [ -z "$TEXT" ]; then
+                TEXT="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Construct system prompt with voice
+SYSTEM_PROMPT="Perform TTS. Use the ${VOICE} voice."
+
+# Validate required arguments
+if [ -z "$TEXT" ]; then
+    echo "ERROR: Text is required" >&2
+    print_usage >&2
+    exit 1
+fi
+
+if [ -z "$OUTPUT" ]; then
+    echo "ERROR: Output file is required (use --output)" >&2
+    print_usage >&2
+    exit 1
+fi
+
+# Ensure output directory exists
+OUTPUT_DIR=$(dirname "$OUTPUT")
+mkdir -p "$OUTPUT_DIR"
+
+# Construct model file paths
+MODEL_FILE="$AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+MMPROJ_FILE="$AUDIO_MODEL_PATH/mmproj-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+VOCODER_FILE="$AUDIO_MODEL_PATH/vocoder-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+TOKENIZER_FILE="$AUDIO_MODEL_PATH/tokenizer-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+
+# Check if model files exist
+for f in "$MODEL_FILE" "$MMPROJ_FILE" "$VOCODER_FILE" "$TOKENIZER_FILE"; do
+    if [ ! -f "$f" ]; then
+        echo "ERROR: Model file not found: $f" >&2
+        echo "Make sure the audio model is downloaded to $AUDIO_MODEL_PATH" >&2
+        exit 1
+    fi
+done
+
+echo "Generating speech for: \"$TEXT\""
+echo "Output: $OUTPUT"
+
+# Run TTS using llama-liquid-audio-cli
+llama-liquid-audio-cli \
+    -m "$MODEL_FILE" \
+    -mm "$MMPROJ_FILE" \
+    -mv "$VOCODER_FILE" \
+    --tts-speaker-file "$TOKENIZER_FILE" \
+    -ngl "$GPU_LAYERS" \
+    -sys "$SYSTEM_PROMPT" \
+    -p "$TEXT" \
+    --output "$OUTPUT"
+
+if [ -f "$OUTPUT" ]; then
+    echo "Success! Audio saved to: $OUTPUT"
+else
+    echo "ERROR: Failed to generate audio" >&2
+    exit 1
+fi

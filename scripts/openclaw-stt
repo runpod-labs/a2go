@@ -1,0 +1,134 @@
+#!/bin/bash
+# openclaw-stt - Speech-to-Text using LFM2.5-Audio
+# Transcribes audio to text using the local LFM2.5-Audio model
+#
+# Usage:
+#   openclaw-stt /path/to/audio.wav
+#   openclaw-stt --audio /path/to/recording.wav --output /tmp/transcript.txt
+
+set -e
+
+# Default paths from environment or sensible defaults
+AUDIO_MODEL_PATH="${AUDIO_MODEL_PATH:-/workspace/models/LFM2.5-Audio-GGUF}"
+AUDIO_QUANT="${AUDIO_QUANT:-Q4_0}"
+
+# Ensure libs are found (they're in /usr/local/bin with the binary)
+export LD_LIBRARY_PATH=/usr/local/bin:/usr/local/lib:${LD_LIBRARY_PATH:-}
+
+# GPU layers (-1 = auto, 99 = all layers to GPU)
+GPU_LAYERS="${AUDIO_GPU_LAYERS:-99}"
+
+# Parse arguments
+INPUT_AUDIO=""
+OUTPUT_FILE=""
+SYSTEM_PROMPT="Perform ASR."
+
+print_usage() {
+    echo "Usage: openclaw-stt [OPTIONS] [AUDIO_FILE]"
+    echo ""
+    echo "Transcribe audio to text using LFM2.5-Audio model (ASR)."
+    echo ""
+    echo "Arguments:"
+    echo "  AUDIO_FILE              Input WAV audio file (can also use --audio)"
+    echo ""
+    echo "Options:"
+    echo "  -a, --audio FILE        Input WAV audio file"
+    echo "  -o, --output FILE       Output text file (optional, prints to stdout if not set)"
+    echo "  -s, --system PROMPT     System prompt (default: 'Perform ASR.')"
+    echo "  -h, --help              Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  openclaw-stt /tmp/recording.wav"
+    echo "  openclaw-stt --audio /workspace/openclaw/audio/voice.wav"
+    echo "  openclaw-stt recording.wav --output transcript.txt"
+    echo ""
+    echo "Environment:"
+    echo "  AUDIO_MODEL_PATH        Path to audio model files (default: /workspace/models/LFM2.5-Audio-GGUF)"
+    echo "  AUDIO_QUANT             Quantization level (default: Q4_0)"
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -a|--audio)
+            INPUT_AUDIO="$2"
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT_FILE="$2"
+            shift 2
+            ;;
+        -s|--system)
+            SYSTEM_PROMPT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        -*)
+            echo "ERROR: Unknown option: $1" >&2
+            print_usage >&2
+            exit 1
+            ;;
+        *)
+            # Positional argument is the audio file
+            if [ -z "$INPUT_AUDIO" ]; then
+                INPUT_AUDIO="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Validate required arguments
+if [ -z "$INPUT_AUDIO" ]; then
+    echo "ERROR: Audio file is required" >&2
+    print_usage >&2
+    exit 1
+fi
+
+if [ ! -f "$INPUT_AUDIO" ]; then
+    echo "ERROR: Audio file not found: $INPUT_AUDIO" >&2
+    exit 1
+fi
+
+# Construct model file paths
+MODEL_FILE="$AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+MMPROJ_FILE="$AUDIO_MODEL_PATH/mmproj-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+VOCODER_FILE="$AUDIO_MODEL_PATH/vocoder-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+TOKENIZER_FILE="$AUDIO_MODEL_PATH/tokenizer-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+
+# Check if model files exist
+for f in "$MODEL_FILE" "$MMPROJ_FILE" "$VOCODER_FILE" "$TOKENIZER_FILE"; do
+    if [ ! -f "$f" ]; then
+        echo "ERROR: Model file not found: $f" >&2
+        echo "Make sure the audio model is downloaded to $AUDIO_MODEL_PATH" >&2
+        exit 1
+    fi
+done
+
+echo "Transcribing: $INPUT_AUDIO" >&2
+
+# Run ASR using llama-liquid-audio-cli
+# The output goes to stdout, so we can capture it
+TRANSCRIPT=$(llama-liquid-audio-cli \
+    -m "$MODEL_FILE" \
+    -mm "$MMPROJ_FILE" \
+    -mv "$VOCODER_FILE" \
+    --tts-speaker-file "$TOKENIZER_FILE" \
+    -ngl "$GPU_LAYERS" \
+    -sys "$SYSTEM_PROMPT" \
+    --audio "$INPUT_AUDIO" \
+    2>/dev/null)
+
+if [ -n "$OUTPUT_FILE" ]; then
+    # Ensure output directory exists
+    OUTPUT_DIR=$(dirname "$OUTPUT_FILE")
+    mkdir -p "$OUTPUT_DIR"
+    echo "$TRANSCRIPT" > "$OUTPUT_FILE"
+    echo "Transcript saved to: $OUTPUT_FILE" >&2
+else
+    # Print to stdout
+    echo "$TRANSCRIPT"
+fi
