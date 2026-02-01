@@ -1,131 +1,93 @@
 #!/usr/bin/env python3
+"""
+openclaw-image-gen - Generate images using persistent FLUX.2 Klein server
+Fast inference with pre-loaded model
+
+Usage:
+  openclaw-image-gen --prompt "A cute robot" --output /tmp/robot.png
+  openclaw-image-gen --prompt "Sunset" --aspect 16:9 --output /tmp/sunset.png
+"""
+
 import argparse
-import math
-import os
+import base64
+import json
 import sys
-from pathlib import Path
+import urllib.request
+
+IMAGE_SERVER_URL = "http://localhost:8002/generate"
 
 
-def parse_aspect(aspect):
-    if ":" in aspect:
-        parts = aspect.split(":")
-    elif "x" in aspect:
-        parts = aspect.split("x")
-    else:
-        raise ValueError("Aspect ratio must be like 1:1 or 16:9.")
-    if len(parts) != 2:
-        raise ValueError("Aspect ratio must have two parts.")
-    w = float(parts[0])
-    h = float(parts[1])
-    if w <= 0 or h <= 0:
-        raise ValueError("Aspect ratio values must be positive.")
-    return w / h
+def generate_image(prompt, width=None, height=None, aspect=None, long_side=1024,
+                   steps=4, guidance=1.0, seed=0):
+    """Call image server and return PNG bytes."""
+    payload = {
+        "prompt": prompt,
+        "steps": steps,
+        "guidance": guidance,
+        "seed": seed,
+        "long_side": long_side,
+    }
+    if width:
+        payload["width"] = width
+    if height:
+        payload["height"] = height
+    if aspect:
+        payload["aspect"] = aspect
 
+    req = urllib.request.Request(
+        IMAGE_SERVER_URL,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
 
-def round_to_multiple(value, multiple=8):
-    return int(math.ceil(value / multiple) * multiple)
-
-
-def resolve_size(width, height, aspect, long_side):
-    if width and height:
-        w = width
-        h = height
-    elif aspect:
-        ratio = parse_aspect(aspect)
-        if ratio >= 1:
-            w = long_side
-            h = long_side / ratio
-        else:
-            h = long_side
-            w = long_side * ratio
-    else:
-        w = long_side
-        h = long_side
-
-    w = round_to_multiple(max(256, int(w)))
-    h = round_to_multiple(max(256, int(h)))
-    return w, h
+    try:
+        with urllib.request.urlopen(req, timeout=120) as response:
+            data = json.loads(response.read())
+            if "error" in data:
+                raise RuntimeError(data["error"])
+            return base64.b64decode(data["image"]), data["width"], data["height"]
+    except urllib.error.URLError as e:
+        print(f"Error: Cannot connect to image server at {IMAGE_SERVER_URL}", file=sys.stderr)
+        print("Make sure openclaw-image-server is running", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate an image with FLUX.2 Klein SDNQ.")
-    parser.add_argument("--prompt", required=True, help="Prompt text.")
-    parser.add_argument("--width", type=int, help="Output width in pixels.")
-    parser.add_argument("--height", type=int, help="Output height in pixels.")
-    parser.add_argument("--aspect", help="Aspect ratio, e.g. 1:1 or 16:9.")
-    parser.add_argument("--long-side", type=int, default=1024, help="Long side size when using aspect.")
-    parser.add_argument("--steps", type=int, default=4, help="Inference steps.")
-    parser.add_argument("--guidance", type=float, default=1.0, help="Guidance scale.")
-    parser.add_argument("--seed", type=int, default=0, help="Random seed.")
-    parser.add_argument("--output", default="flux-klein-sdnq.png", help="Output file path.")
-    parser.add_argument(
-        "--model",
-        default="Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic",
-        help="Hugging Face model ID.",
-    )
-    parser.add_argument("--cpu-offload", action="store_true", help="Enable CPU offload.")
-    parser.add_argument("--no-quant-matmul", action="store_true", help="Disable quantized matmul.")
+    parser = argparse.ArgumentParser(description="Generate images with FLUX.2 Klein")
+    parser.add_argument("--prompt", required=True, help="Image prompt")
+    parser.add_argument("--width", type=int, help="Output width")
+    parser.add_argument("--height", type=int, help="Output height")
+    parser.add_argument("--aspect", help="Aspect ratio (e.g. 1:1, 16:9)")
+    parser.add_argument("--long-side", type=int, default=1024, help="Long side when using aspect")
+    parser.add_argument("--steps", type=int, default=4, help="Inference steps")
+    parser.add_argument("--guidance", type=float, default=1.0, help="Guidance scale")
+    parser.add_argument("--seed", type=int, default=0, help="Random seed")
+    parser.add_argument("--output", default="output.png", help="Output file path")
+    # Legacy flag - ignored, server always uses GPU
+    parser.add_argument("--cpu-offload", action="store_true", help="(ignored, server uses GPU)")
+    parser.add_argument("--no-quant-matmul", action="store_true", help="(ignored)")
+    parser.add_argument("--model", help="(ignored, server has model loaded)")
+
     args = parser.parse_args()
 
-    try:
-        import torch
-        import diffusers
-        import sdnq  # noqa: F401
-        from sdnq.loader import apply_sdnq_options_to_model
-    except Exception as exc:
-        print(f"ERROR: Missing dependencies: {exc}", file=sys.stderr)
-        print("Install: pip install sdnq diffusers transformers accelerate safetensors", file=sys.stderr)
-        sys.exit(1)
+    print(f"Generating: {args.prompt}", file=sys.stderr)
 
-    width, height = resolve_size(args.width, args.height, args.aspect, args.long_side)
-    print(f"Using size: {width}x{height}")
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dtype = torch.bfloat16 if device != "cpu" else torch.float32
-
-    pipe = diffusers.Flux2KleinPipeline.from_pretrained(args.model, torch_dtype=dtype)
-
-    triton_available = False
-    try:
-        import triton  # noqa: F401
-
-        triton_available = True
-    except Exception:
-        triton_available = False
-
-    use_quantized = (not args.no_quant_matmul) and triton_available and (
-        torch.cuda.is_available() or getattr(torch, "xpu", None) and torch.xpu.is_available()
-    )
-
-    try:
-        pipe.transformer = apply_sdnq_options_to_model(pipe.transformer, use_quantized_matmul=use_quantized)
-        pipe.text_encoder = apply_sdnq_options_to_model(pipe.text_encoder, use_quantized_matmul=use_quantized)
-    except Exception as exc:
-        print(f"WARNING: SDNQ matmul setup failed: {exc}", file=sys.stderr)
-
-    if args.cpu_offload:
-        pipe.enable_model_cpu_offload()
-    else:
-        try:
-            pipe.to(device)
-        except Exception as exc:
-            print(f"WARNING: Failed to move pipeline to {device}: {exc}", file=sys.stderr)
-
-    generator = torch.Generator(device=device).manual_seed(args.seed)
-
-    result = pipe(
+    img_bytes, w, h = generate_image(
         prompt=args.prompt,
-        height=height,
-        width=width,
-        guidance_scale=args.guidance,
-        num_inference_steps=args.steps,
-        generator=generator,
+        width=args.width,
+        height=args.height,
+        aspect=args.aspect,
+        long_side=args.long_side,
+        steps=args.steps,
+        guidance=args.guidance,
+        seed=args.seed,
     )
 
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    result.images[0].save(output_path)
-    print(f"Saved image to {output_path}")
+    with open(args.output, "wb") as f:
+        f.write(img_bytes)
+
+    print(f"Saved {w}x{h} image to: {args.output}", file=sys.stderr)
 
 
 if __name__ == "__main__":

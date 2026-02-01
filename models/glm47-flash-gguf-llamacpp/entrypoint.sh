@@ -104,9 +104,10 @@ else
 fi
 
 # Set defaults
+# Note: 100k context to leave VRAM for audio + image gen servers
 LLAMA_API_KEY="${LLAMA_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-200000}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-100000}"
 OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
 OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 export OPENCLAW_STATE_DIR OPENCLAW_WORKSPACE
@@ -166,6 +167,15 @@ llama-liquid-audio-server \
 
 AUDIO_PID=$!
 
+# Start FLUX.2 Klein image generation server
+echo ""
+echo "Starting FLUX.2 Klein image generation server..."
+echo "  Model: Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic"
+echo "  Port: 8002 (GPU accelerated, ~6 GB VRAM)"
+
+openclaw-image-server --port 8002 > /tmp/image-server.log 2>&1 &
+IMAGE_PID=$!
+
 # Wait for llama-server to be ready
 echo "Waiting for llama-server to start..."
 MAX_WAIT=600
@@ -222,7 +232,7 @@ if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
   "agents": {
     "defaults": {
       "model": { "primary": "local-llamacpp/$SERVED_MODEL_NAME" },
-      "contextTokens": 180000,
+      "contextTokens": 90000,
       "workspace": "$OPENCLAW_WORKSPACE"
     }
   },
@@ -275,17 +285,21 @@ OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_WEB_PAS
 GATEWAY_PID=$!
 
 echo ""
-oc_print_ready "llama.cpp API" "$SERVED_MODEL_NAME" "$MAX_MODEL_LEN tokens (200k!)" "token" \
-    "VRAM: ~28GB / 32GB"
+oc_print_ready "llama.cpp API" "$SERVED_MODEL_NAME" "$MAX_MODEL_LEN tokens (100k)" "token" \
+    "VRAM: LLM ~20GB + Audio ~2GB + Image ~6GB = ~28GB / 32GB"
 echo ""
 echo "  Audio Server (TTS/STT): http://localhost:8001"
 echo "    - openclaw-tts \"Hello world\" --output /tmp/hello.wav"
 echo "    - openclaw-stt /path/to/audio.wav"
+echo ""
+echo "  Image Server (FLUX.2): http://localhost:8002"
+echo "    - openclaw-image-gen --prompt \"A robot\" --output /tmp/robot.png"
 
 # Handle shutdown
 cleanup() {
     echo "Shutting down..."
     [ -n "$GATEWAY_PID" ] && kill $GATEWAY_PID 2>/dev/null
+    [ -n "$IMAGE_PID" ] && kill $IMAGE_PID 2>/dev/null
     [ -n "$AUDIO_PID" ] && kill $AUDIO_PID 2>/dev/null
     kill $LLAMA_PID 2>/dev/null
     exit 0
