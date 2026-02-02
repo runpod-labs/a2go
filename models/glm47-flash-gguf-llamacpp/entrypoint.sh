@@ -112,6 +112,10 @@ LLAMA_GPU_LAYERS="${LLAMA_GPU_LAYERS:-999}"
 OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
 OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 export OPENCLAW_STATE_DIR OPENCLAW_WORKSPACE
+if [ -n "${RUNPOD_POD_ID:-}" ] && [ -z "${OPENCLAW_IMAGE_PUBLIC_BASE_URL:-}" ]; then
+    OPENCLAW_IMAGE_PUBLIC_BASE_URL="https://${RUNPOD_POD_ID}-8002.proxy.runpod.net"
+    export OPENCLAW_IMAGE_PUBLIC_BASE_URL
+fi
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-openclaw}"
@@ -201,6 +205,7 @@ fi
 
 # Setup OpenClaw config
 mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+mkdir -p "$OPENCLAW_WORKSPACE/images" "$OPENCLAW_WORKSPACE/audio"
 chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
     "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
@@ -256,6 +261,11 @@ if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
 }
 EOF
     chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
+fi
+
+IMAGE_BASE_URL_FILE="$OPENCLAW_WORKSPACE/image-base-url.txt"
+if [ -n "${OPENCLAW_IMAGE_PUBLIC_BASE_URL:-}" ] && [ ! -f "$IMAGE_BASE_URL_FILE" ]; then
+    echo "$OPENCLAW_IMAGE_PUBLIC_BASE_URL" > "$IMAGE_BASE_URL_FILE"
 fi
 
 # Auto-fix config
