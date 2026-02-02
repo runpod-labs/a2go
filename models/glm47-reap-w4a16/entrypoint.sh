@@ -1,5 +1,5 @@
 #!/bin/bash
-# entrypoint.sh - GLM-4.7-REAP W4A16 + OpenClaw startup script for RunPod B200
+# entrypoint.sh - GLM-4.7-REAP W4A16 + OpenClaw startup script for Runpod B200
 set -e
 source /opt/openclaw/entrypoint-common.sh
 

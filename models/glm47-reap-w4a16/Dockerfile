@@ -1,4 +1,4 @@
-# Dockerfile for GLM-4.7-REAP W4A16 on RunPod B200
+# Dockerfile for GLM-4.7-REAP W4A16 on Runpod B200
 # This uses the 40% expert-pruned, INT4 quantized version of GLM-4.7
 # Model: 0xSero/GLM-4.7-REAP-40-W4A16 (~108GB VRAM)
 #

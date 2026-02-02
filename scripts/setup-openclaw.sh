@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-openclaw.sh - Install and configure OpenClaw on RunPod
+# setup-openclaw.sh - Install and configure OpenClaw on Runpod
 # Prerequisites: vLLM server running on port 8000
 
 set -e
@@ -31,7 +31,7 @@ echo "  OpenClaw Setup Script"
 echo "==========================================="
 echo ""
 
-# Check if running as root (common on RunPod)
+# Check if running as root (common on Runpod)
 if [ "$EUID" -eq 0 ]; then
     log_info "Running as root"
 fi
@@ -93,7 +93,7 @@ mkdir -p "$OPENCLAW_STATE_DIR"
 
 # Determine the base URL for the vLLM endpoint
 if [ -n "$RUNPOD_POD_ID" ]; then
-    # Running on RunPod - use proxy URL
+    # Running on Runpod - use proxy URL
     VLLM_BASE_URL="https://${RUNPOD_POD_ID}-${VLLM_PORT}.proxy.runpod.net/v1"
 else
     # Local or direct connection

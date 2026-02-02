@@ -1,8 +1,8 @@
-# OpenClaw + vLLM Docker Image for RunPod
+# OpenClaw + vLLM Docker Image for Runpod
 # Pre-configured with everything needed for AI coding assistant
 FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
-LABEL maintainer="RunPod OpenClaw"
+LABEL maintainer="Runpod OpenClaw"
 LABEL description="OpenClaw AI assistant with vLLM for local LLM inference"
 
 # Avoid interactive prompts
@@ -55,7 +55,7 @@ COPY config/workspace/ /workspace/openclaw/
 # 18789 - OpenClaw Gateway WebSocket
 # 18790 - OpenClaw Bridge
 # 18793 - OpenClaw Canvas
-# 22 - SSH (RunPod adds this)
+# 22 - SSH (Runpod adds this)
 EXPOSE 8000 18789 18790 18793
 
 # Environment variables (can be overridden at runtime)

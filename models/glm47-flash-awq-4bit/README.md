@@ -19,7 +19,7 @@ Quantized version of GLM-4.7-Flash for **A100 80GB** GPUs. Best value for GLM-4.
 
 ## Quick Start
 
-### 1. Create RunPod Pod
+### 1. Create Runpod Pod
 
 **Settings:**
 - **Image**: `runpod/openclaw-glm47-flash-awq-4bit:latest`
@@ -175,7 +175,7 @@ The entrypoint is optimized for A100 80GB:
 
 ## Known Issues
 
-1. **SSH port changes after restart** - Check the new SSH port via RunPod dashboard
+1. **SSH port changes after restart** - Check the new SSH port via Runpod dashboard
 2. **Orphaned GPU processes** - If vLLM crashes, restart the pod to free GPU memory
 3. **GGUF not supported** - vLLM doesn't support GLM-4.7's GGUF format; use AWQ
 4. **Container disk doesn't persist** - Only `/workspace` survives restarts

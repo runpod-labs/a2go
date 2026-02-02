@@ -1,5 +1,5 @@
 # docker-compose.yml - Local development setup for OpenClaw + vLLM
-# Note: This is for local testing only. For production, use RunPod.
+# Note: This is for local testing only. For production, use Runpod.
 
 version: "3.8"
 

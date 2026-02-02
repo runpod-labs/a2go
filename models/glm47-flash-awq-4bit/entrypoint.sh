@@ -6,7 +6,7 @@ echo "================================================"
 echo "  GLM-4.7-Flash AWQ (4-bit) on A100 80GB"
 echo "================================================"
 
-# RunPod's /start.sh handles SSH setup using PUBLIC_KEY env var
+# Runpod's /start.sh handles SSH setup using PUBLIC_KEY env var
 # It ends with 'sleep infinity' so we run it in background
 oc_start_runpod_ssh
 

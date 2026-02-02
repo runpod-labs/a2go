@@ -37,7 +37,7 @@ WORKDIR /workspace
 
 # Build llama.cpp from source with CUDA SM120 support
 # Using --allow-shlib-undefined to defer libcuda.so resolution to runtime
-# Using GGML_NATIVE=OFF for portable binary (GitHub runner has different CPU than RunPod)
+# Using GGML_NATIVE=OFF for portable binary (GitHub runner has different CPU than Runpod)
 RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git && \
     cd llama.cpp && \
     cmake -B build \

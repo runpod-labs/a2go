@@ -1,5 +1,5 @@
 #!/bin/bash
-# Common helpers for OpenClaw RunPod entrypoints.
+# Common helpers for OpenClaw Runpod entrypoints.
 
 oc_init_web_ui() {
     local pod_id="${RUNPOD_POD_ID:-}"

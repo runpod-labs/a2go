@@ -109,7 +109,7 @@ These are historical references for retesting.
 3. Compare logs for MLA mismatch or SM120 kernel selection errors.
 4. Record results here and update status.
 
-## RunPod test checklist (NVFP4, no custom image)
+## Runpod test checklist (NVFP4, no custom image)
 
 Goal: validate NVFP4 on RTX 5090 using official vLLM images (no custom build).
 

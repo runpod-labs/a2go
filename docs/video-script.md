@@ -65,19 +65,19 @@ Let me prove it’s real before we talk architecture. This is OpenClaw running a
 
 If you’re using Telegram integration, the same idea applies: messages go to a local model, not a hosted API.
 
-### 2:10–3:40 — Two ways to run it: local GPU vs RunPod (choose your path)
+### 2:10–3:40 — Two ways to run it: local GPU vs Runpod (choose your path)
 
-**On screen**: split screen: local machine vs RunPod pod.
+**On screen**: split screen: local machine vs Runpod pod.
 
 **You say**:
 You’ve got two options:
 
 - Local: lowest latency and everything stays on your machine.
-- RunPod: if you don’t have a 5090—or you don’t want your workstation pinned all day—you can still keep it self-contained. You pay for compute time, not per-token API calls.
+- Runpod: if you don’t have a 5090—or you don’t want your workstation pinned all day—you can still keep it self-contained. You pay for compute time, not per-token API calls.
 
-### 3:40–5:30 — RunPod setup walkthrough (the “do this, then this” part)
+### 3:40–5:30 — Runpod setup walkthrough (the “do this, then this” part)
 
-**On screen**: RunPod UI checklist.
+**On screen**: Runpod UI checklist.
 
 **You say (walkthrough voice)**:
 Here’s the setup that actually matters:

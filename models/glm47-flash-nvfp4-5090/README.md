@@ -36,7 +36,7 @@ Full 200K context window with MLA for reduced KV cache memory.
 
 ## Quick Start
 
-### 1. Create RunPod Pod
+### 1. Create Runpod Pod
 
 **Settings:**
 - **Image**: `runpod/openclaw-glm47-flash-nvfp4-5090:latest`

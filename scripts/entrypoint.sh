@@ -1,5 +1,5 @@
 #!/bin/bash
-# entrypoint.sh - OpenClaw + vLLM startup script for RunPod
+# entrypoint.sh - OpenClaw + vLLM startup script for Runpod
 set -e
 source /opt/openclaw/entrypoint-common.sh
 

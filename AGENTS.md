@@ -1,11 +1,11 @@
 # AGENTS.md
 
-OpenClaw on RunPod: Docker images that run an AI coding assistant with GLM-4.7 LLM on various GPUs.
+OpenClaw on Runpod: Docker images that run an AI coding assistant with GLM-4.7 LLM on various GPUs.
 
 ## Codebase Structure
 
 ```
-runpod-clawdbot/
+openclaw-stack/
 ├── models/                      # GPU-specific Dockerfiles
 │   ├── glm47-flash-gguf-llamacpp/  # RTX 5090 - llama.cpp (primary)
 │   ├── glm47-flash-awq-4bit/       # A100 80GB - vLLM
@@ -59,10 +59,10 @@ curl http://localhost:8000/health
 openclaw-image-gen --prompt "test" --width 512 --height 512 --output /tmp/test.png
 ```
 
-## RunPod Pod Access
+## Runpod Pod Access
 
 ```bash
-# SSH into pod (use RunPod MCP tools to get IP/port)
+# SSH into pod (use Runpod MCP tools to get IP/port)
 ssh -i ~/.ssh/id_runpod root@<ip> -p <port>
 
 # Common debugging
@@ -96,7 +96,7 @@ curl http://localhost:8000/v1/models
 ## Important Notes
 
 - Never start/stop servers in code — user handles that
-- Use RunPod MCP tools to manage pods
+- Use Runpod MCP tools to manage pods
 - RTX 5090 image gen requires: PyTorch cu128 + diffusers from git
 - Model downloads go to `/workspace/huggingface/` (persisted volume)
 - **CRITICAL**: LLM binaries (main branch) and Audio binaries (PR #18641) must use separate library paths. Never copy audio `.so` files to `/usr/local/lib/` - they will break LLM server.

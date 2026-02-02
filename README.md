@@ -1,6 +1,6 @@
-# OpenClaw on RunPod: self-contained LLM images
+# OpenClaw Stack on Runpod
 
-This repository provides Docker images that bundle **OpenClaw** with different LLMs so you can run a fully self-contained assistant on RunPod (or any GPU host). Each model variant has its own folder under `models/` with a dedicated README and startup script.
+OpenClaw Stack is a self-contained stack that includes an LLM plus image/audio services and the OpenClaw UI, so you can run a fully self-contained assistant on Runpod (or any GPU host). Each model variant has its own folder under `models/` with a dedicated README and startup script.
 
 ## Model matrix (status + context)
 
@@ -17,10 +17,10 @@ Notes:
 - Context values are defaults; some variants allow tuning via `MAX_MODEL_LEN`.
 - NVFP4 status details live in `models/glm47-flash-nvfp4-5090/ISSUES.md`.
 
-## Deployment on RunPod
+## Deployment on Runpod
 
 1. **Pick an image** from the table above.
-2. **Create a RunPod pod**:
+2. **Create a Runpod pod**:
    - Volume: 30GB minimum at `/workspace` (increase for vLLM models)
    - Ports: `8000/http, 18789/http, 22/tcp`
 3. **Set environment variables**:
@@ -29,7 +29,7 @@ Notes:
    - `HF_TOKEN` (optional, faster downloads)
    - `TELEGRAM_BOT_TOKEN` (optional)
    - For GGUF + llama.cpp: use `LLAMA_API_KEY` instead of `VLLM_API_KEY`
-4. **Open the Web UI** (use your RunPod pod ID):
+4. **Open the Web UI** (use your Runpod pod ID):
    - `https://<pod-id>-18789.proxy.runpod.net/?token=<OPENCLAW_WEB_PASSWORD>`
 5. **Approve device pairing** (first time only):
    - When you see “pairing required”, SSH into the pod and run:
@@ -47,7 +47,7 @@ curl http://localhost:8000/health
 |--------|---------|
 | `models/` | Model-specific Dockerfiles + entrypoints |
 | `scripts/` | Base entrypoint + setup helpers |
-| `templates/` | RunPod template JSONs |
+| `templates/` | Runpod template JSONs |
 | `config/` | OpenClaw config templates |
 
 ## Build + release
@@ -67,4 +67,4 @@ Images build on:
 
 - OpenClaw: https://github.com/openclaw/openclaw
 - vLLM: https://docs.vllm.ai/
-- RunPod: https://docs.runpod.io/
+- Runpod: https://docs.runpod.io/

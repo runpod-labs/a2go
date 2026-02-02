@@ -1,5 +1,5 @@
 #!/bin/bash
-# start-vllm.sh - vLLM startup script for OpenClaw on RunPod
+# start-vllm.sh - vLLM startup script for OpenClaw on Runpod
 # Handles model download, GPU detection, and vLLM server startup
 
 set -e

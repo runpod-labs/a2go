@@ -1,4 +1,4 @@
-# OpenClaw Migration Plan (RunPod Images)
+# OpenClaw Migration Plan (Runpod Images)
 
 ## Background & upstream signals
 
@@ -59,14 +59,14 @@ No `OpenClaw` references exist yet in the repo.
 
 ### 5) Environment variables and config keys
 - Standardize on `OPENCLAW_STATE_DIR`, `OPENCLAW_WORKSPACE`, `OPENCLAW_WEB_PASSWORD`.
-- Reflect in `.env.example` and RunPod templates.
+- Reflect in `.env.example` and Runpod templates.
 
 ### 6) Validation
 - Build images for each model variant.
 - Smoke test:
   - `openclaw doctor --fix` works
   - `openclaw gateway` starts
-  - Web UI reachable via RunPod proxy
+- Web UI reachable via Runpod proxy
   - Model inference via `/v1/chat/completions`
 - Confirm the state dir and workspace are created under `/workspace/.openclaw`.
 

@@ -7,7 +7,7 @@ echo "================================================"
 echo "  GLM-4.7-Flash NVFP4 on RTX 5090 (Blackwell)"
 echo "================================================"
 
-# Setup SSH for remote access (mirrors RunPod's /start.sh behavior)
+# Setup SSH for remote access (mirrors Runpod's /start.sh behavior)
 oc_setup_ssh_manual || echo "SSH setup had issues but continuing..."
 
 # Persist vLLM cache (CUDA graphs, torch compile) on network storage

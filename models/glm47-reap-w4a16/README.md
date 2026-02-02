@@ -19,7 +19,7 @@ High-end option for maximum performance.
 
 ## Quick Start
 
-### 1. Create RunPod Pod
+### 1. Create Runpod Pod
 
 - **Image**: `yourusername/openclaw-glm47-reap-w4a16:latest`
 - **GPU**: 1x B200 180GB

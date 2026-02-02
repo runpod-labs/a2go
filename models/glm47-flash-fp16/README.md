@@ -27,7 +27,7 @@ Best quality with auto-detected context based on GPU.
 
 ## Quick Start
 
-### 1. Create RunPod Pod
+### 1. Create Runpod Pod
 
 - **Image**: `yourusername/openclaw-glm47-flash-fp16:latest`
 - **GPU**: 1x H100 80GB or A100 80GB
