@@ -60,6 +60,7 @@ EXPOSE 8000 18789 18790 18793
 
 # Environment variables (can be overridden at runtime)
 ENV VLLM_API_KEY=changeme
+ENV OPENCLAW_WEB_PASSWORD=changeme
 ENV MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct
 ENV SERVED_MODEL_NAME=local-coder
 ENV MAX_MODEL_LEN=16384

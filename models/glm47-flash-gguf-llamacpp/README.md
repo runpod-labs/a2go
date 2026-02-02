@@ -40,7 +40,7 @@ llama.cpp has native support for `Glm4MoeLite` architecture (PR #18936 merged Ja
      - Required for model download (~17GB) and config persistence
      - Without a network volume, data is lost on pod restart
    - Environment Variables:
-    - `OPENCLAW_WEB_PASSWORD` - Token for Web UI (default: `openclaw`)
+   - `OPENCLAW_WEB_PASSWORD` - Token for Web UI (default: `changeme`)
      - `LLAMA_API_KEY` - API key for llama.cpp (default: `changeme`)
 
 3. **Wait for startup** - First launch downloads the model (~17GB), which takes a few minutes. Check pod logs for progress.
@@ -91,7 +91,7 @@ Note: audio/image servers run on `8001/8002` internally and are not exposed.
 | `MODEL_FILE` | `GLM-4.7-Flash-Q4_K_M.gguf` | GGUF file to use |
 | `MAX_MODEL_LEN` | `200000` | Context length |
 | `LLAMA_API_KEY` | `changeme` | API authentication |
-| `OPENCLAW_WEB_PASSWORD` | `openclaw` | Web UI token |
+| `OPENCLAW_WEB_PASSWORD` | `changeme` | Web UI token |
 | `TELEGRAM_BOT_TOKEN` | - | Optional Telegram integration |
 | `GITHUB_TOKEN` | - | Optional GitHub CLI auth |
 

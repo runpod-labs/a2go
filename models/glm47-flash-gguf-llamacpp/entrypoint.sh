@@ -119,7 +119,7 @@ if [ -n "${RUNPOD_POD_ID:-}" ] && [ -z "${OPENCLAW_IMAGE_PUBLIC_BASE_URL:-}" ]; 
 fi
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-openclaw}"
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
 
 BOT_CMD="openclaw"
 if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
@@ -128,6 +128,90 @@ if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
     echo "Container staying alive for debugging."
     sleep infinity
 fi
+
+oc_fatal_gpu() {
+    local details="$1"
+    echo ""
+    echo "================================================================================"
+    echo "================================================================================"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "!!!!!!!!!!!!!!!!!!!! GPU INITIALIZATION FAILED - ABORTING !!!!!!!!!!!!!!!!!!!!!"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "================================================================================"
+    echo "We can not continue. The GPU or GPU driver has a problem that we can not resolve."
+    echo "Contact Runpod support at help@runpod.io"
+    echo "--------------------------------------------------------------------------------"
+    if [ -n "$details" ]; then
+        echo "Details:"
+        echo "$details"
+        echo "--------------------------------------------------------------------------------"
+    fi
+    cat <<'EOF'
+   ____                   ________                  __          __          
+  / __ \____  ___  ____  / ____/ /___ __      _____/ /_  ____ _/ /__________
+ / / / / __ \/ _ \/ __ \/ /   / / __ \ | /| / / __  / / / / __  / / ___/ ___/
+/ /_/ / /_/ /  __/ / / / /___/ / /_/ / |/ |/ / /_/ / /_/ / /_/ / / /  (__  ) 
+\____/ .___/\___/_/ /_/\____/_/\____/|__/|__/\__,_/\__,_/\__,_/_/_/  /____/  
+    /_/                                                                      
+EOF
+    echo "================================================================================"
+    exit 1
+}
+
+oc_check_cuda() {
+    if ! command -v python3 >/dev/null 2>&1; then
+        oc_fatal_gpu "python3 is missing; unable to verify CUDA availability."
+    fi
+    local check_output=""
+    check_output="$(python3 - <<'PY'
+import ctypes
+import os
+import sys
+from ctypes import c_int, c_char_p
+
+def err_string(lib, code):
+    msg = c_char_p()
+    try:
+        lib.cuGetErrorString(code, ctypes.byref(msg))
+        return msg.value.decode() if msg.value else "unknown"
+    except Exception:
+        return "unknown"
+
+try:
+    lib = ctypes.CDLL("libcuda.so.1")
+except OSError as exc:
+    print(f"libcuda.so.1 load failed: {exc}")
+    sys.exit(1)
+
+lib.cuInit.argtypes = [ctypes.c_uint]
+lib.cuInit.restype = c_int
+err = lib.cuInit(0)
+if err != 0:
+    print(f"cuInit failed: {err} {err_string(lib, err)}")
+    sys.exit(1)
+
+lib.cuDeviceGetCount.argtypes = [ctypes.POINTER(c_int)]
+lib.cuDeviceGetCount.restype = c_int
+count = c_int()
+err2 = lib.cuDeviceGetCount(ctypes.byref(count))
+if err2 != 0 or count.value < 1:
+    print(f"cuDeviceGetCount failed: {err2} {err_string(lib, err2)} count={count.value}")
+    sys.exit(1)
+
+visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+nvidia_visible = os.environ.get("NVIDIA_VISIBLE_DEVICES", "")
+print(f"CUDA_VISIBLE_DEVICES={visible or '(unset)'}")
+print(f"NVIDIA_VISIBLE_DEVICES={nvidia_visible or '(unset)'}")
+print(f"cuda_device_count={count.value}")
+PY
+)"
+    local check_status=$?
+    if [ $check_status -ne 0 ]; then
+        oc_fatal_gpu "$check_output"
+    fi
+}
+
+oc_check_cuda
 
 echo "Starting llama.cpp server..."
 echo "  Model: $MODEL_PATH/$MODEL_FILE"

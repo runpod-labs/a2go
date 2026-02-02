@@ -49,7 +49,7 @@ OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 # Web UI token/password - users enter this to access the OpenClaw control panel
-OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-openclaw}"
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
 
 BOT_CMD="openclaw"
 

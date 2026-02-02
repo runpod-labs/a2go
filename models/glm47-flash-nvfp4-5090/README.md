@@ -54,7 +54,7 @@ Full 200K context window with MLA for reduced KV cache memory.
 | `HF_TOKEN` | Recommended | - | [HuggingFace token](https://huggingface.co/settings/tokens) for faster model downloads |
 | `TELEGRAM_BOT_TOKEN` | No | - | Telegram bot token |
 | `GITHUB_TOKEN` | No | - | GitHub token for `gh` CLI |
-| `OPENCLAW_WEB_PASSWORD` | No | `openclaw` | Password for web UI |
+| `OPENCLAW_WEB_PASSWORD` | No | `changeme` | Password for web UI |
 
 ### 3. Test It
 

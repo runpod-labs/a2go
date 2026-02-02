@@ -9,7 +9,7 @@ oc_init_web_ui() {
         WEB_UI_BASE="https://<pod-id>-18789.proxy.runpod.net"
     fi
 
-    WEB_UI_TOKEN="${OPENCLAW_WEB_PASSWORD:-openclaw}"
+    WEB_UI_TOKEN="${OPENCLAW_WEB_PASSWORD:-changeme}"
     WEB_UI_URL="${WEB_UI_BASE}/?token=${WEB_UI_TOKEN}"
 }
 

@@ -106,6 +106,7 @@ ENV MODEL_NAME="unsloth/GLM-4.7-Flash-GGUF" \
     SERVED_MODEL_NAME="glm-4.7-flash" \
     MAX_MODEL_LEN="200000" \
     LLAMA_API_KEY="changeme" \
+    OPENCLAW_WEB_PASSWORD="changeme" \
     OPENCLAW_STATE_DIR="/workspace/.openclaw" \
     OPENCLAW_WORKSPACE="/workspace/openclaw" \
     AUDIO_MODEL_NAME="LiquidAI/LFM2.5-Audio-1.5B-GGUF" \

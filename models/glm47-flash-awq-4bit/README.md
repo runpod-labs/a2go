@@ -37,7 +37,7 @@ Quantized version of GLM-4.7-Flash for **A100 80GB** GPUs. Best value for GLM-4.
 | `HF_TOKEN` | Recommended | - | [HuggingFace token](https://huggingface.co/settings/tokens) for faster model downloads |
 | `TELEGRAM_BOT_TOKEN` | No | - | Telegram bot token for chat integration |
 | `GITHUB_TOKEN` | No | - | GitHub token for `gh` CLI |
-| `OPENCLAW_WEB_PASSWORD` | No | `openclaw` | Password for web UI |
+| `OPENCLAW_WEB_PASSWORD` | No | `changeme` | Password for web UI |
 
 ### 3. Access Points
 
@@ -103,7 +103,7 @@ All persistent data is stored on the network volume `/workspace`:
 
 Access the OpenClaw web UI at `https://<pod-id>-18789.proxy.runpod.net`:
 
-1. Enter the password (default: `openclaw` or your `OPENCLAW_WEB_PASSWORD`)
+1. Enter the password (default: `changeme` or your `OPENCLAW_WEB_PASSWORD`)
 2. Chat with the model through the web interface
 3. No CLI access required
 
