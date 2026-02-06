@@ -102,6 +102,7 @@ def main():
                 base = IMAGE_SERVER_URL.rsplit("/", 1)[0]
                 url = f"{base}{url}"
             print(f"URL: {url}", file=sys.stderr)
+            print(f"![image]({url})", file=sys.stderr)
 
 
 if __name__ == "__main__":

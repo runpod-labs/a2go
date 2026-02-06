@@ -19,6 +19,10 @@ openclaw-image-gen --prompt "<prompt>" --aspect 16:9 --output /workspace/opencla
 
 Default to 1024x1024 if user doesn't specify size. Images saved to `/workspace/openclaw/images/`.
 
+Important:
+- Use `openclaw-image-gen` only. Do not call external image tools (GPT/OpenAI/DALL-E).
+- After a successful image generation, do not attempt any other image tool.
+
 ## Safety defaults
 - Don't exfiltrate secrets or private data.
 - Don't run destructive commands unless explicitly asked.

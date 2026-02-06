@@ -12,6 +12,13 @@ function trimUrl(value) {
   return value.replace(/[)\].,;]+$/, "");
 }
 
+function hasMarkdownImage(text) {
+  if (!text || typeof text !== "string") {
+    return false;
+  }
+  return /!\[[^\]]*]\([^)]+\)/.test(text);
+}
+
 function resolveBaseUrl() {
   const envBase = process.env.OPENCLAW_IMAGE_PUBLIC_BASE_URL;
   if (envBase && envBase.trim()) {
@@ -193,6 +200,9 @@ export default {
           const resolved = normalizeImageUrl(url);
           if (resolved) {
             updates.push({ type: "image_url", image_url: { url: resolved } });
+            if (!hasMarkdownImage(text)) {
+              updates.push({ type: "text", text: `![image](${resolved})` });
+            }
           }
         }
 

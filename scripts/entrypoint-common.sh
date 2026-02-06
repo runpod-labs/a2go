@@ -104,6 +104,48 @@ PY
     chmod 600 "$cfg" 2>/dev/null || true
 }
 
+oc_sync_skills_disable() {
+    local skills="${1:-}"
+    local cfg="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}/openclaw.json"
+    if [ -z "$skills" ] || [ ! -f "$cfg" ]; then
+        return
+    fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo "WARNING: python3 not found; skipping skill disable sync"
+        return
+    fi
+
+    OPENCLAW_DISABLED_SKILLS="$skills" python3 - <<'PY'
+import json
+import os
+
+cfg = os.path.join(os.environ.get("OPENCLAW_STATE_DIR", "/workspace/.openclaw"), "openclaw.json")
+raw = os.environ.get("OPENCLAW_DISABLED_SKILLS", "")
+skills = [s.strip() for s in raw.split(",") if s.strip()]
+
+if not skills:
+    raise SystemExit(0)
+
+with open(cfg, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+skills_cfg = data.setdefault("skills", {})
+entries = skills_cfg.setdefault("entries", {})
+changed = False
+
+for skill in skills:
+    entry = entries.setdefault(skill, {})
+    if entry.get("enabled") is not False:
+        entry["enabled"] = False
+        changed = True
+
+if changed:
+    with open(cfg, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+PY
+    chmod 600 "$cfg" 2>/dev/null || true
+}
+
 oc_setup_ssh_manual() {
     echo "Initializing SSH..."
 

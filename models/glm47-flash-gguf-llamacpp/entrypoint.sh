@@ -349,7 +349,11 @@ if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
     ${TELEGRAM_CONFIG}
   },
   "skills": {
-    "load": { "extraDirs": ["/opt/openclaw/skills"] }
+    "load": { "extraDirs": ["/opt/openclaw/skills"] },
+    "entries": {
+      "openai-image-gen": { "enabled": false },
+      "nano-banana-pro": { "enabled": false }
+    }
   },
   "plugins": {
     "load": { "paths": ["$OPENCLAW_WORKSPACE/.openclaw/extensions"] },
@@ -376,6 +380,7 @@ fi
 echo "Running openclaw doctor to validate/fix config..."
 OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" doctor --fix || true
 chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json" 2>/dev/null || true
+oc_sync_skills_disable "openai-image-gen,nano-banana-pro"
 oc_sync_gateway_auth "token"
 
 # Setup GitHub CLI if token provided

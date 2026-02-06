@@ -15,3 +15,7 @@ Examples:
 - `openclaw-image-gen --prompt "<prompt>" --aspect 16:9 --output /workspace/openclaw/images/output.png`
 
 If the user does not specify size, default to 1024x1024.
+
+Important:
+- Always use `openclaw-image-gen` for image generation. External image tools (GPT, OpenAI, DALL-E, etc.) are unavailable.
+- After a successful `openclaw-image-gen` call, do not call any other image tool. Respond with the URL (and include a markdown image preview if helpful).
