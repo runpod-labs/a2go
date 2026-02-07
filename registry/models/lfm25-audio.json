@@ -1,0 +1,28 @@
+{
+  "id": "lfm25-audio",
+  "name": "LFM2.5-Audio-1.5B GGUF Q4_0",
+  "type": "audio",
+  "engine": "llamacpp-audio",
+  "repo": "LiquidAI/LFM2.5-Audio-1.5B-GGUF",
+  "files": [
+    "LFM2.5-Audio-1.5B-Q4_0.gguf",
+    "mmproj-LFM2.5-Audio-1.5B-Q4_0.gguf",
+    "vocoder-LFM2.5-Audio-1.5B-Q4_0.gguf",
+    "tokenizer-LFM2.5-Audio-1.5B-Q4_0.gguf"
+  ],
+  "downloadDir": "/workspace/models/LFM2.5-Audio-GGUF",
+  "vram": { "model": 2000, "overhead": 100 },
+  "defaults": { "port": 8001 },
+  "startArgs": [
+    "-m", "{modelPath}/{files[0]}",
+    "-mm", "{modelPath}/{files[1]}",
+    "-mv", "{modelPath}/{files[2]}",
+    "--tts-speaker-file", "{modelPath}/{files[3]}",
+    "-ngl", "99",
+    "--host", "0.0.0.0",
+    "--port", "{port}"
+  ],
+  "startDefaults": {},
+  "default": true,
+  "status": "stable"
+}

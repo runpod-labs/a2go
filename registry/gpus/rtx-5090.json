@@ -1,0 +1,7 @@
+{
+  "id": "rtx-5090",
+  "name": "NVIDIA RTX 5090",
+  "vramMb": 32768,
+  "arch": "sm_120",
+  "minCuda": "12.8"
+}

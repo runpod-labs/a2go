@@ -1,0 +1,7 @@
+{
+  "id": "a100-80gb",
+  "name": "NVIDIA A100 80GB",
+  "vramMb": 81920,
+  "arch": "sm_80",
+  "minCuda": "11.0"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "rtx5090-llm-audio",
+  "name": "RTX 5090 LLM + Audio",
+  "gpu": "rtx-5090",
+  "services": [
+    {
+      "model": "glm47-flash-gguf",
+      "role": "llm",
+      "port": 8000,
+      "overrides": { "contextLength": 200000, "gpuLayers": "999" }
+    },
+    {
+      "model": "lfm25-audio",
+      "role": "audio",
+      "port": 8001
+    }
+  ],
+  "webProxy": true,
+  "vramTotal": 24400,
+  "status": "stable"
+}

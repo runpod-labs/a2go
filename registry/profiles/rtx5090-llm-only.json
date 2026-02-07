@@ -1,0 +1,16 @@
+{
+  "id": "rtx5090-llm-only",
+  "name": "RTX 5090 LLM Only",
+  "gpu": "rtx-5090",
+  "services": [
+    {
+      "model": "glm47-flash-gguf",
+      "role": "llm",
+      "port": 8000,
+      "overrides": { "contextLength": 200000, "gpuLayers": "999" }
+    }
+  ],
+  "webProxy": false,
+  "vramTotal": 22300,
+  "status": "stable"
+}

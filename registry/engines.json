@@ -1,0 +1,23 @@
+{
+  "llamacpp": {
+    "id": "llamacpp",
+    "name": "llama.cpp (LLM)",
+    "binary": "/opt/engines/llamacpp-llm/bin/llama-server",
+    "libPath": "/opt/engines/llamacpp-llm/lib",
+    "type": "native"
+  },
+  "llamacpp-audio": {
+    "id": "llamacpp-audio",
+    "name": "llama.cpp (Audio TTS/STT)",
+    "binary": "/opt/engines/llamacpp-audio/bin/llama-liquid-audio-server",
+    "libPath": "/opt/engines/llamacpp-audio/lib",
+    "type": "native"
+  },
+  "image-gen": {
+    "id": "image-gen",
+    "name": "Image Generation (Diffusers + SDNQ)",
+    "binary": "/usr/local/bin/openclaw-image-server",
+    "venvPath": "/opt/engines/image-gen/venv",
+    "type": "python-venv"
+  }
+}
