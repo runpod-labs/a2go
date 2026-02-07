@@ -1,0 +1,8 @@
+{
+  "_test": "RTX 4090 Full Stack - LLM + Audio + Image with reduced context",
+  "_gpu": "RTX 4090 (24GB, Ada Lovelace sm_89)",
+  "_expected": "All 3 services running with auto-computed context (~60-80k)",
+  "llm": true,
+  "audio": true,
+  "image": true
+}

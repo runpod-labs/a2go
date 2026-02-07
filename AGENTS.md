@@ -101,7 +101,7 @@ openclaw2go/
 
 ## Key Decisions
 
-- **Unified image with multi-arch CUDA** — `DCMAKE_CUDA_ARCHITECTURES="80;90;100;120"` for A100/H100/B200/5090
+- **Unified image with multi-arch CUDA** — `DCMAKE_CUDA_ARCHITECTURES="80;89;90;100;120"` for A100/4090/L40/H100/B200/5090
 - **Model-centric config** — users pick models, system computes VRAM fit + context length
 - **RTX 5090 uses llama.cpp** — vLLM has dimension mismatch bugs with GLM-4.7 MLA attention on NVFP4
 - **PyTorch cu128** — required for RTX 5090 Blackwell sm_120, works on all other GPUs too

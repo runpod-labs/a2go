@@ -1,7 +1,7 @@
 # Dockerfile.unified - Unified OpenClaw2Go image
 #
-# Single image that works on ALL supported GPUs (A100/H100/B200/RTX 5090)
-# via DCMAKE_CUDA_ARCHITECTURES="80;90;100;120".
+# Single image that works on ALL supported GPUs (A100/4090/L40/H100/B200/RTX 5090)
+# via DCMAKE_CUDA_ARCHITECTURES="80;89;90;100;120".
 #
 # Configuration is done at runtime via OPENCLAW_CONFIG env var:
 #   {"llm": true, "audio": true, "image": true}     — all defaults
@@ -29,7 +29,7 @@ RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git && \
     cmake -B build \
         -DGGML_CUDA=ON \
         -DGGML_NATIVE=OFF \
-        -DCMAKE_CUDA_ARCHITECTURES="80;90;100;120" \
+        -DCMAKE_CUDA_ARCHITECTURES="80;89;90;100;120" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
     cmake --build build --config Release -j$(nproc)
@@ -51,7 +51,7 @@ RUN git clone https://github.com/ggml-org/llama.cpp.git && \
     cmake -B build \
         -DGGML_CUDA=ON \
         -DGGML_NATIVE=OFF \
-        -DCMAKE_CUDA_ARCHITECTURES="80;90;100;120" \
+        -DCMAKE_CUDA_ARCHITECTURES="80;89;90;100;120" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
         -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
