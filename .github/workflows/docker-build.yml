@@ -9,6 +9,7 @@ on:
       - 'models/**'
       - 'Dockerfile'
       - 'Dockerfile.unified'
+      - 'engines/**'
       - 'registry/**'
       - 'scripts/**'
       - '.github/workflows/docker-build.yml'
@@ -214,8 +215,63 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/openclaw2go-glm4.7-flash-gguf-flux.2-klein-4b-sdnq-4bit-dynamic-lfm2.5-audio-1.5b-gguf:buildcache
           cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/openclaw2go-glm4.7-flash-gguf-flux.2-klein-4b-sdnq-4bit-dynamic-lfm2.5-audio-1.5b-gguf:buildcache,mode=max
 
-  # Unified image - works on all GPUs (A100/H100/B200/RTX 5090)
+  # Pre-built llama.cpp engines (LLM + Audio binaries)
+  # Builds ~30-40 min but cached aggressively — only rebuilds when engines/ changes.
+  # On main: pushed as :latest. On branches: pushed as :<branch-tag>.
+  build-engines:
+    runs-on: DO
+    outputs:
+      engines_image: ${{ steps.set_tag.outputs.engines_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set environment variables
+        run: |
+          echo "DOCKERHUB_REPO=${{ vars.DOCKERHUB_REPO || secrets.DOCKERHUB_USERNAME }}" >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+          else
+            BRANCH_NAME="${GITHUB_REF##refs/heads/}"
+          fi
+          BRANCH_TAG=$(echo "$BRANCH_NAME" | sed 's|/|-|g')
+
+          if [[ "${{ github.ref }}" == refs/tags/* || "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "VERSION=latest" >> $GITHUB_ENV
+          else
+            echo "VERSION=${BRANCH_TAG}" >> $GITHUB_ENV
+          fi
+
+      - name: Set engines image tag
+        id: set_tag
+        run: echo "engines_image=${{ env.DOCKERHUB_REPO }}/openclaw2go-engines:${{ env.VERSION }}" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push engines
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: engines/Dockerfile
+          push: true
+          build-args: |
+            CUDA_ARCHITECTURES=89;120
+          tags: ${{ steps.set_tag.outputs.engines_image }}
+          platforms: linux/amd64
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/openclaw2go-engines:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/openclaw2go-engines:buildcache,mode=max
+
+  # Unified image - works on all GPUs with tested CUDA architectures
+  # Depends on engines build completing first
   build-unified:
+    needs: build-engines
     runs-on: DO
     steps:
       - name: Checkout
@@ -273,7 +329,7 @@ jobs:
           file: Dockerfile.unified
           push: ${{ env.PUSH_IMAGES == 'true' }}
           build-args: |
-            ENGINES_IMAGE=${{ env.DOCKERHUB_REPO }}/openclaw2go-engines:latest
+            ENGINES_IMAGE=${{ needs.build-engines.outputs.engines_image }}
           tags: |
             ${{ env.DOCKERHUB_REPO }}/openclaw2go:${{ env.VERSION }}
             ${{ env.ALSO_LATEST == 'true' && format('{0}/openclaw2go:latest', env.DOCKERHUB_REPO) || '' }}
