@@ -60,4 +60,4 @@ Tested configurations for the unified OpenClaw2Go image. Each entry records the 
 
 - **Image**: `<dockerhub-repo>/openclaw2go:<tag>`
 - **Dockerfile**: `Dockerfile.unified`
-- **CUDA Architectures**: 80 (A100), 89 (RTX 4090/L40), 90 (H100), 100 (B200), 120 (RTX 5090)
+- **CUDA Architectures**: 89 (RTX 4090/L40), 120 (RTX 5090) — add more as tested
