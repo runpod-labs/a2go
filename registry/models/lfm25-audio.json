@@ -1,5 +1,5 @@
 {
-  "id": "lfm25-audio",
+  "id": "liquidai/lfm25-audio",
   "name": "LFM2.5-Audio-1.5B GGUF Q4_0",
   "type": "audio",
   "engine": "llamacpp-audio",

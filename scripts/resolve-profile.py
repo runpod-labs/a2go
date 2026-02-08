@@ -119,6 +119,11 @@ def resolve_model(value, models, model_type):
     return None
 
 
+def get_kv_cache_rate(llm_model):
+    """Get per-model KV cache rate, falling back to global default."""
+    return llm_model.get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
+
+
 def compute_max_context(vram_available_mb, llm_model):
     """Compute max context length that fits in available VRAM for the LLM."""
     if not llm_model:
@@ -127,12 +132,14 @@ def compute_max_context(vram_available_mb, llm_model):
     available_for_kv = vram_available_mb - base_vram
     if available_for_kv <= 0:
         return 0
-    return int((available_for_kv / KV_CACHE_MB_PER_1K_TOKENS) * 1000)
+    kv_rate = get_kv_cache_rate(llm_model)
+    return int((available_for_kv / kv_rate) * 1000)
 
 
-def compute_kv_cache_vram(context_length):
+def compute_kv_cache_vram(context_length, llm_model):
     """Compute KV cache VRAM for a given context length."""
-    return int((context_length / 1000) * KV_CACHE_MB_PER_1K_TOKENS)
+    kv_rate = get_kv_cache_rate(llm_model)
+    return int((context_length / 1000) * kv_rate)
 
 
 def build_from_models(config, models, engines, gpu_vram_mb):
@@ -173,7 +180,7 @@ def build_from_models(config, models, engines, gpu_vram_mb):
 
         if context_length:
             # User specified context length — validate it fits
-            needed_kv = compute_kv_cache_vram(context_length)
+            needed_kv = compute_kv_cache_vram(context_length, llm_model)
             needed_total = llm_model["vram"]["model"] + llm_model["vram"]["overhead"] + needed_kv + non_llm_vram
             if needed_total > gpu_vram_mb:
                 print(f"WARNING: requested context {context_length:,} needs ~{needed_total} MB "
@@ -202,7 +209,7 @@ def build_from_models(config, models, engines, gpu_vram_mb):
         if role == "llm":
             ctx = context_length or model.get("defaults", {}).get("contextLength", 150000)
             overrides["contextLength"] = ctx
-            kv_vram = compute_kv_cache_vram(ctx)
+            kv_vram = compute_kv_cache_vram(ctx, model)
             model_vram += kv_vram
 
             # Get gpuLayers from config or model defaults

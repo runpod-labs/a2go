@@ -67,7 +67,8 @@ def compute_budget(vram_mb, model_ids, models, context_length=None):
 
         # For LLM models, compute KV cache
         if model["type"] == "llm" and context_length:
-            kv_cache_mb = int((context_length / 1000) * KV_CACHE_MB_PER_1K_TOKENS)
+            kv_rate = model.get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
+            kv_cache_mb = int((context_length / 1000) * kv_rate)
             item["kvCacheMb"] = kv_cache_mb
             item["contextLength"] = context_length
             item_total += kv_cache_mb
@@ -89,8 +90,10 @@ def compute_budget(vram_mb, model_ids, models, context_length=None):
             for m in llm_models
         )
         available_for_kv = vram_mb - non_llm_vram - llm_base_vram
-        if available_for_kv > 0 and KV_CACHE_MB_PER_1K_TOKENS > 0:
-            max_context = int((available_for_kv / KV_CACHE_MB_PER_1K_TOKENS) * 1000)
+        # Use the first LLM model's KV rate (typically only one LLM)
+        llm_kv_rate = models[llm_models[0]].get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
+        if available_for_kv > 0 and llm_kv_rate > 0:
+            max_context = int((available_for_kv / llm_kv_rate) * 1000)
 
     return {
         "vramTotalMb": vram_mb,

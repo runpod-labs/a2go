@@ -4,18 +4,18 @@
   "gpu": "rtx-5090",
   "services": [
     {
-      "model": "glm47-flash-gguf",
+      "model": "unsloth/glm47-flash-gguf",
       "role": "llm",
       "port": 8000,
       "overrides": { "contextLength": 150000, "gpuLayers": "44" }
     },
     {
-      "model": "lfm25-audio",
+      "model": "liquidai/lfm25-audio",
       "role": "audio",
       "port": 8001
     },
     {
-      "model": "flux2-klein-sdnq",
+      "model": "disty0/flux2-klein-sdnq",
       "role": "image",
       "port": 8002
     }

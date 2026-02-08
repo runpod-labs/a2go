@@ -1,5 +1,5 @@
 {
-  "id": "glm47-flash-gguf",
+  "id": "unsloth/glm47-flash-gguf",
   "name": "GLM-4.7-Flash GGUF Q4_K_M",
   "type": "llm",
   "engine": "llamacpp",
@@ -8,6 +8,7 @@
   "downloadDir": "/workspace/models/GLM-4.7-Flash-GGUF",
   "servedAs": "glm-4.7-flash",
   "vram": { "model": 17300, "overhead": 500 },
+  "kvCacheMbPer1kTokens": 40,
   "defaults": { "contextLength": 150000, "port": 8000 },
   "startArgs": [
     "-m", "{modelPath}/{files[0]}",

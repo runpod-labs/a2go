@@ -12,12 +12,16 @@ One Docker image works on all GPUs (A100/H100/B200/RTX 5090). Configuration at r
 
 ```
 OPENCLAW_CONFIG examples:
-  {"llm": true, "audio": true, "image": true}         — all default models
-  {"llm": true, "audio": true}                         — LLM + audio only (more VRAM for context)
-  {"llm": "glm47-flash-gguf", "contextLength": 200000} — specific model + context override
-  {"profile": "rtx5090-full-stack"}                    — use a preset (optional shorthand)
-  {}                                                    — auto-detect GPU, use all defaults that fit
+  {"llm": true, "audio": true, "image": true}                          — all default models
+  {"llm": true, "audio": true}                                          — LLM + audio only (more VRAM for context)
+  {"llm": "unsloth/glm47-flash-gguf", "contextLength": 200000}         — specific model + context override
+  {"llm": "unsloth/nemotron3-nano-gguf"}                                — Nemotron-3-Nano (MoE, low KV cache)
+  {"llm": "unsloth/nemotron3-nano-gguf", "audio": "liquidai/lfm25-audio"} — Nemotron + audio
+  {"profile": "rtx5090-full-stack"}                                     — use a preset (optional shorthand)
+  {}                                                                     — auto-detect GPU, use all defaults that fit
 ```
+
+Model IDs use `provider/model-name` format (e.g., `unsloth/glm47-flash-gguf`). `true` = default model for that type.
 
 ### Registry (`registry/`)
 
@@ -26,8 +30,9 @@ JSON-based configuration registry. Models declare their VRAM cost; the system co
 ```
 registry/
 ├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, image-gen)
-├── models/                         # Model specs (VRAM, repo, start args)
-│   ├── glm47-flash-gguf.json       # LLM: GLM-4.7-Flash Q4_K_M (default: true)
+├── models/                         # Model specs (VRAM, repo, start args, KV cache rates)
+│   ├── glm47-flash-gguf.json       # LLM: GLM-4.7-Flash Q4_K_M (default: true, kvCache: 40 MB/1k)
+│   ├── nemotron3-nano-gguf.json    # LLM: Nemotron-3-Nano-30B MoE (kvCache: 4 MB/1k)
 │   ├── lfm25-audio.json            # Audio: LFM2.5-Audio-1.5B (default: true)
 │   └── flux2-klein-sdnq.json       # Image: FLUX.2 Klein 4B SDNQ (default: true)
 ├── gpus/                           # GPU specs (VRAM, arch, CUDA requirements)
@@ -41,7 +46,7 @@ registry/
     └── rtx5090-llm-only.json       # LLM only
 ```
 
-Each model has `"default": true` marking it as the recommended/most-capable choice for its type.
+Each model has `"default": true` marking it as the recommended/most-capable choice for its type. LLM models declare `kvCacheMbPer1kTokens` for per-model KV cache VRAM estimation (fallback: 40 MB/1k).
 
 ### Engine Isolation
 
@@ -102,7 +107,7 @@ openclaw2go/
 ## Key Decisions
 
 - **Unified image with multi-arch CUDA** — `DCMAKE_CUDA_ARCHITECTURES="89;120"` for 4090/L40/5090 (add more as tested)
-- **Model-centric config** — users pick models, system computes VRAM fit + context length
+- **Model-centric config** — users pick models (e.g., `unsloth/glm47-flash-gguf`, `unsloth/nemotron3-nano-gguf`), system computes VRAM fit + context length using per-model KV cache rates
 - **RTX 5090 uses llama.cpp** — vLLM has dimension mismatch bugs with GLM-4.7 MLA attention on NVFP4
 - **PyTorch cu128** — required for RTX 5090 Blackwell sm_120, works on all other GPUs too
 - **Diffusers from git** — stable release lacks `Flux2KleinPipeline`
@@ -144,7 +149,7 @@ openclaw-profiles fit --vram 81920
 openclaw-profiles presets
 
 # VRAM budget calculator
-python3 /opt/openclaw/scripts/vram-budget.py --gpu rtx-5090 --models glm47-flash-gguf,lfm25-audio
+python3 /opt/openclaw/scripts/vram-budget.py --gpu rtx-5090 --models unsloth/glm47-flash-gguf,liquidai/lfm25-audio
 ```
 
 ## Testing
@@ -190,6 +195,7 @@ curl http://localhost:8000/v1/models
 
 ## VRAM Usage (RTX 5090 - 32GB)
 
+### GLM-4.7-Flash (default LLM, kvCache: 40 MB/1k)
 | Component | VRAM | Notes |
 |-----------|------|-------|
 | GLM-4.7 LLM (150k ctx) | ~28 GB | Model ~17.3GB + KV cache ~10GB (q8_0) |
@@ -199,6 +205,12 @@ curl http://localhost:8000/v1/models
 | **LLM + Audio (200k ctx)** | **~26 GB** | **~6 GB free** |
 | **LLM only (200k ctx)** | **~22 GB** | **~10 GB free** |
 
+### Nemotron-3-Nano (MoE LLM, kvCache: 4 MB/1k — calibrated on RTX 5090)
+| Component | VRAM | Notes |
+|-----------|------|-------|
+| Nemotron-3-Nano LLM only (150k ctx) | ~22.5 GB | Model ~21.5GB + compute ~0.5GB + KV ~0.5GB |
+| **+ Audio + Image** | **~28.5 GB** | **Comfortable on 32GB (~4 GB free)** |
+
 Context length is auto-computed by `resolve-profile.py` based on available VRAM after accounting for all selected models.
 
 ## Important Notes
@@ -207,3 +219,28 @@ Context length is auto-computed by `resolve-profile.py` based on available VRAM 
 - Use Runpod MCP tools to manage pods
 - Model downloads go to `/workspace/models/` (persisted volume)
 - **CRITICAL**: LLM and Audio .so files must stay in separate directories under `/opt/engines/`
+
+## Lessons Learned
+
+### Build & Compilation
+
+- **CUDA 12.8+ required for Blackwell (sm_120)** — Official llama.cpp Docker images ship CUDA 12.4 which lacks sm_120. No pre-built Linux CUDA binaries exist for llama.cpp. We must compile from source.
+- **`GGML_NATIVE=OFF` is required** — CI runner CPU differs from target GPUs. Without this, llama.cpp optimizes for the build machine's CPU and may fail on target hardware.
+- **Separate engines from runtime builds** — llama.cpp compilation takes ~70min. Pre-build as `openclaw2go-engines` image, only rebuild when `engines/` changes. Runtime image build takes ~4min.
+- **PyTorch cu128 + diffusers from git** — Blackwell needs cu128 wheels. Stable diffusers lacks `Flux2KleinPipeline`, must install from git.
+
+### Runtime & Entrypoint
+
+- **Engine isolation is mandatory** — LLM and Audio llama.cpp builds produce incompatible `.so` files. Each service MUST have its own `LD_LIBRARY_PATH`. Mixing them silently breaks the LLM server.
+- **Audio uses a PR branch, not main** — llama.cpp Audio requires PR #18641 (`liquid-audio` branch). No pre-built binaries anywhere.
+- **Never use `echo | while read` for background processes** — Pipe creates a subshell. PIDs from `&` inside it aren't children of the main shell, so `wait $PID` fails. Use `while read < file` instead.
+- **Use nvidia-smi for actual VRAM, not registry values** — Registry has theoretical max; nvidia-smi reports what's actually available (can differ significantly).
+- **Default to LLM-only when no config** — Empty `OPENCLAW_CONFIG` (`{}`) defaults to LLM only. Users explicitly opt-in to audio/image.
+
+### VRAM & Context
+
+- **Per-model KV cache rates** — Each LLM model declares `kvCacheMbPer1kTokens` in its JSON config. GLM-4.7 uses 40 MB/1k (dense attention), Nemotron-3-Nano uses 4 MB/1k (only 6 attention layers + Mamba-2 SSM, calibrated on RTX 5090: actual KV=467MB + RS=48MB for 150k ctx = ~3.4 MB/1k, rounded up to 4). The resolver reads this per-model rate and falls back to 40 MB/1k if not specified.
+
+### CI/CD
+
+- **GitHub `workflow_dispatch` only works from default branch** — Workflows on feature branches can't be manually triggered until merged to main.

@@ -4,7 +4,7 @@
   "gpu": "rtx-5090",
   "services": [
     {
-      "model": "glm47-flash-gguf",
+      "model": "unsloth/glm47-flash-gguf",
       "role": "llm",
       "port": 8000,
       "overrides": { "contextLength": 200000, "gpuLayers": "999" }

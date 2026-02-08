@@ -230,23 +230,39 @@ print('  Done: $f')
             PARALLEL="${LLAMA_PARALLEL:-$DEFAULT_PARALLEL}"
             FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
 
+            # Parse extraStartArgs from model JSON (space-separated list)
+            EXTRA_START_ARGS="$(echo "$model_json" | python3 -c "import sys,json; args=json.load(sys.stdin).get('extraStartArgs',[]); print(' '.join(args))")"
+
             echo "Starting LLM server..."
             echo "  Binary: $ENGINE_BINARY"
             echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
             echo "  Context: $CTX tokens, GPU layers: $LAYERS, Parallel: $PARALLEL"
+            if [ -n "$EXTRA_START_ARGS" ]; then
+                echo "  Extra args: $EXTRA_START_ARGS"
+            fi
+
+            # Build args array
+            LLM_ARGS=(
+                -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+                --host 0.0.0.0
+                --port "$port"
+                -ngl "$LAYERS"
+                --parallel "$PARALLEL"
+                -c "$CTX"
+                --jinja
+                -ctk q8_0
+                -ctv q8_0
+                --api-key "$LLAMA_API_KEY"
+            )
+
+            # Append extra start args if present
+            if [ -n "$EXTRA_START_ARGS" ]; then
+                read -ra EXTRA_ARGS <<< "$EXTRA_START_ARGS"
+                LLM_ARGS+=("${EXTRA_ARGS[@]}")
+            fi
 
             env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
-                "$ENGINE_BINARY" \
-                -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE" \
-                --host 0.0.0.0 \
-                --port "$port" \
-                -ngl "$LAYERS" \
-                --parallel "$PARALLEL" \
-                -c "$CTX" \
-                --jinja \
-                -ctk q8_0 \
-                -ctv q8_0 \
-                --api-key "$LLAMA_API_KEY" \
+                "$ENGINE_BINARY" "${LLM_ARGS[@]}" \
                 2>&1 &
 
             # Export for later use (outside the subshell, via temp files)
