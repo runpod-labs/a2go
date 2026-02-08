@@ -65,14 +65,19 @@ def compute_budget(vram_mb, model_ids, models, context_length=None):
             "totalMb": item_total,
         }
 
-        # For LLM models, compute KV cache
-        if model["type"] == "llm" and context_length:
-            kv_rate = model.get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
-            kv_cache_mb = int((context_length / 1000) * kv_rate)
-            item["kvCacheMb"] = kv_cache_mb
-            item["contextLength"] = context_length
-            item_total += kv_cache_mb
-            item["totalMb"] = item_total
+        # For LLM models, compute KV cache (skip for vLLM — it auto-manages)
+        if model["type"] == "llm":
+            if model.get("engine") == "vllm":
+                item["kvManaged"] = "vllm-auto"
+                if context_length:
+                    item["contextLength"] = context_length
+            elif context_length:
+                kv_rate = model.get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
+                kv_cache_mb = int((context_length / 1000) * kv_rate)
+                item["kvCacheMb"] = kv_cache_mb
+                item["contextLength"] = context_length
+                item_total += kv_cache_mb
+                item["totalMb"] = item_total
 
         items.append(item)
         total_used += item_total
@@ -84,16 +89,21 @@ def compute_budget(vram_mb, model_ids, models, context_length=None):
     llm_models = [m for m in model_ids if m in models and models[m]["type"] == "llm"]
     max_context = None
     if llm_models:
-        non_llm_vram = sum(i["totalMb"] for i in items if i["type"] != "llm")
-        llm_base_vram = sum(
-            models[m]["vram"]["model"] + models[m]["vram"]["overhead"]
-            for m in llm_models
-        )
-        available_for_kv = vram_mb - non_llm_vram - llm_base_vram
-        # Use the first LLM model's KV rate (typically only one LLM)
-        llm_kv_rate = models[llm_models[0]].get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
-        if available_for_kv > 0 and llm_kv_rate > 0:
-            max_context = int((available_for_kv / llm_kv_rate) * 1000)
+        llm_model = models[llm_models[0]]
+        if llm_model.get("engine") == "vllm":
+            # vLLM auto-manages KV cache — report model default
+            max_context = llm_model.get("defaults", {}).get("contextLength", 65536)
+        else:
+            non_llm_vram = sum(i["totalMb"] for i in items if i["type"] != "llm")
+            llm_base_vram = sum(
+                models[m]["vram"]["model"] + models[m]["vram"]["overhead"]
+                for m in llm_models
+            )
+            available_for_kv = vram_mb - non_llm_vram - llm_base_vram
+            # Use the first LLM model's KV rate (typically only one LLM)
+            llm_kv_rate = llm_model.get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
+            if available_for_kv > 0 and llm_kv_rate > 0:
+                max_context = int((available_for_kv / llm_kv_rate) * 1000)
 
     return {
         "vramTotalMb": vram_mb,
@@ -158,7 +168,10 @@ def main():
     print(f"{'─' * 60}", file=sys.stderr)
     for item in budget["items"]:
         ctx_info = ""
-        if "contextLength" in item:
+        if item.get("kvManaged") == "vllm-auto":
+            ctx_len = item.get("contextLength", "auto")
+            ctx_info = f" (ctx: {ctx_len:,} → KV: vLLM auto)" if isinstance(ctx_len, int) else " (KV: vLLM auto)"
+        elif "contextLength" in item:
             ctx_info = f" (ctx: {item['contextLength']:,} → KV: {item['kvCacheMb']} MB)"
         print(
             f"  {item['name']:40s}  {item['totalMb']:>6,} MB{ctx_info}",

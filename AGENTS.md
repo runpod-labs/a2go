@@ -17,6 +17,10 @@ OPENCLAW_CONFIG examples:
   {"llm": "unsloth/glm47-flash-gguf", "contextLength": 200000}         — specific model + context override
   {"llm": "unsloth/nemotron3-nano-gguf"}                                — Nemotron-3-Nano (MoE, low KV cache)
   {"llm": "unsloth/nemotron3-nano-gguf", "audio": "liquidai/lfm25-audio"} — Nemotron + audio
+  {"llm": "zai-org/glm47-flash-fp16"}                                   — FP16 via vLLM (A100/H100)
+  {"llm": "cyankiwi/glm47-flash-awq-4bit"}                              — AWQ 4-bit via vLLM (A100)
+  {"llm": "gadflyii/glm47-flash-nvfp4"}                                 — NVFP4 via vLLM (RTX 5090, experimental)
+  {"llm": "zai-org/glm47-flash-fp16", "audio": true, "image": true}    — vLLM + audio + image
   {"profile": "rtx5090-full-stack"}                                     — use a preset (optional shorthand)
   {}                                                                     — auto-detect GPU, use all defaults that fit
 ```
@@ -29,10 +33,13 @@ JSON-based configuration registry. Models declare their VRAM cost; the system co
 
 ```
 registry/
-├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, image-gen)
+├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, image-gen, vllm)
 ├── models/                         # Model specs (VRAM, repo, start args, KV cache rates)
 │   ├── glm47-flash-gguf.json       # LLM: GLM-4.7-Flash Q4_K_M (default: true, kvCache: 40 MB/1k)
 │   ├── nemotron3-nano-gguf.json    # LLM: Nemotron-3-Nano-30B MoE (kvCache: 4 MB/1k)
+│   ├── glm47-flash-fp16-vllm.json  # LLM: GLM-4.7-Flash FP16 via vLLM (A100/H100)
+│   ├── glm47-flash-awq-vllm.json   # LLM: GLM-4.7-Flash AWQ 4-bit via vLLM (A100)
+│   ├── glm47-flash-nvfp4-vllm.json # LLM: GLM-4.7-Flash NVFP4 via vLLM (5090, experimental)
 │   ├── lfm25-audio.json            # Audio: LFM2.5-Audio-1.5B (default: true)
 │   └── flux2-klein-sdnq.json       # Image: FLUX.2 Klein 4B SDNQ (default: true)
 ├── gpus/                           # GPU specs (VRAM, arch, CUDA requirements)
@@ -50,7 +57,7 @@ Each model has `"default": true` marking it as the recommended/most-capable choi
 
 ### Engine Isolation
 
-LLM and Audio use separate llama.cpp builds with incompatible shared libraries. They are isolated via `LD_LIBRARY_PATH`:
+LLM and Audio use separate llama.cpp builds with incompatible shared libraries. They are isolated via `LD_LIBRARY_PATH`. vLLM and image-gen use isolated Python venvs:
 
 ```
 /opt/engines/
@@ -60,6 +67,8 @@ LLM and Audio use separate llama.cpp builds with incompatible shared libraries. 
 ├── llamacpp-audio/     # Audio: PR #18641 branch
 │   ├── bin/llama-liquid-audio-server
 │   └── lib/*.so
+├── vllm/               # LLM: vLLM (Python venv, pre-built CUDA kernels)
+│   └── venv/           # Isolated from image-gen (different torch/transformers)
 └── image-gen/          # Image: Python venv (torch cu128 + diffusers + sdnq)
     └── venv/
 ```
@@ -108,7 +117,8 @@ openclaw2go/
 
 - **Unified image with multi-arch CUDA** — `DCMAKE_CUDA_ARCHITECTURES="89;120"` for 4090/L40/5090 (add more as tested)
 - **Model-centric config** — users pick models (e.g., `unsloth/glm47-flash-gguf`, `unsloth/nemotron3-nano-gguf`), system computes VRAM fit + context length using per-model KV cache rates
-- **RTX 5090 uses llama.cpp** — vLLM has dimension mismatch bugs with GLM-4.7 MLA attention on NVFP4
+- **vLLM engine** — FP16/AWQ/NVFP4 models via vLLM in isolated Python venv. vLLM auto-manages KV cache via `--gpu-memory-utilization` (no manual computation). Models use `downloadMode: "repo"` for full HuggingFace repo downloads.
+- **RTX 5090 NVFP4 via vLLM is experimental** — GLM-4.7 MLA attention bugs on Blackwell being fixed in vLLM v0.15.x
 - **PyTorch cu128** — required for RTX 5090 Blackwell sm_120, works on all other GPUs too
 - **Diffusers from git** — stable release lacks `Flux2KleinPipeline`
 - **LLM and Audio binaries MUST be separate** — incompatible .so files. LLM libs in `/opt/engines/llamacpp-llm/lib/`, Audio in `/opt/engines/llamacpp-audio/lib/`. Mixing them breaks LLM server.
@@ -212,6 +222,15 @@ curl http://localhost:8000/v1/models
 | **+ Audio + Image** | **~28.5 GB** | **Comfortable on 32GB (~4 GB free)** |
 
 Context length is auto-computed by `resolve-profile.py` based on available VRAM after accounting for all selected models.
+
+### vLLM Models (KV cache auto-managed)
+| Model | GPU | VRAM (model+overhead) | Context | Notes |
+|-------|-----|----------------------|---------|-------|
+| GLM-4.7-Flash FP16 | A100/H100 80GB | ~33 GB | 65k default | Full precision, highest quality |
+| GLM-4.7-Flash AWQ 4-bit | A100 80GB | ~19 GB | 114k default | Efficient quantization, large context |
+| GLM-4.7-Flash NVFP4 | RTX 5090 32GB | ~14 GB | 200k default | Experimental (vLLM bugs pending) |
+
+vLLM models use `--gpu-memory-utilization` to auto-size KV cache. When combined with audio/image services, `gpuMemoryUtilization` is auto-adjusted to leave room for non-LLM VRAM.
 
 ## Important Notes
 

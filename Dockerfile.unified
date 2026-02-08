@@ -54,6 +54,16 @@ RUN python3 -m venv /opt/engines/image-gen/venv && \
         sdnq git+https://github.com/huggingface/diffusers.git \
         transformers accelerate safetensors
 
+# ── Engine: vllm (Python venv) ──────────────────────────
+# vLLM pip wheels include pre-built CUDA kernels for all archs (sm_80/89/90/100/120)
+# No compilation needed. transformers from git for latest architecture support.
+RUN python3 -m venv /opt/engines/vllm/venv && \
+    /opt/engines/vllm/venv/bin/pip install --no-cache-dir \
+        vllm --pre --extra-index-url https://wheels.vllm.ai/nightly && \
+    /opt/engines/vllm/venv/bin/pip install --no-cache-dir \
+        git+https://github.com/huggingface/transformers.git && \
+    /opt/engines/vllm/venv/bin/python -c "import vllm; print(f'vLLM {vllm.__version__}')"
+
 # ── Node.js + GitHub CLI ──────────────────────────────────
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \

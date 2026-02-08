@@ -175,23 +175,31 @@ def build_from_models(config, models, engines, gpu_vram_mb):
     computed_context = None
 
     if llm_model and gpu_vram_mb > 0:
-        vram_for_llm = gpu_vram_mb - non_llm_vram
-        max_ctx = compute_max_context(vram_for_llm, llm_model)
-
-        if context_length:
-            # User specified context length — validate it fits
-            needed_kv = compute_kv_cache_vram(context_length, llm_model)
-            needed_total = llm_model["vram"]["model"] + llm_model["vram"]["overhead"] + needed_kv + non_llm_vram
-            if needed_total > gpu_vram_mb:
-                print(f"WARNING: requested context {context_length:,} needs ~{needed_total} MB "
-                      f"but GPU has {gpu_vram_mb} MB. Max safe context: {max_ctx:,}", file=sys.stderr)
+        if llm_model["engine"] == "vllm":
+            # vLLM auto-manages KV cache — use model default or user override
+            if not context_length:
+                context_length = llm_model.get("defaults", {}).get("contextLength", 65536)
+                computed_context = context_length
+                print(f"vLLM context length: {context_length:,} tokens (model default, KV auto-managed)",
+                      file=sys.stderr)
         else:
-            # Auto-compute: use max context that fits, capped at model default
-            model_default_ctx = llm_model.get("defaults", {}).get("contextLength", 150000)
-            context_length = min(max_ctx, model_default_ctx) if max_ctx else model_default_ctx
-            computed_context = context_length
-            print(f"Auto-computed context length: {context_length:,} tokens "
-                  f"(max possible: {max_ctx:,})", file=sys.stderr)
+            vram_for_llm = gpu_vram_mb - non_llm_vram
+            max_ctx = compute_max_context(vram_for_llm, llm_model)
+
+            if context_length:
+                # User specified context length — validate it fits
+                needed_kv = compute_kv_cache_vram(context_length, llm_model)
+                needed_total = llm_model["vram"]["model"] + llm_model["vram"]["overhead"] + needed_kv + non_llm_vram
+                if needed_total > gpu_vram_mb:
+                    print(f"WARNING: requested context {context_length:,} needs ~{needed_total} MB "
+                          f"but GPU has {gpu_vram_mb} MB. Max safe context: {max_ctx:,}", file=sys.stderr)
+            else:
+                # Auto-compute: use max context that fits, capped at model default
+                model_default_ctx = llm_model.get("defaults", {}).get("contextLength", 150000)
+                context_length = min(max_ctx, model_default_ctx) if max_ctx else model_default_ctx
+                computed_context = context_length
+                print(f"Auto-computed context length: {context_length:,} tokens "
+                      f"(max possible: {max_ctx:,})", file=sys.stderr)
 
     # Build service entries
     for role in ("llm", "audio", "image"):
@@ -209,8 +217,22 @@ def build_from_models(config, models, engines, gpu_vram_mb):
         if role == "llm":
             ctx = context_length or model.get("defaults", {}).get("contextLength", 150000)
             overrides["contextLength"] = ctx
-            kv_vram = compute_kv_cache_vram(ctx, model)
-            model_vram += kv_vram
+
+            engine_id = model["engine"]
+            if engine_id == "vllm":
+                # vLLM auto-manages KV cache via --gpu-memory-utilization
+                # Adjust utilization to leave room for non-LLM services
+                if gpu_vram_mb > 0 and non_llm_vram > 0:
+                    adjusted_util = (gpu_vram_mb - non_llm_vram) / gpu_vram_mb
+                    overrides["gpuMemoryUtilization"] = f"{adjusted_util:.2f}"
+                else:
+                    default_util = model.get("startDefaults", {}).get("gpuMemoryUtilization", "0.92")
+                    overrides["gpuMemoryUtilization"] = default_util
+                # Don't add KV cache VRAM — vLLM handles it
+            else:
+                # llama.cpp — manual KV cache computation
+                kv_vram = compute_kv_cache_vram(ctx, model)
+                model_vram += kv_vram
 
             # Get gpuLayers from config or model defaults
             gpu_layers = config.get("gpuLayers", model.get("startDefaults", {}).get("gpuLayers", "999"))

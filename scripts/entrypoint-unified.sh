@@ -184,7 +184,25 @@ while IFS='|' read -r idx role model_id engine_id port model_json engine_json ov
     GPU_LAYERS="$(echo "$overrides_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('gpuLayers',''))")"
 
     # Download model files if needed
-    if [ -n "$MODEL_DOWNLOAD_DIR" ] && [ -n "$MODEL_FILES" ]; then
+    DOWNLOAD_MODE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('downloadMode','files'))")"
+
+    if [ "$DOWNLOAD_MODE" = "repo" ]; then
+        # Full repo download for vLLM models
+        if [ -n "$MODEL_DOWNLOAD_DIR" ]; then
+            if [ ! -f "$MODEL_DOWNLOAD_DIR/config.json" ]; then
+                echo "Downloading model repo $MODEL_REPO..."
+                mkdir -p "$MODEL_DOWNLOAD_DIR"
+                python3 -c "
+from huggingface_hub import snapshot_download
+snapshot_download('$MODEL_REPO', local_dir='$MODEL_DOWNLOAD_DIR')
+print('Done: $MODEL_REPO')
+" || echo "  WARNING: Failed to download repo $MODEL_REPO"
+            else
+                echo "Model repo already present at $MODEL_DOWNLOAD_DIR"
+            fi
+        fi
+    elif [ -n "$MODEL_DOWNLOAD_DIR" ] && [ -n "$MODEL_FILES" ]; then
+        # Individual file download (llama.cpp models)
         IFS='|' read -ra FILES <<< "$MODEL_FILES"
         DOWNLOAD_NEEDED=false
         for f in "${FILES[@]}"; do
@@ -220,53 +238,108 @@ print('  Done: $f')
     # Start service based on engine type
     case "$role" in
         llm)
-            # Get defaults from model JSON
-            DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',150000))")"
-            DEFAULT_LAYERS="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('gpuLayers','999'))")"
-            DEFAULT_PARALLEL="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('parallel','1'))")"
+            if [ "$engine_id" = "vllm" ]; then
+                # ── vLLM engine ──
+                DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',65536))")"
+                CTX="${CONTEXT_LENGTH:-$DEFAULT_CTX}"
 
-            CTX="${CONTEXT_LENGTH:-$DEFAULT_CTX}"
-            LAYERS="${GPU_LAYERS:-$DEFAULT_LAYERS}"
-            PARALLEL="${LLAMA_PARALLEL:-$DEFAULT_PARALLEL}"
-            FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
+                GPU_MEM_UTIL="$(echo "$overrides_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('gpuMemoryUtilization','0.92'))")"
+                KV_CACHE_DTYPE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('kvCacheDtype','auto'))")"
+                EXTRA_START_ARGS="$(echo "$model_json" | python3 -c "import sys,json; args=json.load(sys.stdin).get('extraStartArgs',[]); print(' '.join(args))")"
 
-            # Parse extraStartArgs from model JSON (space-separated list)
-            EXTRA_START_ARGS="$(echo "$model_json" | python3 -c "import sys,json; args=json.load(sys.stdin).get('extraStartArgs',[]); print(' '.join(args))")"
+                # Activate vLLM venv
+                source "$ENGINE_VENV/bin/activate"
 
-            echo "Starting LLM server..."
-            echo "  Binary: $ENGINE_BINARY"
-            echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
-            echo "  Context: $CTX tokens, GPU layers: $LAYERS, Parallel: $PARALLEL"
-            if [ -n "$EXTRA_START_ARGS" ]; then
-                echo "  Extra args: $EXTRA_START_ARGS"
+                # Determine model path (pre-downloaded dir or HF repo name)
+                if [ -n "$MODEL_DOWNLOAD_DIR" ] && [ -d "$MODEL_DOWNLOAD_DIR" ]; then
+                    VLLM_MODEL="$MODEL_DOWNLOAD_DIR"
+                else
+                    VLLM_MODEL="$MODEL_REPO"
+                fi
+
+                echo "Starting vLLM LLM server..."
+                echo "  Model: $VLLM_MODEL"
+                echo "  Context: $CTX tokens, GPU util: $GPU_MEM_UTIL"
+                if [ -n "$EXTRA_START_ARGS" ]; then
+                    echo "  Extra args: $EXTRA_START_ARGS"
+                fi
+
+                VLLM_ARGS=(
+                    serve "$VLLM_MODEL"
+                    --host 0.0.0.0 --port "$port"
+                    --max-model-len "$CTX"
+                    --gpu-memory-utilization "$GPU_MEM_UTIL"
+                    --served-model-name "$MODEL_SERVED_AS"
+                    --api-key "$LLAMA_API_KEY"
+                )
+
+                if [ "$KV_CACHE_DTYPE" != "auto" ]; then
+                    VLLM_ARGS+=(--kv-cache-dtype "$KV_CACHE_DTYPE")
+                fi
+
+                if [ -n "$EXTRA_START_ARGS" ]; then
+                    read -ra EXTRA_ARGS <<< "$EXTRA_START_ARGS"
+                    VLLM_ARGS+=("${EXTRA_ARGS[@]}")
+                fi
+
+                vllm "${VLLM_ARGS[@]}" 2>&1 &
+                echo "$!" > /tmp/oc_llm_pid
+
+                deactivate 2>/dev/null || true
+
+            else
+                # ── llama.cpp engine ──
+                DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',150000))")"
+                DEFAULT_LAYERS="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('gpuLayers','999'))")"
+                DEFAULT_PARALLEL="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('parallel','1'))")"
+
+                CTX="${CONTEXT_LENGTH:-$DEFAULT_CTX}"
+                LAYERS="${GPU_LAYERS:-$DEFAULT_LAYERS}"
+                PARALLEL="${LLAMA_PARALLEL:-$DEFAULT_PARALLEL}"
+                FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
+
+                # Parse extraStartArgs from model JSON (space-separated list)
+                EXTRA_START_ARGS="$(echo "$model_json" | python3 -c "import sys,json; args=json.load(sys.stdin).get('extraStartArgs',[]); print(' '.join(args))")"
+
+                echo "Starting LLM server..."
+                echo "  Binary: $ENGINE_BINARY"
+                echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+                echo "  Context: $CTX tokens, GPU layers: $LAYERS, Parallel: $PARALLEL"
+                if [ -n "$EXTRA_START_ARGS" ]; then
+                    echo "  Extra args: $EXTRA_START_ARGS"
+                fi
+
+                # Build args array
+                LLM_ARGS=(
+                    -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+                    --host 0.0.0.0
+                    --port "$port"
+                    -ngl "$LAYERS"
+                    --parallel "$PARALLEL"
+                    -c "$CTX"
+                    --jinja
+                    -ctk q8_0
+                    -ctv q8_0
+                    --api-key "$LLAMA_API_KEY"
+                )
+
+                # Append extra start args if present
+                if [ -n "$EXTRA_START_ARGS" ]; then
+                    read -ra EXTRA_ARGS <<< "$EXTRA_START_ARGS"
+                    LLM_ARGS+=("${EXTRA_ARGS[@]}")
+                fi
+
+                env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
+                    "$ENGINE_BINARY" "${LLM_ARGS[@]}" \
+                    2>&1 &
+
+                echo "$!" > /tmp/oc_llm_pid
             fi
 
-            # Build args array
-            LLM_ARGS=(
-                -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
-                --host 0.0.0.0
-                --port "$port"
-                -ngl "$LAYERS"
-                --parallel "$PARALLEL"
-                -c "$CTX"
-                --jinja
-                -ctk q8_0
-                -ctv q8_0
-                --api-key "$LLAMA_API_KEY"
-            )
+            # Write provider name from model JSON
+            PROVIDER_NAME="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('provider',{}).get('name','local-llamacpp'))")"
+            echo "$PROVIDER_NAME" > /tmp/oc_llm_provider
 
-            # Append extra start args if present
-            if [ -n "$EXTRA_START_ARGS" ]; then
-                read -ra EXTRA_ARGS <<< "$EXTRA_START_ARGS"
-                LLM_ARGS+=("${EXTRA_ARGS[@]}")
-            fi
-
-            env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
-                "$ENGINE_BINARY" "${LLM_ARGS[@]}" \
-                2>&1 &
-
-            # Export for later use (outside the subshell, via temp files)
-            echo "$!" > /tmp/oc_llm_pid
             echo "$port" > /tmp/oc_llm_port
             echo "$MODEL_SERVED_AS" > /tmp/oc_llm_model_name
             echo "$CTX" > /tmp/oc_llm_context
@@ -322,6 +395,7 @@ LLAMA_PID="$(cat /tmp/oc_llm_pid 2>/dev/null || echo "")"
 LLM_PORT="$(cat /tmp/oc_llm_port 2>/dev/null || echo "8000")"
 LLM_MODEL_NAME="$(cat /tmp/oc_llm_model_name 2>/dev/null || echo "glm-4.7-flash")"
 LLM_CONTEXT="$(cat /tmp/oc_llm_context 2>/dev/null || echo "150000")"
+LLM_PROVIDER_NAME="$(cat /tmp/oc_llm_provider 2>/dev/null || echo "local-llamacpp")"
 AUDIO_PID="$(cat /tmp/oc_audio_pid 2>/dev/null || echo "")"
 IMAGE_PID="$(cat /tmp/oc_image_pid 2>/dev/null || echo "")"
 
@@ -388,7 +462,7 @@ if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
 {
   "models": {
     "providers": {
-      "local-llamacpp": {
+      "$LLM_PROVIDER_NAME": {
         "baseUrl": "http://localhost:${LLM_PORT}/v1",
         "apiKey": "$LLAMA_API_KEY",
         "api": "openai-completions",
@@ -406,7 +480,7 @@ if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
   },
   "agents": {
     "defaults": {
-      "model": { "primary": "local-llamacpp/$LLM_MODEL_NAME" },
+      "model": { "primary": "$LLM_PROVIDER_NAME/$LLM_MODEL_NAME" },
       "contextTokens": 135000,
       "workspace": "$OPENCLAW_WORKSPACE"
     }

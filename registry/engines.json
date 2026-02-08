@@ -19,5 +19,12 @@
     "binary": "/usr/local/bin/openclaw-image-server",
     "venvPath": "/opt/engines/image-gen/venv",
     "type": "python-venv"
+  },
+  "vllm": {
+    "id": "vllm",
+    "name": "vLLM (GPU inference server)",
+    "binary": "vllm",
+    "venvPath": "/opt/engines/vllm/venv",
+    "type": "python-venv"
   }
 }
