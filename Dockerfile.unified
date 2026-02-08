@@ -4,10 +4,13 @@
 # Build the engines image first: see engines/Dockerfile and engines-build.yml.
 #
 # Configuration at runtime via OPENCLAW_CONFIG env var:
-#   {"llm": true, "audio": true, "image": true}     — all defaults
-#   {"llm": true, "audio": true}                      — LLM + audio only
-#   {"llm": "glm47-flash-gguf", "contextLength": 200000}
-#   {"profile": "rtx5090-full-stack"}                 — use a preset
+#   {"llm": true, "audio": true, "image": true}                  — all defaults
+#   {"llm": true, "audio": true}                                   — LLM + audio only
+#   {"llm": "unsloth/GLM-4.7-Flash-GGUF", "contextLength": 200000} — HuggingFace name
+#   {"llm": "zai-org/GLM-4.7-Flash"}                              — FP16 via vLLM
+#   {"profile": "rtx5090-full-stack"}                              — use a preset
+#
+# Model names are case-insensitive. Use HuggingFace repo names or short IDs.
 #
 # Build: docker build -f Dockerfile.unified -t openclaw2go .
 

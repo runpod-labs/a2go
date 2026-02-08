@@ -6,9 +6,11 @@ Computes whether a set of models fits on a GPU, recommends max context length.
 Used by resolve-profile.py and as a standalone CLI tool.
 
 Usage:
-  vram-budget.py --gpu rtx-5090 --models glm47-flash-gguf,lfm25-audio,flux2-klein-sdnq
+  vram-budget.py --gpu rtx-5090 --models "unsloth/GLM-4.7-Flash-GGUF,liquidai/lfm25-audio"
   vram-budget.py --gpu rtx-5090 --profile rtx5090-full-stack
-  vram-budget.py --vram 32768 --models glm47-flash-gguf
+  vram-budget.py --vram 32768 --models "unsloth/glm47-flash-gguf"
+
+Model names are case-insensitive. You can use HuggingFace repo names or short model IDs.
 """
 
 import argparse
@@ -39,6 +41,21 @@ def load_all_json(directory):
         key = data.get("id", f.stem)
         result[key] = data
     return result
+
+
+def find_model(value, models):
+    """Find a model by ID or HuggingFace repo name (case-insensitive)."""
+    if value in models:
+        return value, models[value]
+    value_lower = value.lower()
+    for model_id, model in models.items():
+        if model_id.lower() == value_lower:
+            return model_id, model
+    for model_id, model in models.items():
+        repo = model.get("repo", "")
+        if repo.lower() == value_lower:
+            return model_id, model
+    return None, None
 
 
 def compute_budget(vram_mb, model_ids, models, context_length=None):
@@ -156,7 +173,14 @@ def main():
             if not context_length and svc.get("overrides", {}).get("contextLength"):
                 context_length = svc["overrides"]["contextLength"]
     elif args.models:
-        model_ids = [m.strip() for m in args.models.split(",") if m.strip()]
+        raw_ids = [m.strip() for m in args.models.split(",") if m.strip()]
+        model_ids = []
+        for raw_id in raw_ids:
+            resolved_id, _ = find_model(raw_id, models)
+            if resolved_id:
+                model_ids.append(resolved_id)
+            else:
+                print(f"WARNING: unknown model '{raw_id}', skipping", file=sys.stderr)
     else:
         print("ERROR: specify --models or --profile", file=sys.stderr)
         sys.exit(1)

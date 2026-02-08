@@ -12,20 +12,20 @@ One Docker image works on all GPUs (A100/H100/B200/RTX 5090). Configuration at r
 
 ```
 OPENCLAW_CONFIG examples:
-  {"llm": true, "audio": true, "image": true}                          — all default models
-  {"llm": true, "audio": true}                                          — LLM + audio only (more VRAM for context)
-  {"llm": "unsloth/glm47-flash-gguf", "contextLength": 200000}         — specific model + context override
-  {"llm": "unsloth/nemotron3-nano-gguf"}                                — Nemotron-3-Nano (MoE, low KV cache)
-  {"llm": "unsloth/nemotron3-nano-gguf", "audio": "liquidai/lfm25-audio"} — Nemotron + audio
-  {"llm": "zai-org/glm47-flash-fp16"}                                   — FP16 via vLLM (A100/H100)
-  {"llm": "cyankiwi/glm47-flash-awq-4bit"}                              — AWQ 4-bit via vLLM (A100)
-  {"llm": "gadflyii/glm47-flash-nvfp4"}                                 — NVFP4 via vLLM (RTX 5090, experimental)
-  {"llm": "zai-org/glm47-flash-fp16", "audio": true, "image": true}    — vLLM + audio + image
-  {"profile": "rtx5090-full-stack"}                                     — use a preset (optional shorthand)
-  {}                                                                     — auto-detect GPU, use all defaults that fit
+  {"llm": true, "audio": true, "image": true}                                    — all default models
+  {"llm": true, "audio": true}                                                    — LLM + audio only (more VRAM for context)
+  {"llm": "unsloth/GLM-4.7-Flash-GGUF", "contextLength": 200000}                — specific model + context override
+  {"llm": "unsloth/Nemotron-3-Nano-30B-A3B-GGUF"}                               — Nemotron-3-Nano (MoE, low KV cache)
+  {"llm": "unsloth/Nemotron-3-Nano-30B-A3B-GGUF", "audio": true}                — Nemotron + audio
+  {"llm": "zai-org/GLM-4.7-Flash"}                                               — FP16 via vLLM (A100/H100)
+  {"llm": "cyankiwi/GLM-4.7-Flash-AWQ-4bit"}                                    — AWQ 4-bit via vLLM (A100)
+  {"llm": "GadflyII/GLM-4.7-Flash-NVFP4"}                                       — NVFP4 via vLLM (RTX 5090, experimental)
+  {"llm": "zai-org/GLM-4.7-Flash", "audio": true, "image": true}                — vLLM + audio + image
+  {"profile": "rtx5090-full-stack"}                                               — use a preset (optional shorthand)
+  {}                                                                               — auto-detect GPU, use all defaults that fit
 ```
 
-Model IDs use `provider/model-name` format (e.g., `unsloth/glm47-flash-gguf`). `true` = default model for that type.
+Model names are **case-insensitive**. You can use the HuggingFace repo name (e.g., `unsloth/GLM-4.7-Flash-GGUF`) or the short model ID (e.g., `unsloth/glm47-flash-gguf`). `true` = default model for that type.
 
 ### Registry (`registry/`)
 
@@ -135,6 +135,9 @@ docker run --gpus all openclaw2go
 
 # Run with specific config
 docker run --gpus all -e OPENCLAW_CONFIG='{"llm":true,"audio":true,"image":true}' openclaw2go
+
+# Run specific model (HuggingFace repo name — case-insensitive)
+docker run --gpus all -e OPENCLAW_CONFIG='{"llm":"unsloth/GLM-4.7-Flash-GGUF"}' openclaw2go
 
 # Run LLM only with max context
 docker run --gpus all -e OPENCLAW_CONFIG='{"llm":true,"contextLength":200000}' openclaw2go

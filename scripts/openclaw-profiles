@@ -41,6 +41,21 @@ def load_all_json(directory):
     return result
 
 
+def find_model(value, models):
+    """Find a model by ID or HuggingFace repo name (case-insensitive)."""
+    if value in models:
+        return models[value]
+    value_lower = value.lower()
+    for model_id, model in models.items():
+        if model_id.lower() == value_lower:
+            return model
+    for model_id, model in models.items():
+        repo = model.get("repo", "")
+        if repo.lower() == value_lower:
+            return model
+    return None
+
+
 def detect_gpu():
     try:
         out = subprocess.check_output(
@@ -317,8 +332,9 @@ def cmd_validate(args):
             value = config.get(role)
             if value is None or value is False or value is True:
                 continue
-            if isinstance(value, str) and value not in models:
-                errors.append(f"unknown model '{value}' for role '{role}'")
+            if isinstance(value, str) and not find_model(value, models):
+                available = [f"{m} ({d.get('repo', '')})" for m, d in models.items() if d.get("type") == role]
+                errors.append(f"unknown model '{value}' for role '{role}'. Available: {', '.join(available)}")
 
     if errors:
         print("Validation FAILED:")

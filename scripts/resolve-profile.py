@@ -9,11 +9,16 @@ context length, and outputs resolved config JSON to stdout.
 Config format (OPENCLAW_CONFIG env var):
 
   Model-based (primary approach):
-    {"llm": true, "audio": true, "image": true}     — use default models
-    {"llm": "glm47-flash-gguf", "audio": true}       — specific LLM, default audio
-    {"llm": true}                                     — LLM only
-    {"llm": true, "audio": true}                      — LLM + audio
-    {"llm": true, "contextLength": 200000}            — override context length
+    {"llm": true, "audio": true, "image": true}                — use default models
+    {"llm": "unsloth/GLM-4.7-Flash-GGUF", "audio": true}      — HuggingFace repo name
+    {"llm": "unsloth/glm47-flash-gguf", "audio": true}        — short model ID (also works)
+    {"llm": true}                                               — LLM only
+    {"llm": true, "audio": true}                                — LLM + audio
+    {"llm": true, "contextLength": 200000}                      — override context length
+
+  Model names are case-insensitive. You can use the HuggingFace repo name
+  (e.g., "unsloth/GLM-4.7-Flash-GGUF") or the short model ID
+  (e.g., "unsloth/glm47-flash-gguf").
 
   Profile shorthand (optional presets):
     {"profile": "rtx5090-full-stack"}                 — load a pre-defined preset
@@ -101,8 +106,26 @@ def get_default_model(models, model_type):
     return None
 
 
+def find_model(value, models):
+    """Find a model by ID or HuggingFace repo name (case-insensitive)."""
+    # Exact match first
+    if value in models:
+        return models[value]
+    # Case-insensitive match on ID
+    value_lower = value.lower()
+    for model_id, model in models.items():
+        if model_id.lower() == value_lower:
+            return model
+    # Case-insensitive match on HuggingFace repo name
+    for model_id, model in models.items():
+        repo = model.get("repo", "")
+        if repo.lower() == value_lower:
+            return model
+    return None
+
+
 def resolve_model(value, models, model_type):
-    """Resolve a config value to a model. True = default, string = specific model ID."""
+    """Resolve a config value to a model. True = default, string = model ID or HuggingFace repo name."""
     if value is True:
         model = get_default_model(models, model_type)
         if not model:
@@ -110,12 +133,13 @@ def resolve_model(value, models, model_type):
             sys.exit(1)
         return model
     elif isinstance(value, str):
-        if value not in models:
+        model = find_model(value, models)
+        if not model:
             print(f"ERROR: unknown model '{value}' for type '{model_type}'", file=sys.stderr)
-            available = [m for m, d in models.items() if d.get("type") == model_type]
+            available = [f"{m} ({d.get('repo', '')})" for m, d in models.items() if d.get("type") == model_type]
             print(f"Available {model_type} models: {', '.join(available)}", file=sys.stderr)
             sys.exit(1)
-        return models[value]
+        return model
     return None
 
 
