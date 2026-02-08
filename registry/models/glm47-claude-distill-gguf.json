@@ -1,0 +1,18 @@
+{
+  "id": "teichai/glm47-claude-distill-gguf",
+  "name": "GLM-4.7-Flash Claude Distill GGUF Q4_K_M",
+  "type": "llm",
+  "engine": "llamacpp",
+  "repo": "TeichAI/GLM-4.7-Flash-Claude-Opus-4.5-High-Reasoning-Distill-GGUF",
+  "files": ["GLM-4.7-Flash-Claude-Opus-4.5-High-Reasoning-Distill-Q4_K_M.gguf"],
+  "downloadDir": "/workspace/models/GLM-4.7-Claude-Distill-GGUF",
+  "servedAs": "glm-4.7-flash-claude-distill",
+  "vram": { "model": 17300, "overhead": 500 },
+  "kvCacheMbPer1kTokens": 40,
+  "defaults": { "contextLength": 150000, "port": 8000 },
+  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
+  "extraStartArgs": [],
+  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
+  "default": false,
+  "status": "experimental"
+}

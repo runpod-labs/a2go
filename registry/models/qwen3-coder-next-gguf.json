@@ -1,0 +1,18 @@
+{
+  "id": "unsloth/qwen3-coder-next-gguf",
+  "name": "Qwen3-Coder-Next GGUF Q3_K_M",
+  "type": "llm",
+  "engine": "llamacpp",
+  "repo": "unsloth/Qwen3-Coder-Next-GGUF",
+  "files": ["Qwen3-Coder-Next-Q3_K_M.gguf"],
+  "downloadDir": "/workspace/models/Qwen3-Coder-Next-GGUF",
+  "servedAs": "qwen3-coder-next",
+  "vram": { "model": 38300, "overhead": 1000 },
+  "kvCacheMbPer1kTokens": 4,
+  "defaults": { "contextLength": 32768, "port": 8000 },
+  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
+  "extraStartArgs": ["-fa", "--no-context-shift"],
+  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
+  "default": false,
+  "status": "experimental"
+}

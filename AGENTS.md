@@ -21,6 +21,10 @@ OPENCLAW_CONFIG examples:
   {"llm": "cyankiwi/GLM-4.7-Flash-AWQ-4bit"}                                    — AWQ 4-bit via vLLM (A100)
   {"llm": "GadflyII/GLM-4.7-Flash-NVFP4"}                                       — NVFP4 via vLLM (RTX 5090, experimental)
   {"llm": "zai-org/GLM-4.7-Flash", "audio": true, "image": true}                — vLLM + audio + image
+  {"llm": "unsloth/gpt-oss-20b-GGUF"}                                           — OpenAI GPT-OSS 20B (fits any GPU)
+  {"llm": "unsloth/Qwen3-Coder-Next-GGUF"}                                      — Qwen3 Coder Next 80B MoE (L40/A100)
+  {"llm": "ubergarm/Step-3.5-Flash-GGUF"}                                       — Step 3.5 Flash 197B MoE (A100, IQ2_KS)
+  {"llm": "TeichAI/GLM-4.7-Flash-Claude-Opus-4.5-High-Reasoning-Distill-GGUF"} — GLM-4.7 Claude distill
   {"profile": "rtx5090-full-stack"}                                               — use a preset (optional shorthand)
   {}                                                                               — auto-detect GPU, use all defaults that fit
 ```
