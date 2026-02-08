@@ -8,7 +8,7 @@
   "downloadDir": "/workspace/models/GLM-4.7-Flash-NVFP4",
   "servedAs": "glm-4.7-flash",
   "vram": { "model": 12000, "overhead": 2000 },
-  "defaults": { "contextLength": 200000, "port": 8000 },
+  "defaults": { "contextLength": 180000, "port": 8000 },
   "startDefaults": { "gpuMemoryUtilization": "0.92" },
   "extraStartArgs": [
     "--trust-remote-code",

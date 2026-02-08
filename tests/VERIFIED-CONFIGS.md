@@ -43,11 +43,20 @@ Tested configurations for the unified OpenClaw2Go image. Each entry records the 
 |--------|----------|---------|-----------|--------|------|-------|
 | `{"llm":true,"audio":true,"image":true}` | LLM+Audio+Image | 150k | 30927 / 46068 MiB | **PASS** | 2026-02-08 | ~15GB free, plenty of headroom |
 
-### A100 80GB (sm_80, Ampere)
+### A100 80GB (sm_80, Ampere) — vLLM
 
 | Config | Services | Context | VRAM Used | Status | Date | Notes |
 |--------|----------|---------|-----------|--------|------|-------|
-| `{"llm":true,"audio":true,"image":true}` | LLM+Audio+Image | auto (~150k) | ~30 GB | PENDING | — | Needs sm_80 in engines build |
+| `{"llm":"zai-org/glm47-flash-fp16"}` | vLLM FP16 | 65k | ~76 GB | **PASS** | 2026-02-08 | GLM-4.7-Flash FP16, chat works |
+| `{"llm":"cyankiwi/glm47-flash-awq-4bit"}` | vLLM AWQ 4-bit | 114k | ~76 GB | **PASS** | 2026-02-08 | AWQ quantization, large context |
+| `{"llm":"zai-org/glm47-flash-fp16","audio":true,"image":true}` | vLLM FP16+Audio+Image | 65k | 76/80 GB | **PASS** | 2026-02-08 | gpuMemoryUtilization 0.90, all services running |
+| `{"llm":true,"audio":true,"image":true}` | LLM+Audio+Image (llama.cpp) | auto (~150k) | ~30 GB | PENDING | — | Needs sm_80 in engines build |
+
+### RTX 5090 (32GB, Blackwell sm_120) — vLLM
+
+| Config | Services | Context | VRAM Used | Status | Date | Notes |
+|--------|----------|---------|-----------|--------|------|-------|
+| `{"llm":"gadflyii/glm47-flash-nvfp4"}` | vLLM NVFP4 | 180k | — | **FAIL** | 2026-02-08 | GLM-4.7 MLA attention OOM during CUDA graph capture (known vLLM bug on Blackwell) |
 
 ### H100 80GB (sm_90, Hopper)
 
@@ -60,4 +69,4 @@ Tested configurations for the unified OpenClaw2Go image. Each entry records the 
 - **Image**: `runpod/openclaw2go:<tag>`
 - **Engines**: `runpod/openclaw2go-engines:<tag>`
 - **Dockerfile**: `Dockerfile.unified` (runtime), `engines/Dockerfile` (llama.cpp builds)
-- **CUDA Architectures**: sm_89 (RTX 4090/L40), sm_120 (RTX 5090) — add more as tested
+- **CUDA Architectures**: sm_80 (A100), sm_89 (RTX 4090/L40), sm_90 (H100), sm_100 (B200), sm_120 (RTX 5090)
