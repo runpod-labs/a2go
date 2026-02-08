@@ -150,9 +150,10 @@ echo ""
 echo "Starting services..."
 
 # Process each service in the resolved profile
-echo "$RESOLVED_JSON" | python3 -c "
+# Write service lines to a temp file to avoid pipe subshell (which loses PIDs and variables)
+python3 -c "
 import sys, json
-data = json.load(sys.stdin)
+data = json.loads('''$RESOLVED_JSON''')
 for i, svc in enumerate(data['services']):
     role = svc['role']
     model = svc['model']
@@ -160,7 +161,9 @@ for i, svc in enumerate(data['services']):
     port = svc['port']
     overrides = svc.get('overrides', {})
     print(f'{i}|{role}|{model[\"id\"]}|{model[\"engine\"]}|{port}|{json.dumps(model)}|{json.dumps(engine)}|{json.dumps(overrides)}')
-" | while IFS='|' read -r idx role model_id engine_id port model_json engine_json overrides_json; do
+" > /tmp/oc_services.txt
+
+while IFS='|' read -r idx role model_id engine_id port model_json engine_json overrides_json; do
 
     echo ""
     echo "--- Service [$role]: $model_id on port $port ---"
@@ -296,9 +299,9 @@ print('  Done: $f')
             ;;
     esac
 
-done
+done < /tmp/oc_services.txt
 
-# Read PIDs back from temp files (pipe subshell workaround)
+# Read PIDs and metadata from temp files
 LLAMA_PID="$(cat /tmp/oc_llm_pid 2>/dev/null || echo "")"
 LLM_PORT="$(cat /tmp/oc_llm_port 2>/dev/null || echo "8000")"
 LLM_MODEL_NAME="$(cat /tmp/oc_llm_model_name 2>/dev/null || echo "glm-4.7-flash")"
@@ -475,7 +478,7 @@ for svc in data['services']:
     vram = model['vram']['model'] + model['vram']['overhead']
     parts.append(f\"{svc['role'].upper()} ~{vram // 1000}GB\")
 total = data['profile'].get('vramTotal', 0)
-gpu_vram = data.get('gpu', {}).get('vramMb', 0)
+gpu_vram = data.get('gpuDetected', {}).get('vramMb', 0) or data.get('gpu', {}).get('vramMb', 0)
 print(f\"VRAM: {' + '.join(parts)} = ~{total // 1000}GB / {gpu_vram // 1000}GB\")
 " 2>/dev/null || echo "VRAM: see profile")"
 
