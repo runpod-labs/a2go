@@ -294,23 +294,9 @@ def main():
         print(f"Model-based config: {', '.join(roles)}", file=sys.stderr)
 
     else:
-        # Auto — detect GPU, run all defaults that fit
-        print("No config specified, auto-selecting all default models that fit...", file=sys.stderr)
-        auto_config = {"llm": True, "audio": True, "image": True}
-
-        if gpu_vram_mb > 0:
-            # Try full stack first, then drop services if they don't fit
-            for attempt in (
-                {"llm": True, "audio": True, "image": True},
-                {"llm": True, "audio": True},
-                {"llm": True},
-            ):
-                test_services, test_vram, _ = build_from_models(attempt, models, engines, gpu_vram_mb)
-                if test_vram <= gpu_vram_mb:
-                    auto_config = attempt
-                    break
-            else:
-                auto_config = {"llm": True}
+        # Auto — default to LLM only (slim). Users opt-in to audio/image explicitly.
+        print("No config specified, defaulting to LLM only.", file=sys.stderr)
+        auto_config = {"llm": True}
 
         services, vram_total, computed_context = build_from_models(auto_config, models, engines, gpu_vram_mb)
         roles = [s["role"] for s in services]
