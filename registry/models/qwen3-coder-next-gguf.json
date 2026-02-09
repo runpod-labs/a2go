@@ -8,7 +8,7 @@
   "downloadDir": "/workspace/models/Qwen3-Coder-Next-GGUF",
   "servedAs": "qwen3-coder-next",
   "vram": { "model": 38300, "overhead": 1000 },
-  "kvCacheMbPer1kTokens": 4,
+  "kvCacheMbPer1kTokens": 13,
   "defaults": { "contextLength": 32768, "port": 8000 },
   "startDefaults": { "gpuLayers": "999", "parallel": "1" },
   "extraStartArgs": ["-fa", "on", "--no-context-shift"],
