@@ -57,7 +57,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Runtime-only system dependencies (no build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git sudo unzip \
+    curl git sudo unzip libgomp1 \
     python3 python3-venv python3-pip \
     openssh-server \
     && rm -f /etc/ssh/ssh_host_* && mkdir -p /var/run/sshd \
@@ -67,8 +67,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ── Engine: llamacpp-llm ──────────────────────────────────
 # CRITICAL: LLM and Audio libs MUST be separate (incompatible .so files)
 COPY --from=engines /opt/engines/llamacpp-llm/ /opt/engines/llamacpp-llm/
+RUN ldconfig /opt/engines/llamacpp-llm/lib/
 
 # ── Engine: llamacpp-audio ────────────────────────────────
+# Audio libs are NOT registered with ldconfig — entrypoint sets LD_LIBRARY_PATH per-engine
 COPY --from=engines /opt/engines/llamacpp-audio/ /opt/engines/llamacpp-audio/
 
 # ── Engine: image-gen (pre-built venv from Stage 1) ───────
