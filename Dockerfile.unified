@@ -3,11 +3,18 @@
 # Uses pre-built llama.cpp binaries from the engines image (no compilation).
 # Build the engines image first: see engines/Dockerfile and engines-build.yml.
 #
+# Multi-stage build:
+#   Stage 1 (build-imggen): Build image-gen Python venv in devel image
+#   Stage 2 (runtime):      Slim runtime with only pre-built artifacts
+#
+# vLLM was removed to reduce image size (~5-6 GB savings). All current models
+# work with llama.cpp (including FP16 via GGUF). vLLM can be added back as a
+# separate build variant (openclaw2go:full) if a future model requires it.
+#
 # Configuration at runtime via OPENCLAW_CONFIG env var:
 #   {"llm": true, "audio": true, "image": true}                  — all defaults
 #   {"llm": true, "audio": true}                                   — LLM + audio only
 #   {"llm": "unsloth/GLM-4.7-Flash-GGUF", "contextLength": 200000} — HuggingFace name
-#   {"llm": "zai-org/GLM-4.7-Flash"}                              — FP16 via vLLM
 #   {"profile": "rtx5090-full-stack"}                              — use a preset
 #
 # Model names are case-insensitive. Use HuggingFace repo names or short IDs.
@@ -22,32 +29,15 @@ ARG UBUNTU_VERSION=24.04
 FROM ${ENGINES_IMAGE} AS engines
 
 # ============================================================
-# Runtime image
+# Stage 1: Build image-gen venv
 # ============================================================
-FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS build-imggen
 
-ARG CUDA_VERSION
-ENV DEBIAN_FRONTEND=noninteractive
-
-# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake git curl sudo unzip \
     python3 python3-dev python3-venv python3-pip \
-    openssh-server \
-    && rm -f /etc/ssh/ssh_host_* && mkdir -p /var/run/sshd \
-    && ldconfig /usr/local/cuda-$(echo $CUDA_VERSION | cut -d. -f1,2)/compat/ \
     && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
-# ── Engine: llamacpp-llm ──────────────────────────────────
-# CRITICAL: LLM and Audio libs MUST be separate (incompatible .so files)
-COPY --from=engines /opt/engines/llamacpp-llm/ /opt/engines/llamacpp-llm/
-RUN ldconfig /opt/engines/llamacpp-llm/lib/
-
-# ── Engine: llamacpp-audio ────────────────────────────────
-COPY --from=engines /opt/engines/llamacpp-audio/ /opt/engines/llamacpp-audio/
-
-# ── Engine: image-gen (Python venv) ───────────────────────
 # PyTorch cu128 required for RTX 5090 (Blackwell sm_120), works on all others too
 # Diffusers from git required for Flux2KleinPipeline
 RUN python3 -m venv /opt/engines/image-gen/venv && \
@@ -57,27 +47,32 @@ RUN python3 -m venv /opt/engines/image-gen/venv && \
         sdnq git+https://github.com/huggingface/diffusers.git \
         transformers accelerate safetensors
 
-# ── Engine: vllm (Python venv) ──────────────────────────
-# vLLM pip wheels include pre-built CUDA kernels for all archs (sm_80/89/90/100/120)
-# No compilation needed. transformers from git for latest architecture support.
-# flashinfer-cubin + flashinfer-jit-cache: pre-compiled kernels to avoid 10-30 min
-# JIT compilation on first run (especially on Blackwell sm_120).
-RUN python3 -m venv /opt/engines/vllm/venv && \
-    /opt/engines/vllm/venv/bin/pip install --no-cache-dir \
-        vllm --pre --extra-index-url https://wheels.vllm.ai/nightly && \
-    /opt/engines/vllm/venv/bin/pip install --no-cache-dir \
-        git+https://github.com/huggingface/transformers.git && \
-    FLASHINFER_VER=$(/opt/engines/vllm/venv/bin/python -c "import flashinfer; print(flashinfer.__version__)") && \
-    CUDA_SHORT=$(echo ${CUDA_VERSION} | tr -d '.') && \
-    /opt/engines/vllm/venv/bin/pip install --no-cache-dir \
-        flashinfer-cubin==${FLASHINFER_VER} && \
-    /opt/engines/vllm/venv/bin/pip install --no-cache-dir \
-        flashinfer-jit-cache==${FLASHINFER_VER} \
-        --index-url https://flashinfer.ai/whl/cu${CUDA_SHORT} && \
-    FLASHINFER_CUBIN_DOWNLOAD_THREADS=8 \
-        /opt/engines/vllm/venv/bin/python -m flashinfer --download-cubin && \
-    /opt/engines/vllm/venv/bin/python -c "import vllm; print(f'vLLM {vllm.__version__}')" && \
-    /opt/engines/vllm/venv/bin/flashinfer show-config
+# ============================================================
+# Stage 2: Slim runtime image
+# ============================================================
+FROM nvidia/cuda:${CUDA_VERSION}.1-runtime-ubuntu${UBUNTU_VERSION}
+
+ARG CUDA_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Runtime-only system dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git sudo unzip \
+    python3 python3-venv python3-pip \
+    openssh-server \
+    && rm -f /etc/ssh/ssh_host_* && mkdir -p /var/run/sshd \
+    && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── Engine: llamacpp-llm ──────────────────────────────────
+# CRITICAL: LLM and Audio libs MUST be separate (incompatible .so files)
+COPY --from=engines /opt/engines/llamacpp-llm/ /opt/engines/llamacpp-llm/
+
+# ── Engine: llamacpp-audio ────────────────────────────────
+COPY --from=engines /opt/engines/llamacpp-audio/ /opt/engines/llamacpp-audio/
+
+# ── Engine: image-gen (pre-built venv from Stage 1) ───────
+COPY --from=build-imggen /opt/engines/image-gen/venv/ /opt/engines/image-gen/venv/
 
 # ── Node.js + GitHub CLI ──────────────────────────────────
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
@@ -103,8 +98,7 @@ ENV LLAMA_API_KEY="changeme" \
     OPENCLAW_WEB_PASSWORD="changeme" \
     OPENCLAW_STATE_DIR="/workspace/.openclaw" \
     OPENCLAW_WORKSPACE="/workspace/openclaw" \
-    OPENCLAW_REGISTRY_DIR="/opt/openclaw/registry" \
-    FLASHINFER_JIT_DIR="/workspace/.cache/flashinfer/jit"
+    OPENCLAW_REGISTRY_DIR="/opt/openclaw/registry"
 
 # ── Copy application files ────────────────────────────────
 COPY registry/ /opt/openclaw/registry/
