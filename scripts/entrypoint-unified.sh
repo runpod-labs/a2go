@@ -92,6 +92,19 @@ oc_fatal_gpu() {
 oc_check_cuda
 
 # ============================================================
+# Fetch external model registry (before profile resolution)
+# ============================================================
+echo ""
+echo "Fetching model registry..."
+FETCHED_DIR="$(python3 /opt/openclaw/scripts/fetch-registry.py)" || true
+if [ -n "$FETCHED_DIR" ] && [ -d "$FETCHED_DIR" ]; then
+    export OPENCLAW_REGISTRY_DIR="$FETCHED_DIR"
+    echo "Using registry: $FETCHED_DIR"
+else
+    echo "Using baked-in registry: ${OPENCLAW_REGISTRY_DIR:-/opt/openclaw/registry}"
+fi
+
+# ============================================================
 # Resolve profile from OPENCLAW_CONFIG
 # ============================================================
 echo ""

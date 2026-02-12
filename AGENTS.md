@@ -27,10 +27,11 @@ OPENCLAW_CONFIG examples:
 
 Model names are **case-insensitive**. You can use the HuggingFace repo name (e.g., `unsloth/GLM-4.7-Flash-GGUF`) or the short model ID (e.g., `unsloth/glm47-flash-gguf`). `true` = default model for that type.
 
-### Registry (`registry/`)
+### Registry (`registry/` + External)
 
 JSON-based configuration registry. Models declare their VRAM cost; the system computes fit at runtime.
 
+**Baked-in registry** (fallback, always available):
 ```
 registry/
 ├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, image-gen, vllm)
@@ -49,6 +50,15 @@ registry/
     ├── rtx5090-llm-audio.json      # LLM + Audio only
     └── rtx5090-llm-only.json       # LLM only
 ```
+
+**External registry** (fetched at startup from GitHub Pages):
+- URL: `https://runpod-workers.github.io/openclaw2go-registry/v1/catalog.json`
+- Source repo: `runpod-workers/openclaw2go-registry`
+- Fetched by `scripts/fetch-registry.py` before profile resolution
+- Cached at `/workspace/.openclaw/registry/` (1h TTL, survives pod restarts)
+- Falls back to baked-in registry on fetch failure or offline mode
+- Models/profiles are merged: external overrides baked-in by ID
+- Engines and GPUs always come from baked-in (tied to physical binaries/hardware)
 
 Each model has `"default": true` marking it as the recommended/most-capable choice for its type. LLM models declare `kvCacheMbPer1kTokens` for per-model KV cache VRAM estimation (fallback: 40 MB/1k).
 
@@ -70,10 +80,11 @@ LLM and Audio use separate llama.cpp builds with incompatible shared libraries. 
 
 ### Resolution Flow
 
-1. Parse `OPENCLAW_CONFIG` env var (JSON)
-2. `resolve-profile.py` → detect GPU via `nvidia-smi`, resolve models, compute VRAM fit + context length
-3. Entrypoint downloads models, starts services with correct engine/env/args
-4. Web proxy + OpenClaw gateway start
+1. `fetch-registry.py` → fetch external model catalog (5s timeout, cache 1h)
+2. Parse `OPENCLAW_CONFIG` env var (JSON)
+3. `resolve-profile.py` → detect GPU via `nvidia-smi`, resolve models, compute VRAM fit + context length
+4. Entrypoint downloads models, starts services with correct engine/env/args
+5. Web proxy + OpenClaw gateway start
 
 ## Codebase Structure
 
@@ -91,8 +102,10 @@ openclaw2go/
 │   ├── entrypoint-unified.sh       # Unified entrypoint (primary)
 │   ├── entrypoint-common.sh        # Shared helpers (SSH, auth, skills)
 │   ├── resolve-profile.py          # Config resolution + GPU detection + VRAM budget
+│   ├── fetch-registry.py           # External registry fetcher (startup, stdlib only)
 │   ├── vram-budget.py              # Standalone VRAM budget calculator
-│   ├── openclaw-profiles            # CLI: list models, check fit, manage presets
+│   ├── openclaw2go                  # CLI: models, fit, presets, registry export/status
+│   ├── openclaw-profiles            # CLI: list models, check fit, manage presets (legacy)
 │   ├── openclaw-image-gen           # Image generation CLI
 │   ├── openclaw-image-server        # FLUX.2 persistent server
 │   ├── openclaw-tts                 # Text-to-speech CLI
@@ -144,16 +157,24 @@ docker build -f models/glm47-flash-gguf-llamacpp/Dockerfile -t openclaw-gguf .
 
 ```bash
 # List available models
-openclaw-profiles models
+openclaw2go models
+openclaw2go models --type llm
 
 # Show what fits on this GPU
-openclaw-profiles fit
-
-# Simulate fit on a specific VRAM
-openclaw-profiles fit --vram 81920
+openclaw2go fit
+openclaw2go fit --vram 81920
 
 # List preset profiles
-openclaw-profiles presets
+openclaw2go presets
+openclaw2go presets show rtx5090-full-stack
+
+# Registry tools
+openclaw2go registry status               # Show registry source, cache info, model counts
+openclaw2go registry export               # Export current model config as JSON
+openclaw2go registry export --format issue # Formatted for GitHub Issue submission
+
+# Validate a config
+openclaw2go validate '{"llm":true,"audio":true}'
 
 # VRAM budget calculator
 python3 /opt/openclaw/scripts/vram-budget.py --gpu rtx-5090 --models unsloth/glm47-flash-gguf,liquidai/lfm25-audio
@@ -204,11 +225,13 @@ curl http://localhost:8000/v1/models
 
 | Task | Location |
 |------|----------|
-| Add new model | Create JSON in `registry/models/` with VRAM costs + start args |
+| Add new model (external) | Submit to `runpod-workers/openclaw2go-registry` via issue or PR |
+| Add new model (baked-in) | Create JSON in `registry/models/` with VRAM costs + start args |
 | Add new GPU | Create JSON in `registry/gpus/` |
-| Add preset profile | Create JSON in `registry/profiles/` |
+| Add preset profile | Create JSON in `registry/profiles/` or external registry |
 | Change startup logic | `scripts/entrypoint-unified.sh` or `scripts/entrypoint-common.sh` |
 | Modify config resolution | `scripts/resolve-profile.py` |
+| Modify registry fetch | `scripts/fetch-registry.py` |
 | Add agent skill | Create folder in `skills/` with SKILL.md |
 | Modify OpenClaw workspace | `config/workspace/` |
 | Update CI/CD | `.github/workflows/docker-build.yml` |
@@ -260,6 +283,14 @@ Context length is auto-computed by `resolve-profile.py` based on available VRAM 
 ### VRAM & Context
 
 - **Per-model KV cache rates** — Each LLM model declares `kvCacheMbPer1kTokens` in its JSON config. GLM-4.7 uses 40 MB/1k (dense attention), Nemotron-3-Nano uses 4 MB/1k (only 6 attention layers + Mamba-2 SSM, calibrated on RTX 5090: actual KV=467MB + RS=48MB for 150k ctx = ~3.4 MB/1k, rounded up to 4). The resolver reads this per-model rate and falls back to 40 MB/1k if not specified.
+
+### External Registry
+
+- **External registry is optional** — If fetch fails (network, timeout, invalid JSON), the baked-in `registry/` is used as fallback. Never blocks startup.
+- **Cache at `/workspace/.openclaw/registry/`** — Persisted across pod restarts. TTL-based freshness (default 1h). Stale cache is used over no cache.
+- **Engines and GPUs are never externalized** — `engines.json` maps to physical binaries in the image, `gpus/` is safety-critical. Only models and profiles are fetched.
+- **Security**: Schema validation on fetch, engine whitelist, `downloadDir` path restriction (`/workspace/models/`), no code execution from JSON.
+- **`OPENCLAW_REGISTRY_OFFLINE=true`** — Skip fetch entirely (air-gapped environments).
 
 ### CI/CD
 

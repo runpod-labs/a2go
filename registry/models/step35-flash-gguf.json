@@ -12,9 +12,9 @@
   "servedAs": "step-3.5-flash",
   "vram": { "model": 69600, "overhead": 2000 },
   "kvCacheMbPer1kTokens": 10,
-  "defaults": { "contextLength": 8192, "port": 8000 },
+  "defaults": { "contextLength": 32768, "port": 8000 },
   "startDefaults": { "gpuLayers": "999", "parallel": "1" },
-  "extraStartArgs": ["-fa", "on"],
+  "extraStartArgs": ["-fa", "on", "--chat-template-file", "/opt/openclaw/templates/step35-flash.jinja"],
   "provider": { "name": "local-llamacpp", "api": "openai-completions" },
   "default": false,
   "status": "experimental"
