@@ -54,7 +54,7 @@ registry/
 **External registry** (fetched at startup from GitHub Pages):
 - URL: `https://runpod-workers.github.io/openclaw2go-registry/v1/catalog.json`
 - Source repo: `runpod-workers/openclaw2go-registry`
-- Fetched by `scripts/fetch-registry.py` before profile resolution
+- Fetched by `openclaw2go registry fetch` before profile resolution
 - Cached at `/workspace/.openclaw/registry/` (1h TTL, survives pod restarts)
 - Falls back to baked-in registry on fetch failure or offline mode
 - Models/profiles are merged: external overrides baked-in by ID
@@ -80,7 +80,7 @@ LLM and Audio use separate llama.cpp builds with incompatible shared libraries. 
 
 ### Resolution Flow
 
-1. `fetch-registry.py` → fetch external model catalog (5s timeout, cache 1h)
+1. `openclaw2go registry fetch` → fetch external model catalog (5s timeout, cache 1h)
 2. Parse `OPENCLAW_CONFIG` env var (JSON)
 3. `resolve-profile.py` → detect GPU via `nvidia-smi`, resolve models, compute VRAM fit + context length
 4. Entrypoint downloads models, starts services with correct engine/env/args
@@ -102,9 +102,8 @@ openclaw2go/
 │   ├── entrypoint-unified.sh       # Unified entrypoint (primary)
 │   ├── entrypoint-common.sh        # Shared helpers (SSH, auth, skills)
 │   ├── resolve-profile.py          # Config resolution + GPU detection + VRAM budget
-│   ├── fetch-registry.py           # External registry fetcher (startup, stdlib only)
 │   ├── vram-budget.py              # Standalone VRAM budget calculator
-│   ├── openclaw2go                  # CLI: models, fit, presets, registry export/status
+│   ├── openclaw2go                  # CLI: models, fit, presets, registry fetch/export/status
 │   ├── openclaw-profiles            # CLI: list models, check fit, manage presets (legacy)
 │   ├── openclaw-image-gen           # Image generation CLI
 │   ├── openclaw-image-server        # FLUX.2 persistent server
@@ -231,7 +230,7 @@ curl http://localhost:8000/v1/models
 | Add preset profile | Create JSON in `registry/profiles/` or external registry |
 | Change startup logic | `scripts/entrypoint-unified.sh` or `scripts/entrypoint-common.sh` |
 | Modify config resolution | `scripts/resolve-profile.py` |
-| Modify registry fetch | `scripts/fetch-registry.py` |
+| Modify registry fetch | `scripts/openclaw2go` (`registry fetch` subcommand) |
 | Add agent skill | Create folder in `skills/` with SKILL.md |
 | Modify OpenClaw workspace | `config/workspace/` |
 | Update CI/CD | `.github/workflows/docker-build.yml` |

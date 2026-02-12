@@ -96,7 +96,7 @@ oc_check_cuda
 # ============================================================
 echo ""
 echo "Fetching model registry..."
-FETCHED_DIR="$(python3 /opt/openclaw/scripts/fetch-registry.py)" || true
+FETCHED_DIR="$(openclaw2go registry fetch)" || true
 if [ -n "$FETCHED_DIR" ] && [ -d "$FETCHED_DIR" ]; then
     export OPENCLAW_REGISTRY_DIR="$FETCHED_DIR"
     echo "Using registry: $FETCHED_DIR"
