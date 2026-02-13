@@ -4,7 +4,14 @@
   "type": "llm",
   "engine": "llamacpp-glm-dsa",
   "repo": "unsloth/GLM-5-GGUF",
-  "files": ["GLM-5-UD-IQ2_XXS.gguf"],
+  "files": [
+    "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00001-of-00006.gguf",
+    "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00002-of-00006.gguf",
+    "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00003-of-00006.gguf",
+    "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00004-of-00006.gguf",
+    "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00005-of-00006.gguf",
+    "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00006-of-00006.gguf"
+  ],
   "downloadDir": "/workspace/models/GLM-5-GGUF",
   "servedAs": "glm-5-iq2xxs",
   "vram": {
