@@ -66,6 +66,7 @@ Tested configurations for the unified OpenClaw2Go image. Each entry records the 
 | Config | Services | Context | VRAM Used | Status | Date | Notes |
 |--------|----------|---------|-----------|--------|------|-------|
 | `{"llm":"unsloth/glm5-tq1-gguf"}` | LLM (GLM-5 TQ1_0 1-bit) | 202k | 175030 / 183359 MiB | **PASS** | 2026-02-13 | PR #19460 engine, reasoning works, ~27 tok/s, ~8 GB free, max context |
+| `{"llm":"ubergarm/minimax-m25-iq4xs-gguf"}` | LLM (MiniMax-M2.5 IQ4_XS 4-bit) | 196k | 143956 / 183359 MiB | **PASS** | 2026-02-13 | 229B MoE, reasoning+tool calling work, ~109 tok/s, ~38 GB free, KV=130 MB/1k |
 
 ### 2x H200 SXM 282GB (sm_90, Hopper)
 

@@ -1,0 +1,23 @@
+{
+  "id": "ubergarm/minimax-m25-iq4xs-gguf",
+  "name": "MiniMax-M2.5 GGUF IQ4_XS (123GB, 4-split)",
+  "type": "llm",
+  "engine": "llamacpp",
+  "repo": "ubergarm/MiniMax-M2.5-GGUF",
+  "files": [
+    "IQ4_XS/MiniMax-M2.5-IQ4_XS-00001-of-00004.gguf",
+    "IQ4_XS/MiniMax-M2.5-IQ4_XS-00002-of-00004.gguf",
+    "IQ4_XS/MiniMax-M2.5-IQ4_XS-00003-of-00004.gguf",
+    "IQ4_XS/MiniMax-M2.5-IQ4_XS-00004-of-00004.gguf"
+  ],
+  "downloadDir": "/workspace/models/MiniMax-M2.5-GGUF",
+  "servedAs": "minimax-m2.5",
+  "vram": { "model": 123000, "overhead": 2000 },
+  "kvCacheMbPer1kTokens": 130,
+  "defaults": { "contextLength": 196608, "port": 8000 },
+  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
+  "extraStartArgs": ["-fa", "on"],
+  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
+  "default": false,
+  "status": "experimental"
+}
