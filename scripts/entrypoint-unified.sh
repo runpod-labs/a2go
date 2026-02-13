@@ -131,10 +131,6 @@ OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
 OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 OPENCLAW_WEB_PROXY_PORT="${OPENCLAW_WEB_PROXY_PORT:-8080}"
 
-# Ensure flashinfer JIT cache dir exists on workspace volume (for any remaining runtime JIT)
-if [ -d "/workspace" ]; then
-    mkdir -p /workspace/.cache/flashinfer/jit
-fi
 OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
@@ -205,7 +201,7 @@ while IFS='|' read -r idx role model_id engine_id port model_json engine_json ov
     DOWNLOAD_MODE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('downloadMode','files'))")"
 
     if [ "$DOWNLOAD_MODE" = "repo" ]; then
-        # Full repo download for vLLM models
+        # Full repo download (e.g. for models needing config.json)
         if [ -n "$MODEL_DOWNLOAD_DIR" ]; then
             if [ ! -f "$MODEL_DOWNLOAD_DIR/config.json" ]; then
                 echo "Downloading model repo $MODEL_REPO..."
@@ -256,57 +252,7 @@ print('  Done: $f')
     # Start service based on engine type
     case "$role" in
         llm)
-            if [ "$engine_id" = "vllm" ]; then
-                # ── vLLM engine ──
-                DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',65536))")"
-                CTX="${CONTEXT_LENGTH:-$DEFAULT_CTX}"
-
-                GPU_MEM_UTIL="$(echo "$overrides_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('gpuMemoryUtilization','0.92'))")"
-                KV_CACHE_DTYPE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('kvCacheDtype','auto'))")"
-                EXTRA_START_ARGS="$(echo "$model_json" | python3 -c "import sys,json; args=json.load(sys.stdin).get('extraStartArgs',[]); print(' '.join(args))")"
-
-                # Activate vLLM venv
-                source "$ENGINE_VENV/bin/activate"
-
-                # Determine model path (pre-downloaded dir or HF repo name)
-                if [ -n "$MODEL_DOWNLOAD_DIR" ] && [ -d "$MODEL_DOWNLOAD_DIR" ]; then
-                    VLLM_MODEL="$MODEL_DOWNLOAD_DIR"
-                else
-                    VLLM_MODEL="$MODEL_REPO"
-                fi
-
-                echo "Starting vLLM LLM server..."
-                echo "  Model: $VLLM_MODEL"
-                echo "  Context: $CTX tokens, GPU util: $GPU_MEM_UTIL"
-                if [ -n "$EXTRA_START_ARGS" ]; then
-                    echo "  Extra args: $EXTRA_START_ARGS"
-                fi
-
-                VLLM_ARGS=(
-                    serve "$VLLM_MODEL"
-                    --host 0.0.0.0 --port "$port"
-                    --max-model-len "$CTX"
-                    --gpu-memory-utilization "$GPU_MEM_UTIL"
-                    --served-model-name "$MODEL_SERVED_AS"
-                    --api-key "$LLAMA_API_KEY"
-                )
-
-                if [ "$KV_CACHE_DTYPE" != "auto" ]; then
-                    VLLM_ARGS+=(--kv-cache-dtype "$KV_CACHE_DTYPE")
-                fi
-
-                if [ -n "$EXTRA_START_ARGS" ]; then
-                    read -ra EXTRA_ARGS <<< "$EXTRA_START_ARGS"
-                    VLLM_ARGS+=("${EXTRA_ARGS[@]}")
-                fi
-
-                vllm "${VLLM_ARGS[@]}" 2>&1 &
-                echo "$!" > /tmp/oc_llm_pid
-
-                deactivate 2>/dev/null || true
-
-            else
-                # ── llama.cpp engine ──
+            # ── llama.cpp engine ──
                 DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',150000))")"
                 DEFAULT_LAYERS="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('gpuLayers','999'))")"
                 DEFAULT_PARALLEL="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('parallel','1'))")"
@@ -373,7 +319,6 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
                     2>&1 &
 
                 echo "$!" > /tmp/oc_llm_pid
-            fi
 
             # Write provider name from model JSON
             PROVIDER_NAME="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('provider',{}).get('name','local-llamacpp'))")"

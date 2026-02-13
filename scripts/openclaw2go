@@ -43,7 +43,7 @@ FETCH_TIMEOUT = 5  # seconds
 CACHE_DIR = Path(os.environ.get("OPENCLAW_STATE_DIR", "/workspace/.openclaw")) / "registry"
 CACHE_META = CACHE_DIR / ".fetch-meta.json"
 
-ALLOWED_ENGINES = {"llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "ik-llamacpp", "image-gen", "vllm"}
+ALLOWED_ENGINES = {"llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "ik-llamacpp", "image-gen"}
 REQUIRED_MODEL_FIELDS = {"id", "name", "type", "engine", "vram"}
 REQUIRED_PROFILE_FIELDS = {"id", "name", "services"}
 
@@ -122,8 +122,6 @@ def match_gpu(gpu_name, gpu_registry):
 
 
 def compute_max_context(vram_available_mb, llm_model):
-    if llm_model.get("engine") == "vllm":
-        return llm_model.get("defaults", {}).get("contextLength", 65536)
     base_vram = llm_model["vram"]["model"] + llm_model["vram"]["overhead"]
     available_for_kv = vram_available_mb - base_vram
     if available_for_kv <= 0:
@@ -431,18 +429,12 @@ def cmd_fit(args):
         max_ctx = compute_max_context(vram_for_llm, llm)
         base_vram = sum(m["vram"]["model"] + m["vram"]["overhead"] for m in selected.values())
 
-        is_vllm = llm.get("engine") == "vllm"
-
-        if is_vllm:
-            total_vram = base_vram
-            fits = total_vram <= gpu_vram
-        else:
-            default_ctx = llm.get("defaults", {}).get("contextLength", 150000)
-            capped_ctx = min(max_ctx, default_ctx) if max_ctx > 0 else 0
-            llm_kv_rate = llm.get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
-            kv_vram = int((capped_ctx / 1000) * llm_kv_rate) if capped_ctx > 0 else 0
-            total_vram = base_vram + kv_vram
-            fits = total_vram <= gpu_vram
+        default_ctx = llm.get("defaults", {}).get("contextLength", 150000)
+        capped_ctx = min(max_ctx, default_ctx) if max_ctx > 0 else 0
+        llm_kv_rate = llm.get("kvCacheMbPer1kTokens", KV_CACHE_MB_PER_1K_TOKENS)
+        kv_vram = int((capped_ctx / 1000) * llm_kv_rate) if capped_ctx > 0 else 0
+        total_vram = base_vram + kv_vram
+        fits = total_vram <= gpu_vram
 
         marker = "OK" if fits else "NO"
         free = gpu_vram - total_vram
@@ -456,9 +448,7 @@ def cmd_fit(args):
                 model_parts.append(f"{role}: {m['name']} ({v:,} MB)")
         for part in model_parts:
             print(f"    {part}")
-        if fits and is_vllm:
-            print(f"    Context: {max_ctx:,} tokens (vLLM auto KV)  |  Model VRAM: {total_vram:,} MB, {free:,} MB free")
-        elif fits and max_ctx > 0:
+        if fits and max_ctx > 0:
             print(f"    Max context: {max_ctx:,} tokens  |  Default context ({capped_ctx:,}): {total_vram:,} MB used, {free:,} MB free")
         elif not fits:
             print(f"    Needs {total_vram:,} MB, have {gpu_vram:,} MB ({total_vram - gpu_vram:,} MB over)")

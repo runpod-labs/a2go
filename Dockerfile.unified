@@ -7,10 +7,6 @@
 #   Stage 1 (build-imggen): Build image-gen Python venv in devel image
 #   Stage 2 (runtime):      Slim runtime with only pre-built artifacts
 #
-# vLLM was removed to reduce image size (~5-6 GB savings). All current models
-# work with llama.cpp (including FP16 via GGUF). vLLM can be added back as a
-# separate build variant (openclaw2go:full) if a future model requires it.
-#
 # Configuration at runtime via OPENCLAW_CONFIG env var:
 #   {"llm": true, "audio": true, "image": true}                  — all defaults
 #   {"llm": true, "audio": true}                                   — LLM + audio only
@@ -45,7 +41,14 @@ RUN python3 -m venv /opt/engines/image-gen/venv && \
         torch --index-url https://download.pytorch.org/whl/cu128 && \
     /opt/engines/image-gen/venv/bin/pip install --no-cache-dir \
         sdnq git+https://github.com/huggingface/diffusers.git \
-        transformers accelerate safetensors
+        transformers accelerate safetensors && \
+    find /opt/engines/image-gen/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \
+    find /opt/engines/image-gen/venv -type f -name "*.pyc" -delete 2>/dev/null; \
+    rm -rf /opt/engines/image-gen/venv/lib/python*/site-packages/torch/test \
+           /opt/engines/image-gen/venv/lib/python*/site-packages/torch/include \
+           /opt/engines/image-gen/venv/lib/python*/site-packages/torch/share \
+           /opt/engines/image-gen/venv/lib/python*/site-packages/caffe2 \
+    ; true
 
 # ============================================================
 # Stage 2: Slim runtime image
@@ -57,8 +60,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Runtime-only system dependencies (no build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git sudo unzip libgomp1 \
-    python3 python3-venv python3-pip \
+    curl git libgomp1 \
+    python3 python3-pip \
     openssh-server \
     && rm -f /etc/ssh/ssh_host_* && mkdir -p /var/run/sshd \
     && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
@@ -100,8 +103,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 RUN python3 -m pip install --no-cache-dir huggingface_hub
 
 # ── OpenClaw + Claude Code ────────────────────────────────
-RUN npm install -g --prefer-offline @anthropic-ai/claude-code openclaw@latest && \
-    npm cache clean --force
+RUN npm install -g --prefer-offline --omit=dev @anthropic-ai/claude-code openclaw@latest && \
+    npm cache clean --force && \
+    find /usr/lib/node_modules -name "README*" -o -name "CHANGELOG*" -o -name "LICENSE*" -o -name "*.md" | xargs rm -f 2>/dev/null; true
 
 WORKDIR /
 

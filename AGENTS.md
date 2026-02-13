@@ -41,7 +41,7 @@ JSON-based configuration registry. Models declare their VRAM cost; the system co
 **Baked-in registry** (fallback, always available):
 ```
 registry/
-├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, ik-llamacpp, image-gen, vllm)
+├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, llamacpp-glm-dsa, ik-llamacpp, image-gen)
 ├── models/                         # Model specs (VRAM, repo, start args, KV cache rates)
 │   ├── glm47-flash-gguf.json       # LLM: GLM-4.7-Flash Q4_K_M (default: true, kvCache: 40 MB/1k)
 │   ├── nemotron3-nano-gguf.json    # LLM: Nemotron-3-Nano-30B MoE (kvCache: 4 MB/1k)
@@ -102,14 +102,14 @@ LLM and Audio use separate llama.cpp builds with incompatible shared libraries. 
 
 ```
 openclaw2go/
-├── Dockerfile.unified              # Multi-stage build: llama.cpp + audio + image-gen (no vLLM)
+├── Dockerfile.unified              # Multi-stage build: llama.cpp + audio + image-gen
 ├── registry/                       # Configuration registry (models, GPUs, presets)
 ├── models/                         # Legacy per-GPU Dockerfiles
 │   ├── glm47-flash-gguf-llamacpp/  # RTX 5090 - llama.cpp (legacy)
-│   ├── glm47-flash-awq-4bit/       # A100 80GB - vLLM (disabled)
-│   ├── glm47-flash-fp16/           # H100/A100 - vLLM (disabled)
-│   ├── glm47-flash-nvfp4-5090/     # RTX 5090 - vLLM (disabled)
-│   └── glm47-reap-w4a16/           # B200 - vLLM (disabled)
+│   ├── glm47-flash-awq-4bit/       # A100 80GB (legacy, disabled)
+│   ├── glm47-flash-fp16/           # H100/A100 (legacy, disabled)
+│   ├── glm47-flash-nvfp4-5090/     # RTX 5090 (legacy, disabled)
+│   └── glm47-reap-w4a16/           # B200 (legacy, disabled)
 ├── scripts/
 │   ├── entrypoint-unified.sh       # Unified entrypoint (primary)
 │   ├── entrypoint-common.sh        # Shared helpers (SSH, auth, skills)
@@ -136,7 +136,7 @@ openclaw2go/
 
 - **Unified image with multi-arch CUDA** — `DCMAKE_CUDA_ARCHITECTURES="80;89;90;120"` for A100/4090/L40/H100/5090
 - **Model-centric config** — users pick models (e.g., `unsloth/glm47-flash-gguf`, `unsloth/nemotron3-nano-gguf`), system computes VRAM fit + context length using per-model KV cache rates
-- **vLLM removed from default image** — All current models work with llama.cpp (including FP16 via GGUF F16 conversion). vLLM added ~5-6 GB to image size for models that duplicated existing GGUF configs. The vLLM code path in the entrypoint and the 3 vLLM model configs (`*-vllm.json`) remain in the repo but are unused. vLLM can be added back as a separate build variant (`openclaw2go:full`) if a future model architecture requires it (e.g., one that llama.cpp doesn't support yet). llama.cpp handles concurrent sub-agent requests via `--parallel`.
+- **All models via llama.cpp** — All current models work with llama.cpp (including FP16 via GGUF). llama.cpp handles concurrent sub-agent requests via `--parallel`.
 - **PyTorch cu128** — required for RTX 5090 Blackwell sm_120, works on all other GPUs too
 - **Diffusers from git** — stable release lacks `Flux2KleinPipeline`
 - **LLM and Audio binaries MUST be separate** — incompatible .so files. LLM libs in `/opt/engines/llamacpp-llm/lib/`, Audio in `/opt/engines/llamacpp-audio/lib/`. Mixing them breaks LLM server.
