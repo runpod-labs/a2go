@@ -61,6 +61,13 @@ Tested configurations for the unified OpenClaw2Go image. Each entry records the 
 |--------|----------|---------|-----------|--------|------|-------|
 | `{"llm":true,"audio":true,"image":true}` | LLM+Audio+Image | auto (~150k) | ~30 GB | PENDING | — | Needs sm_90 in engines build |
 
+### B200 180GB (sm_100, Blackwell)
+
+| Config | Services | Context | VRAM Used | Status | Date | Notes |
+|--------|----------|---------|-----------|--------|------|-------|
+| `{"llm":"unsloth/glm5-tq1-gguf"}` | LLM (GLM-5 TQ1_0 1-bit) | 32k | ~179 GB | PENDING | — | Requires llama.cpp PR #19460, indexer not supported, quality suboptimal |
+| `{"llm":"unsloth/glm5-iq2xxs-gguf"}` | LLM (GLM-5 IQ2_XXS 2-bit) | 8k | ~243 GB | SKIP | — | EXCEEDS B200 capacity (needs >240 GB), requires larger hardware |
+
 ### Removed Configurations (vLLM)
 
 vLLM was removed from the default image in Feb 2025 to reduce image size (~5-6 GB savings). All models work via llama.cpp GGUF. The following configs were previously verified but are **no longer available** in the current image:

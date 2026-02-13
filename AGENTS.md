@@ -21,6 +21,7 @@ OPENCLAW_CONFIG examples:
   {"llm": "unsloth/Qwen3-Coder-Next-GGUF"}                                      — Qwen3 Coder Next 80B MoE (L40/A100)
   {"llm": "ubergarm/Step-3.5-Flash-GGUF"}                                       — Step 3.5 Flash 197B MoE (A100, IQ2_KS)
   {"llm": "TeichAI/GLM-4.7-Flash-Claude-Opus-4.5-High-Reasoning-Distill-GGUF"} — GLM-4.7 Claude distill
+  {"llm": "unsloth/glm5-tq1-gguf"}                                               — GLM-5-754B TQ1_0 1-bit (B200 only, experimental)
   {"profile": "rtx5090-full-stack"}                                               — use a preset (optional shorthand)
   {}                                                                               — auto-detect GPU, use all defaults that fit
 ```

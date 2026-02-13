@@ -1,107 +1,149 @@
-# OpenClaw2Go on Runpod
+# OpenClaw2Go
 
-OpenClaw2Go is a self-contained stack that includes an LLM plus image/audio services and the OpenClaw UI, so you can run a fully self-contained assistant on Runpod (or any GPU host). Each model variant has its own folder under `models/` with a dedicated README and startup script.
+A self-contained AI assistant stack for GPU pods. One Docker image, any GPU — configure at runtime what you need.
 
-## Primary release (published)
+**Image**: `runpod/openclaw2go:latest` (~7 GB compressed)
 
-| Image tag | LLM | Audio | Image | GPU target | Context | Status |
-|----------|-----|-------|-------|------------|---------|--------|
-| `openclaw2go-glm4.7-flash-gguf-flux.2-klein-4b-sdnq-4bit-dynamic-lfm2.5-audio-1.5b-gguf` | [unsloth/GLM-4.7-Flash-GGUF](https://huggingface.co/unsloth/GLM-4.7-Flash-GGUF) (Q4_K_M) | [LiquidAI/LFM2.5-Audio-1.5B-GGUF](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF) | [Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic](https://huggingface.co/Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic) | RTX 5090 32GB | 150k (default) | Published |
+## What's inside
 
-## Testing images (not published)
+| Component | Details |
+|-----------|---------|
+| LLM | [GLM-4.7-Flash](https://huggingface.co/unsloth/GLM-4.7-Flash-GGUF) Q4_K_M via llama.cpp (default) |
+| Audio | [LFM2.5-Audio-1.5B](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF) — TTS + STT |
+| Image | [FLUX.2 Klein 4B](https://huggingface.co/Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic) — SDNQ 4-bit |
+| UI | [OpenClaw](https://github.com/openclaw/openclaw) gateway + control UI |
+| Coding | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI |
 
-| Image tag | Backend | LLM weights | GPU target | Status | Notes |
-|----------|---------|-------------|------------|--------|-------|
-| `openclaw2go-glm4.7-flash-awq-4bit` | vLLM | [cyankiwi/GLM-4.7-Flash-AWQ-4bit](https://huggingface.co/cyankiwi/GLM-4.7-Flash-AWQ-4bit) | A100 80GB | Testing | Best value on A100; long context (LLM-only) |
-| `openclaw2go-glm4.7-flash-fp16` | vLLM | [zai-org/GLM-4.7-Flash](https://huggingface.co/zai-org/GLM-4.7-Flash) | H100/A100 80GB | Testing | Full precision (LLM-only) |
-| `openclaw2go-glm4.7-flash-nvfp4-5090` | vLLM | [GadflyII/GLM-4.7-Flash-NVFP4](https://huggingface.co/GadflyII/GLM-4.7-Flash-NVFP4) | RTX 5090 32GB | Not working | vLLM MLA issues on Blackwell (LLM-only) |
-| `openclaw2go-glm4.7-reap-w4a16` | vLLM | [0xSero/GLM-4.7-REAP-40-W4A16](https://huggingface.co/0xSero/GLM-4.7-REAP-40-W4A16) | B200 180GB | Testing | High-end B200 (LLM-only) |
-| `openclaw2go-vllm` | vLLM | [Qwen/Qwen2.5-Coder-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct) | 16GB+ | Testing | Base image (LLM-only) |
+All models download on first start and persist on the volume.
 
-Notes:
-- Only the primary image is published right now.
-- Context values are defaults; some variants allow tuning via `MAX_MODEL_LEN`.
-- NVFP4 status details live in `models/glm47-flash-nvfp4-5090/ISSUES.md`.
+## Quick start
 
-## Deployment on Runpod
+1. Create a pod on [Runpod](https://runpod.io) (or any GPU host)
+2. Image: `runpod/openclaw2go:latest`
+3. Volume: 100 GB at `/workspace`
+4. Ports: `8000/http`, `8080/http`, `18789/http`, `22/tcp`
+5. Set env vars:
+   - `OPENCLAW_CONFIG` — what to run (see below)
+   - `OPENCLAW_WEB_PASSWORD` — web UI token
+   - `LLAMA_API_KEY` — LLM API key (default: `changeme`)
 
-1. **Pick an image** from the table above.
-2. **Create a Runpod pod**:
-   - Volume: 30GB minimum at `/workspace` (increase for vLLM models)
-   - Ports: `8000/http, 8080/http, 18789/http, 22/tcp`
-3. **Set environment variables**:
-   - `VLLM_API_KEY` (for vLLM variants)
-   - `OPENCLAW_WEB_PASSWORD` (web UI token)
-   - `HF_TOKEN` (optional, faster downloads)
-   - `TELEGRAM_BOT_TOKEN` (optional)
-   - For GGUF + llama.cpp: use `LLAMA_API_KEY` instead of `VLLM_API_KEY`
-4. **Open the Control UI** (use your Runpod pod ID):
-   - `https://<pod-id>-18789.proxy.runpod.net/?token=<OPENCLAW_WEB_PASSWORD>`
-5. **Open the Media UI (proxy)**:
-   - `https://<pod-id>-8080.proxy.runpod.net`
-6. **Approve device pairing** (first time only):
-   - When you see “pairing required”, SSH into the pod and run:
-     - `OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw devices list --json`
-     - `OPENCLAW_STATE_DIR=/workspace/.openclaw openclaw devices approve <requestId>`
-   - Pairing requests expire quickly; refresh the Web UI if it disappears.
-7. **Health check**:
+## Configuration
+
+Everything is controlled via the `OPENCLAW_CONFIG` env var (JSON):
+
 ```bash
-curl http://localhost:8000/health
+# Full stack — LLM + Audio + Image (default models)
+OPENCLAW_CONFIG='{"llm":true,"audio":true,"image":true}'
+
+# LLM + Audio only (more VRAM for context)
+OPENCLAW_CONFIG='{"llm":true,"audio":true}'
+
+# Specific model
+OPENCLAW_CONFIG='{"llm":"unsloth/Nemotron-3-Nano-30B-A3B-GGUF"}'
+
+# Specific model + context override
+OPENCLAW_CONFIG='{"llm":"unsloth/GLM-4.7-Flash-GGUF","contextLength":200000}'
+
+# Auto-detect GPU, use defaults that fit
+OPENCLAW_CONFIG='{}'
 ```
 
-## Folder map
+Model names are case-insensitive. Use HuggingFace repo names or short IDs.
 
-| Folder | Purpose |
-|--------|---------|
-| `models/` | Model-specific Dockerfiles + entrypoints |
-| `scripts/` | Base entrypoint + setup helpers |
-| `templates/` | Runpod template JSONs |
-| `config/` | OpenClaw config templates |
+## Available models
 
-## Port map (published image)
+| Model | Type | Size | Best for |
+|-------|------|------|----------|
+| [GLM-4.7-Flash](https://huggingface.co/unsloth/GLM-4.7-Flash-GGUF) Q4_K_M | LLM (default) | ~17 GB | General purpose, tool calling |
+| [Nemotron-3-Nano](https://huggingface.co/unsloth/Nemotron-3-Nano-30B-A3B-GGUF) Q4_K_XL | LLM | ~22 GB | MoE, reasoning + content |
+| [GPT-OSS-20B](https://huggingface.co/unsloth/gpt-oss-20b-GGUF) Q8_0 | LLM | ~13 GB | Fits any GPU |
+| [GLM-4.7 Claude Distill](https://huggingface.co/TeichAI/GLM-4.7-Flash-Claude-Opus-4.5-High-Reasoning-Distill-GGUF) Q4_K_M | LLM | ~17 GB | Reasoning with `reasoning_content` |
+| [Qwen3-Coder-Next](https://huggingface.co/unsloth/Qwen3-Coder-Next-GGUF) Q3_K_M | LLM | ~38 GB | 80B MoE, coding (L40/A100) |
+| [Step-3.5-Flash](https://huggingface.co/bartowski/stepfun-ai_Step-3.5-Flash-GGUF) Q2_K | LLM | ~67 GB | 197B MoE, reasoning (A100 80GB) |
+| [LFM2.5-Audio-1.5B](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF) | Audio (default) | ~2 GB | TTS + STT |
+| [FLUX.2 Klein 4B](https://huggingface.co/Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic) SDNQ | Image (default) | ~4 GB | Image generation |
 
-- `8000/http` — LLM API (OpenAI-compatible)
-- `8080/http` — Media proxy + UI (image/audio links)
-- `18789/http` — OpenClaw Control UI
-- `22/tcp` — SSH
+New models can be added via the [external registry](https://github.com/runpod-workers/openclaw2go-registry) without rebuilding the image.
 
-Note: audio/image servers run on `8001/8002` **internally only** and should not be exposed.
+## Verified GPU configs
 
-## Image naming + tags
+| GPU | Config | Status |
+|-----|--------|--------|
+| RTX 5090 (32 GB) | Full stack (LLM + Audio + Image, 150k ctx) | PASS |
+| RTX 5090 | GLM-4.7 Claude Distill | PASS |
+| RTX 5090 | Nemotron-3-Nano | PASS |
+| RTX 5090 | GPT-OSS-20B | PASS |
+| RTX 4090 (24 GB) | Auto-detect (LLM + Audio, 16.6k ctx) | PASS |
+| RTX 4090 | GPT-OSS-20B (131k ctx) | PASS |
+| L40 (48 GB) | Full stack (LLM + Audio + Image, 150k ctx) | PASS |
+| L40 | Qwen3-Coder-Next (32k ctx) | PASS |
+| A100 80 GB | Step-3.5-Flash (32k ctx) | PASS |
 
-We publish one image per variant under:
+See [`tests/VERIFIED-CONFIGS.md`](tests/VERIFIED-CONFIGS.md) for full details.
 
-- `openclaw2go-<llm>-<variant>-flux.2-klein-4b-sdnq-4bit-dynamic-lfm2.5-audio-1.5b-gguf` (full stack)
-- `openclaw2go-<llm>-<variant>` (LLM-only testing images)
+## Ports
 
-Dots are valid in Docker repository names and tags, so we keep model versions like `glm4.7`, `flux.2`, and `lfm2.5`.
+| Port | Service |
+|------|---------|
+| 8000/http | LLM API (OpenAI-compatible) |
+| 8080/http | Media proxy + web UI |
+| 18789/http | OpenClaw control UI + chat |
+| 22/tcp | SSH |
 
-Current published image:
+Audio (8001) and Image (8002) are internal only.
 
-- `openclaw2go-glm4.7-flash-gguf-flux.2-klein-4b-sdnq-4bit-dynamic-lfm2.5-audio-1.5b-gguf`
+## Access the UI
 
-Tags:
+- **Control UI**: `https://<pod-id>-18789.proxy.runpod.net/?token=<OPENCLAW_WEB_PASSWORD>`
+- **Media UI**: `https://<pod-id>-8080.proxy.runpod.net`
 
-- `:latest` for main branch
-- `:<branch>` for branch builds
-- `:vX.Y.Z` for version tags
+First time: approve device pairing when prompted (SSH into pod, run `openclaw devices list` then `openclaw devices approve <requestId>`).
 
-## Build + release
+## Architecture
 
-Images build on:
-- Pull requests -> tag = branch name (slashes -> `-`)
-- Push to `main` -> `:latest`
-- Git tag (e.g., `v1.0.0`) -> `:v1.0.0` + `:latest`
+```
+OPENCLAW_CONFIG (env var)
+        |
+        v
+  resolve-profile.py  -->  detect GPU (nvidia-smi)
+        |                   compute VRAM budget
+        v                   auto-adjust context length
+  entrypoint-unified.sh
+        |
+        +-- llama-server (LLM)         port 8000
+        +-- llama-audio-server (Audio)  port 8001 (internal)
+        +-- openclaw-image-server       port 8002 (internal)
+        +-- openclaw-web-proxy          port 8080
+        +-- openclaw gateway            port 18789
+```
 
-## Known issues
+All engines are llama.cpp. LLM and Audio use separate builds with isolated shared libraries (incompatible `.so` files).
 
-- **NVFP4 on RTX 5090** is not working in vLLM due to MLA attention shape issues and missing Blackwell kernel support. See `models/glm47-flash-nvfp4-5090/ISSUES.md`.
-- **GGUF is not supported in vLLM** (use llama.cpp image).
-- **Container disk doesn't persist**; only `/workspace` survives restarts.
+## Build
+
+```bash
+# Engines (llama.cpp binaries) — only needed when updating llama.cpp
+docker build -f engines/Dockerfile -t openclaw2go-engines .
+
+# Runtime image
+docker build -f Dockerfile.unified -t openclaw2go .
+```
+
+## CLI tools (inside container)
+
+```bash
+openclaw2go models                    # List available models
+openclaw2go fit                       # Show what fits on this GPU
+openclaw2go presets                   # List preset profiles
+openclaw2go registry status           # Registry source + cache info
+openclaw-image-gen --prompt "A cat"   # Generate image
+openclaw-tts "Hello world"            # Text to speech
+openclaw-stt audio.wav                # Speech to text
+```
 
 ## Resources
 
-- OpenClaw2Go: https://github.com/runpod-workers/openclaw2go
-- OpenClaw: https://github.com/openclaw/openclaw
-- vLLM: https://docs.vllm.ai/
-- Runpod: https://docs.runpod.io/
+- [OpenClaw2Go](https://github.com/runpod-workers/openclaw2go) — this repo
+- [OpenClaw2Go Registry](https://github.com/runpod-workers/openclaw2go-registry) — external model registry
+- [OpenClaw](https://github.com/openclaw/openclaw) — the agent framework
+- [Runpod](https://runpod.io) — GPU cloud

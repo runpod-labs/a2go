@@ -64,7 +64,31 @@ RUN git clone https://github.com/ggml-org/llama.cpp.git && \
     cmake --build build --target llama-liquid-audio-cli llama-liquid-audio-server -j$(nproc)
 
 # ============================================================
-# Stage 3: Minimal output image with just binaries + libs
+# Stage 3: Build llama.cpp GLM DSA (PR #19460 - experimental)
+# ============================================================
+FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS llamacpp-glm-dsa
+
+ARG CUDA_ARCHITECTURES
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone https://github.com/ggml-org/llama.cpp.git && \
+    cd llama.cpp && \
+    git fetch origin pull/19460/head:glm-dsa && \
+    git checkout glm-dsa && \
+    cmake -B build \
+        -DGGML_CUDA=ON \
+        -DGGML_NATIVE=OFF \
+        -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
+    cmake --build build --config Release -j$(nproc)
+
+# ============================================================
+# Stage 4: Minimal output image with just binaries + libs
 # ============================================================
 FROM ubuntu:24.04
 
@@ -78,7 +102,12 @@ COPY --from=llamacpp-audio /build/llama.cpp/build/bin/llama-liquid-audio-cli /op
 COPY --from=llamacpp-audio /build/llama.cpp/build/bin/llama-liquid-audio-server /opt/engines/llamacpp-audio/bin/
 COPY --from=llamacpp-audio /build/llama.cpp/build/bin/*.so* /opt/engines/llamacpp-audio/lib/
 
-RUN chmod +x /opt/engines/llamacpp-llm/bin/* /opt/engines/llamacpp-audio/bin/*
+# GLM DSA engine (PR #19460 - experimental)
+COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/llama-server /opt/engines/llamacpp-glm-dsa/bin/
+COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/llama-cli /opt/engines/llamacpp-glm-dsa/bin/
+COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/*.so* /opt/engines/llamacpp-glm-dsa/lib/
+
+RUN chmod +x /opt/engines/llamacpp-llm/bin/* /opt/engines/llamacpp-audio/bin/* /opt/engines/llamacpp-glm-dsa/bin/*
 
 # Metadata
 LABEL org.opencontainers.image.description="Pre-built llama.cpp engines for OpenClaw2Go"

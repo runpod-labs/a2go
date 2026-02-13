@@ -1,0 +1,41 @@
+{
+  "id": "unsloth/glm5-iq2xxs-gguf",
+  "name": "GLM-5-754B IQ2_XXS (2-bit, 241GB) - EXCEEDS B200",
+  "type": "llm",
+  "engine": "llamacpp-glm-dsa",
+  "repo": "unsloth/GLM-5-GGUF",
+  "files": ["GLM-5-UD-IQ2_XXS.gguf"],
+  "downloadDir": "/workspace/models/GLM-5-GGUF",
+  "servedAs": "glm-5-iq2xxs",
+  "vram": {
+    "model": 241000,
+    "overhead": 2000
+  },
+  "kvCacheMbPer1kTokens": 10,
+  "defaults": {
+    "contextLength": 8192,
+    "port": 8000
+  },
+  "startArgs": [
+    "-m", "{modelPath}/{files[0]}",
+    "--host", "0.0.0.0",
+    "--port", "{port}",
+    "-ngl", "{gpuLayers}",
+    "--parallel", "{parallel}",
+    "-c", "{contextLength}",
+    "--jinja",
+    "-ctk", "q8_0",
+    "-ctv", "q8_0",
+    "--api-key", "{apiKey}"
+  ],
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "default": false,
+  "status": "experimental"
+}

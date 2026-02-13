@@ -26,5 +26,12 @@
     "binary": "vllm",
     "venvPath": "/opt/engines/vllm/venv",
     "type": "python-venv"
+  },
+  "llamacpp-glm-dsa": {
+    "id": "llamacpp-glm-dsa",
+    "name": "llama.cpp (GLM DSA - PR #19460)",
+    "binary": "/opt/engines/llamacpp-glm-dsa/bin/llama-server",
+    "libPath": "/opt/engines/llamacpp-glm-dsa/lib",
+    "type": "native"
   }
 }

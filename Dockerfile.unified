@@ -73,6 +73,11 @@ RUN ldconfig /opt/engines/llamacpp-llm/lib/
 # Audio libs are NOT registered with ldconfig — entrypoint sets LD_LIBRARY_PATH per-engine
 COPY --from=engines /opt/engines/llamacpp-audio/ /opt/engines/llamacpp-audio/
 
+# ── Engine: llamacpp-glm-dsa ──────────────────────────────
+# GLM-5 MoE DSA support (PR #19460 - experimental)
+COPY --from=engines /opt/engines/llamacpp-glm-dsa/ /opt/engines/llamacpp-glm-dsa/
+RUN ldconfig /opt/engines/llamacpp-glm-dsa/lib/
+
 # ── Engine: image-gen (pre-built venv from Stage 1) ───────
 COPY --from=build-imggen /opt/engines/image-gen/venv/ /opt/engines/image-gen/venv/
 

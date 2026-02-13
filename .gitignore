@@ -28,3 +28,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Local clones / working dirs
+openclaw2go-registry/
