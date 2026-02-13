@@ -342,7 +342,6 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
                     -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
                     --host 0.0.0.0
                     --port "$port"
-                    -ngl "$LAYERS"
                     --parallel "$PARALLEL"
                     -c "$CTX"
                     --jinja
@@ -350,6 +349,11 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
                     -ctv q8_0
                     --api-key "$LLAMA_API_KEY"
                 )
+
+                # Add -ngl unless "auto" (let --fit determine GPU layers)
+                if [ "$LAYERS" != "auto" ]; then
+                    LLM_ARGS+=(-ngl "$LAYERS")
+                fi
 
                 # Append extra start args if present
                 if [ -n "$EXTRA_START_ARGS" ]; then

@@ -16,7 +16,7 @@
   "vram": { "model": 240000, "overhead": 2000 },
   "kvCacheMbPer1kTokens": 10,
   "defaults": { "contextLength": 98304, "port": 8000 },
-  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
+  "startDefaults": { "gpuLayers": "auto", "parallel": "1" },
   "extraStartArgs": ["--fit", "on", "-fa", "on", "--kv-unified"],
   "extraEnvVars": { "LLAMA_SET_ROWS": "1" },
   "provider": { "name": "local-llamacpp", "api": "openai-completions" },
