@@ -24,6 +24,8 @@ OPENCLAW_CONFIG examples:
   {"llm": "unsloth/glm5-tq1-gguf"}                                               — GLM-5-754B TQ1_0 1-bit (B200, experimental)
   {"llm": "unsloth/glm5-iq2xxs-gguf"}                                             — GLM-5-754B IQ2_XXS 2-bit (2x H200, experimental)
   {"llm": "ubergarm/minimax-m25-iq4xs-gguf"}                                      — MiniMax M2.5 229B MoE IQ4_XS (B200, experimental)
+  {"llm": "ubergarm/minimax-m25-iq2ks-gguf"}                                      — MiniMax M2.5 IQ2_KS 2-bit (A100/H100, ik_llama.cpp, experimental)
+  {"llm": "ubergarm/minimax-m25-iq3ks-gguf"}                                      — MiniMax M2.5 smol-IQ3_KS 3-bit (B200, ik_llama.cpp, experimental)
   {"llm": "unsloth/kimi-k25-tq1-gguf"}                                             — Kimi K2.5 1T MoE TQ1_0 1-bit (B200 w/ offload, experimental)
   {"llm": "unsloth/kimi-k25-q2kxl-gguf"}                                           — Kimi K2.5 1T MoE Q2_K_XL 2-bit (2x H200 w/ offload, experimental)
   {"profile": "rtx5090-full-stack"}                                               — use a preset (optional shorthand)
@@ -39,7 +41,7 @@ JSON-based configuration registry. Models declare their VRAM cost; the system co
 **Baked-in registry** (fallback, always available):
 ```
 registry/
-├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, image-gen, vllm)
+├── engines.json                    # Engine definitions (llamacpp, llamacpp-audio, ik-llamacpp, image-gen, vllm)
 ├── models/                         # Model specs (VRAM, repo, start args, KV cache rates)
 │   ├── glm47-flash-gguf.json       # LLM: GLM-4.7-Flash Q4_K_M (default: true, kvCache: 40 MB/1k)
 │   ├── nemotron3-nano-gguf.json    # LLM: Nemotron-3-Nano-30B MoE (kvCache: 4 MB/1k)
@@ -80,6 +82,9 @@ LLM and Audio use separate llama.cpp builds with incompatible shared libraries. 
 │   └── lib/*.so
 ├── llamacpp-audio/     # Audio: PR #18641 branch
 │   ├── bin/llama-liquid-audio-server
+│   └── lib/*.so
+├── ik-llamacpp/        # LLM: ik_llama.cpp fork (custom quants: IQ2_KS, smol-IQ3_KS)
+│   ├── bin/llama-server
 │   └── lib/*.so
 └── image-gen/          # Image: Python venv (torch cu128 + diffusers + sdnq)
     └── venv/

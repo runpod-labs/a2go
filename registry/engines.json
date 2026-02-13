@@ -33,5 +33,12 @@
     "binary": "/opt/engines/llamacpp-glm-dsa/bin/llama-server",
     "libPath": "/opt/engines/llamacpp-glm-dsa/lib",
     "type": "native"
+  },
+  "ik-llamacpp": {
+    "id": "ik-llamacpp",
+    "name": "ik_llama.cpp (custom quants)",
+    "binary": "/opt/engines/ik-llamacpp/bin/llama-server",
+    "libPath": "/opt/engines/ik-llamacpp/lib",
+    "type": "native"
   }
 }

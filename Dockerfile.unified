@@ -78,6 +78,11 @@ COPY --from=engines /opt/engines/llamacpp-audio/ /opt/engines/llamacpp-audio/
 # Libs NOT registered with ldconfig — entrypoint sets LD_LIBRARY_PATH per-engine
 COPY --from=engines /opt/engines/llamacpp-glm-dsa/ /opt/engines/llamacpp-glm-dsa/
 
+# ── Engine: ik-llamacpp ─────────────────────────────────────
+# ik_llama.cpp fork (custom quants: IQ2_KS, smol-IQ3_KS, etc.)
+# Libs NOT registered with ldconfig — entrypoint sets LD_LIBRARY_PATH per-engine
+COPY --from=engines /opt/engines/ik-llamacpp/ /opt/engines/ik-llamacpp/
+
 # ── Engine: image-gen (pre-built venv from Stage 1) ───────
 COPY --from=build-imggen /opt/engines/image-gen/venv/ /opt/engines/image-gen/venv/
 

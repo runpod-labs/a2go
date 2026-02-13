@@ -88,7 +88,29 @@ RUN git clone https://github.com/ggml-org/llama.cpp.git && \
     cmake --build build --config Release -j$(nproc)
 
 # ============================================================
-# Stage 4: Minimal output image with just binaries + libs
+# Stage 4: Build ik_llama.cpp (custom quants - IQ2_KS, smol-IQ3_KS)
+# ============================================================
+FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS ik-llamacpp
+
+ARG CUDA_ARCHITECTURES
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone --depth 1 https://github.com/ikawrakow/ik_llama.cpp.git && \
+    cd ik_llama.cpp && \
+    cmake -B build \
+        -DGGML_CUDA=ON \
+        -DGGML_NATIVE=OFF \
+        -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
+    cmake --build build --config Release -j$(nproc)
+
+# ============================================================
+# Stage 5: Minimal output image with just binaries + libs
 # ============================================================
 FROM ubuntu:24.04
 
@@ -107,7 +129,12 @@ COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/llama-server /opt/engine
 COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/llama-cli /opt/engines/llamacpp-glm-dsa/bin/
 COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/*.so* /opt/engines/llamacpp-glm-dsa/lib/
 
-RUN chmod +x /opt/engines/llamacpp-llm/bin/* /opt/engines/llamacpp-audio/bin/* /opt/engines/llamacpp-glm-dsa/bin/*
+# ik_llama.cpp engine (custom quants - IQ2_KS, smol-IQ3_KS)
+COPY --from=ik-llamacpp /build/ik_llama.cpp/build/bin/llama-server /opt/engines/ik-llamacpp/bin/
+COPY --from=ik-llamacpp /build/ik_llama.cpp/build/bin/llama-cli /opt/engines/ik-llamacpp/bin/
+COPY --from=ik-llamacpp /build/ik_llama.cpp/build/bin/*.so* /opt/engines/ik-llamacpp/lib/
+
+RUN chmod +x /opt/engines/llamacpp-llm/bin/* /opt/engines/llamacpp-audio/bin/* /opt/engines/llamacpp-glm-dsa/bin/* /opt/engines/ik-llamacpp/bin/*
 
 # Metadata
 LABEL org.opencontainers.image.description="Pre-built llama.cpp engines for OpenClaw2Go"

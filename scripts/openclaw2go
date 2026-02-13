@@ -43,7 +43,7 @@ FETCH_TIMEOUT = 5  # seconds
 CACHE_DIR = Path(os.environ.get("OPENCLAW_STATE_DIR", "/workspace/.openclaw")) / "registry"
 CACHE_META = CACHE_DIR / ".fetch-meta.json"
 
-ALLOWED_ENGINES = {"llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "image-gen", "vllm"}
+ALLOWED_ENGINES = {"llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "ik-llamacpp", "image-gen", "vllm"}
 REQUIRED_MODEL_FIELDS = {"id", "name", "type", "engine", "vram"}
 REQUIRED_PROFILE_FIELDS = {"id", "name", "services"}
 
