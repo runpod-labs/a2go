@@ -15,6 +15,10 @@ Config format (OPENCLAW_CONFIG env var):
     {"llm": true}                                               — LLM only
     {"llm": true, "audio": true}                                — LLM + audio
     {"llm": true, "contextLength": 200000}                      — override context length
+    {"vision": "unsloth/Qwen2.5-VL-7B-Instruct-GGUF"}        — vision-capable LLM
+    {"llm": true, "embedding": true}                            — LLM + embeddings
+    {"llm": true, "reranking": true}                            — LLM + reranking
+    {"llm": true, "tts": true}                                  — LLM + native TTS
 
   Model names are case-insensitive. You can use the HuggingFace repo name
   (e.g., "unsloth/GLM-4.7-Flash-GGUF") or the short model ID
@@ -38,6 +42,20 @@ REGISTRY_DIR = Path(os.environ.get("OPENCLAW_REGISTRY_DIR", "/opt/openclaw/regis
 # Approximate KV cache VRAM per 1k context tokens for GLM-4.7 with q8_0 quantization
 # Based on observed: ~10GB for 150k context, ~14GB for 200k context
 KV_CACHE_MB_PER_1K_TOKENS = 40
+
+# All supported task roles and their default ports
+ROLE_PORTS = {
+    "llm": 8000,
+    "audio": 8001,
+    "image": 8002,
+    "vision": 8003,
+    "embedding": 8004,
+    "reranking": 8005,
+    "tts": 8006,
+}
+
+# Roles that support OPENCLAW_CONFIG keys
+CONFIG_ROLES = ("llm", "audio", "image", "vision", "embedding", "reranking", "tts")
 
 
 def load_json(path):
@@ -95,7 +113,7 @@ def match_gpu(gpu_name, gpu_registry):
 
 
 def get_default_model(models, model_type):
-    """Get the default model for a given type (llm/audio/image)."""
+    """Get the default model for a given type (llm/audio/image/vision/embedding/reranking/tts)."""
     for model_id, model in models.items():
         if model.get("type") == model_type and model.get("default"):
             return model
@@ -171,11 +189,10 @@ def build_from_models(config, models, engines, gpu_vram_mb):
     services = []
     total_vram = 0
 
-    role_ports = {"llm": 8000, "audio": 8001, "image": 8002}
     selected_models = {}
 
-    # Resolve which models to use
-    for role in ("llm", "audio", "image"):
+    # Resolve which models to use for each role
+    for role in CONFIG_ROLES:
         value = config.get(role)
         if value is None or value is False:
             continue
@@ -183,8 +200,15 @@ def build_from_models(config, models, engines, gpu_vram_mb):
         if model:
             selected_models[role] = model
 
+    # Vision can act as LLM replacement: if "vision" is specified without "llm",
+    # the vision model serves as the primary LLM (multimodal) on port 8000
+    if "vision" in selected_models and "llm" not in selected_models:
+        # Vision model replaces LLM — use LLM port
+        selected_models["llm"] = selected_models.pop("vision")
+        selected_models["llm"]["_vision_as_llm"] = True
+
     if not selected_models:
-        print("ERROR: no models selected. Specify at least one of: llm, audio, image", file=sys.stderr)
+        print("ERROR: no models selected. Specify at least one of: " + ", ".join(CONFIG_ROLES), file=sys.stderr)
         sys.exit(1)
 
     # Compute VRAM for non-LLM models first
@@ -218,14 +242,14 @@ def build_from_models(config, models, engines, gpu_vram_mb):
                   f"(max possible: {max_ctx:,})", file=sys.stderr)
 
     # Build service entries
-    for role in ("llm", "audio", "image"):
+    for role in CONFIG_ROLES:
         model = selected_models.get(role)
         if not model:
             continue
 
         engine_id = model["engine"]
         engine = engines.get(engine_id, {})
-        port = role_ports[role]
+        port = ROLE_PORTS[role]
         overrides = {}
 
         model_vram = model["vram"]["model"] + model["vram"]["overhead"]
@@ -240,6 +264,10 @@ def build_from_models(config, models, engines, gpu_vram_mb):
             # Get gpuLayers from config or model defaults
             gpu_layers = config.get("gpuLayers", model.get("startDefaults", {}).get("gpuLayers", "999"))
             overrides["gpuLayers"] = str(gpu_layers)
+
+            # Pass vision-as-LLM flag so entrypoint knows to add --mmproj
+            if model.get("_vision_as_llm"):
+                overrides["visionAsLlm"] = True
 
         services.append({
             "role": role,
@@ -318,7 +346,7 @@ def main():
         profile_info = {"id": profile["id"], "name": profile["name"], "source": "preset"}
         print(f"Using preset: {profile['name']}", file=sys.stderr)
 
-    elif any(k in config for k in ("llm", "audio", "image")):
+    elif any(k in config for k in CONFIG_ROLES):
         # Model-based — user picks what to run
         services, vram_total, computed_context = build_from_models(config, models, engines, gpu_vram_mb)
         roles = [s["role"] for s in services]

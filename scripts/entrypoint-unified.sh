@@ -1,7 +1,8 @@
 #!/bin/bash
 # Unified OpenClaw2Go entrypoint.
 # Reads OPENCLAW_CONFIG, resolves a profile from the registry, and starts
-# all services (LLM, Audio, Image, Web Proxy, OpenClaw Gateway) dynamically.
+# all services (LLM, Audio, Image, Vision, Embedding, Reranking, TTS,
+# Web Proxy, OpenClaw Gateway) dynamically.
 #
 # Don't exit on error - we want the container to stay alive for debugging.
 set +e
@@ -192,10 +193,13 @@ while IFS='|' read -r idx role model_id engine_id port model_json engine_json ov
     ENGINE_LIB_PATH="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('libPath',''))")"
     ENGINE_VENV="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('venvPath',''))")"
     ENGINE_TYPE="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('type',''))")"
+    ENGINE_BINARY_TTS="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('binaryTts',''))")"
+    ENGINE_BINARY_AUDIO="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('binaryAudio',''))")"
 
     # Get overrides
     CONTEXT_LENGTH="$(echo "$overrides_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('contextLength',''))")"
     GPU_LAYERS="$(echo "$overrides_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('gpuLayers',''))")"
+    VISION_AS_LLM="$(echo "$overrides_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print('true' if d.get('visionAsLlm') else 'false')")"
 
     # Download model files if needed
     DOWNLOAD_MODE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('downloadMode','files'))")"
@@ -249,10 +253,10 @@ print('  Done: $f')
         fi
     fi
 
-    # Start service based on engine type
+    # Start service based on role
     case "$role" in
         llm)
-            # ── llama.cpp engine ──
+            # ── LLM (standard or vision-as-LLM) via llama-server ──
                 DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',150000))")"
                 DEFAULT_LAYERS="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('gpuLayers','999'))")"
                 DEFAULT_PARALLEL="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('parallel','1'))")"
@@ -301,6 +305,15 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
                     LLM_ARGS+=(-ngl "$LAYERS")
                 fi
 
+                # Vision-as-LLM: add --mmproj for multimodal models
+                if [ "$VISION_AS_LLM" = "true" ]; then
+                    MMPROJ_FILE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('mmproj',''))")"
+                    if [ -n "$MMPROJ_FILE" ]; then
+                        echo "  Vision projection: $MODEL_DOWNLOAD_DIR/$MMPROJ_FILE"
+                        LLM_ARGS+=(--mmproj "$MODEL_DOWNLOAD_DIR/$MMPROJ_FILE")
+                    fi
+                fi
+
                 # Append extra start args if present
                 if [ -n "$EXTRA_START_ARGS" ]; then
                     read -ra EXTRA_ARGS <<< "$EXTRA_START_ARGS"
@@ -327,21 +340,30 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
             echo "$port" > /tmp/oc_llm_port
             echo "$MODEL_SERVED_AS" > /tmp/oc_llm_model_name
             echo "$CTX" > /tmp/oc_llm_context
+
+            # Record vision capability for OpenClaw config
+            if [ "$VISION_AS_LLM" = "true" ]; then
+                echo "true" > /tmp/oc_llm_vision
+            fi
             ;;
 
         audio)
+            # ── Audio TTS/STT via llama-liquid-audio-server ──
             FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
             SECOND_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f2)"
             THIRD_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f3)"
             FOURTH_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f4)"
 
+            # Use audio-specific binary from engine if available
+            AUDIO_BINARY="${ENGINE_BINARY_AUDIO:-$ENGINE_BINARY}"
+
             echo "Starting Audio server (TTS/STT)..."
-            echo "  Binary: $ENGINE_BINARY"
+            echo "  Binary: $AUDIO_BINARY"
             echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
             echo "  Port: $port (GPU accelerated)"
 
             env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
-                "$ENGINE_BINARY" \
+                "$AUDIO_BINARY" \
                 -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE" \
                 -mm "$MODEL_DOWNLOAD_DIR/$SECOND_FILE" \
                 -mv "$MODEL_DOWNLOAD_DIR/$THIRD_FILE" \
@@ -355,6 +377,7 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
             ;;
 
         image)
+            # ── Image generation via Python venv (Diffusers) ──
             echo "Starting Image generation server..."
             echo "  Model: $MODEL_REPO"
             echo "  Port: $port (GPU accelerated)"
@@ -370,6 +393,129 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
                 deactivate 2>/dev/null || true
             fi
             ;;
+
+        vision)
+            # ── Standalone vision model via llama-server + --mmproj ──
+            FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
+            MMPROJ_FILE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('mmproj',''))")"
+
+            echo "Starting Vision server..."
+            echo "  Binary: $ENGINE_BINARY"
+            echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+            echo "  Port: $port (GPU accelerated)"
+            if [ -n "$MMPROJ_FILE" ]; then
+                echo "  Vision projection: $MODEL_DOWNLOAD_DIR/$MMPROJ_FILE"
+            fi
+
+            VISION_ARGS=(
+                -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+                --host 0.0.0.0
+                --port "$port"
+                -ngl 99
+                --api-key "$LLAMA_API_KEY"
+            )
+
+            if [ -n "$MMPROJ_FILE" ]; then
+                VISION_ARGS+=(--mmproj "$MODEL_DOWNLOAD_DIR/$MMPROJ_FILE")
+            fi
+
+            env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
+                "$ENGINE_BINARY" "${VISION_ARGS[@]}" \
+                2>&1 &
+
+            echo "$!" > /tmp/oc_vision_pid
+            ;;
+
+        embedding)
+            # ── Embedding model via llama-server with /v1/embeddings ──
+            FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
+
+            echo "Starting Embedding server..."
+            echo "  Binary: $ENGINE_BINARY"
+            echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+            echo "  Port: $port"
+
+            EXTRA_START_ARGS="$(echo "$model_json" | python3 -c "import sys,json; args=json.load(sys.stdin).get('extraStartArgs',[]); print(' '.join(args))")"
+
+            EMBED_ARGS=(
+                -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+                --host 0.0.0.0
+                --port "$port"
+                -ngl 99
+                --embedding
+                --api-key "$LLAMA_API_KEY"
+            )
+
+            if [ -n "$EXTRA_START_ARGS" ]; then
+                read -ra EXTRA_ARGS <<< "$EXTRA_START_ARGS"
+                EMBED_ARGS+=("${EXTRA_ARGS[@]}")
+            fi
+
+            env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
+                "$ENGINE_BINARY" "${EMBED_ARGS[@]}" \
+                2>&1 &
+
+            echo "$!" > /tmp/oc_embedding_pid
+            ;;
+
+        reranking)
+            # ── Reranking model via llama-server with --reranking ──
+            FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
+
+            echo "Starting Reranking server..."
+            echo "  Binary: $ENGINE_BINARY"
+            echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+            echo "  Port: $port"
+
+            RERANK_ARGS=(
+                -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+                --host 0.0.0.0
+                --port "$port"
+                -ngl 99
+                --reranking
+                --api-key "$LLAMA_API_KEY"
+            )
+
+            env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
+                "$ENGINE_BINARY" "${RERANK_ARGS[@]}" \
+                2>&1 &
+
+            echo "$!" > /tmp/oc_reranking_pid
+            ;;
+
+        tts)
+            # ── Native TTS via llama-tts binary (OuteTTS) ──
+            FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
+            VOCODER_FILE="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('vocoder',''))")"
+
+            # Use TTS-specific binary from engine
+            TTS_BINARY="${ENGINE_BINARY_TTS:-$ENGINE_BINARY}"
+
+            echo "Starting Native TTS server..."
+            echo "  Binary: $TTS_BINARY"
+            echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+            if [ -n "$VOCODER_FILE" ]; then
+                echo "  Vocoder: $MODEL_DOWNLOAD_DIR/$VOCODER_FILE"
+            fi
+            echo "  Port: $port"
+
+            TTS_ARGS=(
+                -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE"
+                --host 0.0.0.0
+                --port "$port"
+                -ngl 99
+            )
+
+            if [ -n "$VOCODER_FILE" ]; then
+                TTS_ARGS+=(--vocoder "$MODEL_DOWNLOAD_DIR/$VOCODER_FILE")
+            fi
+
+            env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
+                "$TTS_BINARY" "${TTS_ARGS[@]}" \
+                2>&1 &
+
+            echo "$!" > /tmp/oc_tts_pid
+            ;;
     esac
 
 done < /tmp/oc_services.txt
@@ -380,8 +526,13 @@ LLM_PORT="$(cat /tmp/oc_llm_port 2>/dev/null || echo "8000")"
 LLM_MODEL_NAME="$(cat /tmp/oc_llm_model_name 2>/dev/null || echo "glm-4.7-flash")"
 LLM_CONTEXT="$(cat /tmp/oc_llm_context 2>/dev/null || echo "150000")"
 LLM_PROVIDER_NAME="$(cat /tmp/oc_llm_provider 2>/dev/null || echo "local-llamacpp")"
+LLM_HAS_VISION="$(cat /tmp/oc_llm_vision 2>/dev/null || echo "false")"
 AUDIO_PID="$(cat /tmp/oc_audio_pid 2>/dev/null || echo "")"
 IMAGE_PID="$(cat /tmp/oc_image_pid 2>/dev/null || echo "")"
+VISION_PID="$(cat /tmp/oc_vision_pid 2>/dev/null || echo "")"
+EMBEDDING_PID="$(cat /tmp/oc_embedding_pid 2>/dev/null || echo "")"
+RERANKING_PID="$(cat /tmp/oc_reranking_pid 2>/dev/null || echo "")"
+TTS_PID="$(cat /tmp/oc_tts_pid 2>/dev/null || echo "")"
 
 # Start web proxy if enabled
 WEB_PROXY_PID=""
@@ -433,6 +584,12 @@ if [ -d "/opt/openclaw/plugins/toolresult-images" ]; then
     fi
 fi
 
+# Determine LLM input capabilities for OpenClaw config
+LLM_INPUT='["text"]'
+if [ "$LLM_HAS_VISION" = "true" ]; then
+    LLM_INPUT='["text", "image"]'
+fi
+
 if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
     echo "Creating OpenClaw config from resolved profile..."
 
@@ -456,7 +613,7 @@ if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
           "contextWindow": $LLM_CONTEXT,
           "maxTokens": 8192,
           "reasoning": false,
-          "input": ["text"],
+          "input": $LLM_INPUT,
           "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 }
         }]
       }
@@ -577,6 +734,34 @@ if [ -n "$IMAGE_PID" ]; then
     echo "    - openclaw-image-gen --prompt \"A robot\" --output /tmp/robot.png"
 fi
 
+if [ -n "$VISION_PID" ]; then
+    echo ""
+    echo "  Vision Server (internal): http://localhost:8003"
+    echo "    - curl http://localhost:8003/v1/chat/completions (with image_url)"
+fi
+
+if [ -n "$EMBEDDING_PID" ]; then
+    echo ""
+    echo "  Embedding Server (internal): http://localhost:8004"
+    echo "    - curl http://localhost:8004/v1/embeddings -d '{\"input\": \"text\"}'"
+fi
+
+if [ -n "$RERANKING_PID" ]; then
+    echo ""
+    echo "  Reranking Server (experimental): http://localhost:8005"
+    echo "    - curl http://localhost:8005/v1/rerank -d '{\"query\": \"q\", \"documents\": [...]}'"
+fi
+
+if [ -n "$TTS_PID" ]; then
+    echo ""
+    echo "  Native TTS Server (internal): http://localhost:8006"
+fi
+
+if [ "$LLM_HAS_VISION" = "true" ]; then
+    echo ""
+    echo "  Vision (via LLM): Multimodal model with image understanding on port $LLM_PORT"
+fi
+
 if [ "$WEB_PROXY_ENABLED" = "true" ]; then
     echo ""
     echo "  Media UI: http://localhost:${OPENCLAW_WEB_PROXY_PORT}"
@@ -590,6 +775,10 @@ cleanup() {
     [ -n "$GATEWAY_PID" ] && kill $GATEWAY_PID 2>/dev/null
     [ -n "$IMAGE_PID" ] && kill $IMAGE_PID 2>/dev/null
     [ -n "$AUDIO_PID" ] && kill $AUDIO_PID 2>/dev/null
+    [ -n "$VISION_PID" ] && kill $VISION_PID 2>/dev/null
+    [ -n "$EMBEDDING_PID" ] && kill $EMBEDDING_PID 2>/dev/null
+    [ -n "$RERANKING_PID" ] && kill $RERANKING_PID 2>/dev/null
+    [ -n "$TTS_PID" ] && kill $TTS_PID 2>/dev/null
     [ -n "$WEB_PROXY_PID" ] && kill $WEB_PROXY_PID 2>/dev/null
     [ -n "$LLAMA_PID" ] && kill $LLAMA_PID 2>/dev/null
     exit 0

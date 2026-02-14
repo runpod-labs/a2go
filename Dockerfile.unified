@@ -67,19 +67,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── Engine: llamacpp-llm ──────────────────────────────────
-# CRITICAL: LLM and Audio libs MUST be separate (incompatible .so files)
-COPY --from=engines /opt/engines/llamacpp-llm/ /opt/engines/llamacpp-llm/
-RUN ldconfig /opt/engines/llamacpp-llm/lib/
-
-# ── Engine: llamacpp-audio ────────────────────────────────
-# Audio libs are NOT registered with ldconfig — entrypoint sets LD_LIBRARY_PATH per-engine
-COPY --from=engines /opt/engines/llamacpp-audio/ /opt/engines/llamacpp-audio/
-
-# ── Engine: llamacpp-glm-dsa ──────────────────────────────
-# GLM-5 MoE DSA support (PR #19460 - experimental)
-# Libs NOT registered with ldconfig — entrypoint sets LD_LIBRARY_PATH per-engine
-COPY --from=engines /opt/engines/llamacpp-glm-dsa/ /opt/engines/llamacpp-glm-dsa/
+# ── Engine: openclaw2go-llamacpp ──────────────────────────────
+# Unified fork: LLM, Audio, Vision, Embeddings, TTS, GLM-5 DSA, Eagle-3
+COPY --from=engines /opt/engines/openclaw2go-llamacpp/ /opt/engines/openclaw2go-llamacpp/
+RUN ldconfig /opt/engines/openclaw2go-llamacpp/lib/
 
 # ── Engine: ik-llamacpp ─────────────────────────────────────
 # ik_llama.cpp fork (custom quants: IQ2_KS, smol-IQ3_KS, etc.)

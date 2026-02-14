@@ -2,7 +2,7 @@
   "id": "unsloth/glm47-flash-gguf",
   "name": "GLM-4.7-Flash GGUF Q4_K_M",
   "type": "llm",
-  "engine": "llamacpp",
+  "engine": "openclaw2go-llamacpp",
   "repo": "unsloth/GLM-4.7-Flash-GGUF",
   "files": ["GLM-4.7-Flash-Q4_K_M.gguf"],
   "downloadDir": "/workspace/models/GLM-4.7-Flash-GGUF",

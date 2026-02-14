@@ -2,7 +2,7 @@
   "id": "bartowski/step35-flash-gguf",
   "name": "Step-3.5-Flash GGUF Q2_K",
   "type": "llm",
-  "engine": "llamacpp",
+  "engine": "openclaw2go-llamacpp",
   "repo": "bartowski/stepfun-ai_Step-3.5-Flash-GGUF",
   "files": [
     "stepfun-ai_Step-3.5-Flash-Q2_K/stepfun-ai_Step-3.5-Flash-Q2_K-00001-of-00002.gguf",

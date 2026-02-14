@@ -2,7 +2,7 @@
   "id": "unsloth/glm5-tq1-gguf",
   "name": "GLM-5-754B TQ1_0 (1-bit, 176GB)",
   "type": "llm",
-  "engine": "llamacpp-glm-dsa",
+  "engine": "openclaw2go-llamacpp",
   "repo": "unsloth/GLM-5-GGUF",
   "files": ["GLM-5-UD-TQ1_0.gguf"],
   "downloadDir": "/workspace/models/GLM-5-GGUF",

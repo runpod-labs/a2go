@@ -2,7 +2,7 @@
   "id": "unsloth/nemotron3-nano-gguf",
   "name": "Nemotron-3-Nano-30B-A3B GGUF Q4_K_XL",
   "type": "llm",
-  "engine": "llamacpp",
+  "engine": "openclaw2go-llamacpp",
   "repo": "unsloth/Nemotron-3-Nano-30B-A3B-GGUF",
   "files": ["Nemotron-3-Nano-30B-A3B-UD-Q4_K_XL.gguf"],
   "downloadDir": "/workspace/models/Nemotron-3-Nano-GGUF",

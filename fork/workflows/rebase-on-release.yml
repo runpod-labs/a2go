@@ -1,0 +1,193 @@
+# Fork CI workflow for runpod-workers/openclaw2go-llamacpp
+#
+# This workflow should be placed at .github/workflows/rebase-on-release.yml
+# in the openclaw2go-llamacpp fork repo.
+#
+# Triggered when llama.cpp creates a new release tag.
+# Attempts automated rebase of our cherry-picks onto the new tag.
+# If clean: auto-creates a tagged release (e.g., b4567-openclaw.1)
+# If conflicts: creates a PR with conflict markers for manual resolution.
+
+name: Rebase on llama.cpp Release
+
+on:
+  # Watch for new tags on the upstream repo
+  schedule:
+    # Check daily at 6 AM UTC for new upstream releases
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: 'Upstream llama.cpp tag to rebase onto (e.g., b4567)'
+        required: true
+      force:
+        description: 'Force rebase even if already rebased'
+        type: boolean
+        default: false
+
+env:
+  UPSTREAM_REPO: ggml-org/llama.cpp
+  # Cherry-picked PRs (in order of application)
+  # NOTE: PR #19460 (GLM-5 DSA) was merged upstream — no longer needed here
+  CHERRY_PICKS: |
+    18641
+    12794
+    18039
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.check.outputs.new_tag }}
+      should_rebase: ${{ steps.check.outputs.should_rebase }}
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for new upstream release
+        id: check
+        run: |
+          if [ -n "${{ github.event.inputs.upstream_tag }}" ]; then
+            NEW_TAG="${{ github.event.inputs.upstream_tag }}"
+            echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+            echo "should_rebase=true" >> $GITHUB_OUTPUT
+            echo "Manual trigger: rebasing onto $NEW_TAG"
+            exit 0
+          fi
+
+          # Fetch upstream tags
+          git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git 2>/dev/null || true
+          git fetch upstream --tags
+
+          # Get latest upstream tag
+          LATEST_TAG=$(git tag -l 'b*' --sort=-version:refname | head -1)
+          echo "Latest upstream tag: $LATEST_TAG"
+
+          # Check if we already have this tag rebased
+          OUR_TAG="${LATEST_TAG}-openclaw.1"
+          if git tag -l "$OUR_TAG" | grep -q "$OUR_TAG"; then
+            if [ "${{ github.event.inputs.force }}" != "true" ]; then
+              echo "Already rebased onto $LATEST_TAG (tag $OUR_TAG exists)"
+              echo "should_rebase=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          echo "new_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "should_rebase=true" >> $GITHUB_OUTPUT
+
+  rebase:
+    needs: check-upstream
+    if: needs.check-upstream.outputs.should_rebase == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "OpenClaw Bot"
+          git config user.email "openclaw-bot@runpod.io"
+
+      - name: Setup upstream
+        run: |
+          git remote add upstream https://github.com/${{ env.UPSTREAM_REPO }}.git 2>/dev/null || true
+          git fetch upstream --tags
+          git fetch upstream
+
+      - name: Attempt rebase
+        id: rebase
+        run: |
+          NEW_TAG="${{ needs.check-upstream.outputs.new_tag }}"
+          BRANCH="rebase/${NEW_TAG}"
+
+          echo "Creating rebase branch: $BRANCH"
+          git checkout -b "$BRANCH" "tags/$NEW_TAG"
+
+          # Cherry-pick each PR
+          FAILED=""
+          while IFS= read -r PR_NUM; do
+            [ -z "$PR_NUM" ] && continue
+            echo ""
+            echo "=== Cherry-picking PR #$PR_NUM ==="
+
+            # Fetch the PR head
+            git fetch upstream "pull/${PR_NUM}/head:pr-${PR_NUM}" || {
+              echo "WARNING: Could not fetch PR #$PR_NUM (may be merged upstream)"
+              continue
+            }
+
+            # Try cherry-pick (merge commits need --mainline)
+            if ! git cherry-pick --no-commit "pr-${PR_NUM}" 2>/dev/null; then
+              # Try with merge strategy
+              git cherry-pick --abort 2>/dev/null || true
+              if ! git merge --no-commit --no-ff "pr-${PR_NUM}" 2>/dev/null; then
+                echo "CONFLICT: PR #$PR_NUM has merge conflicts"
+                FAILED="${FAILED} ${PR_NUM}"
+                git merge --abort 2>/dev/null || true
+                continue
+              fi
+            fi
+
+            git commit -m "Cherry-pick PR #${PR_NUM}" --allow-empty || true
+            echo "OK: PR #$PR_NUM applied"
+          done <<< "${{ env.CHERRY_PICKS }}"
+
+          if [ -n "$FAILED" ]; then
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+            echo "failed_prs=$FAILED" >> $GITHUB_OUTPUT
+            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release (clean rebase)
+        if: steps.rebase.outputs.has_conflicts == 'false'
+        run: |
+          NEW_TAG="${{ needs.check-upstream.outputs.new_tag }}"
+          OUR_TAG="${NEW_TAG}-openclaw.1"
+          BRANCH="${{ steps.rebase.outputs.branch }}"
+
+          # Push branch and tag
+          git push origin "$BRANCH"
+          git tag "$OUR_TAG"
+          git push origin "$OUR_TAG"
+
+          # Update main branch
+          git checkout main
+          git merge "$BRANCH" --no-edit
+          git push origin main
+
+          echo "Released: $OUR_TAG"
+
+      - name: Create PR (conflicts)
+        if: steps.rebase.outputs.has_conflicts == 'true'
+        run: |
+          NEW_TAG="${{ needs.check-upstream.outputs.new_tag }}"
+          FAILED="${{ steps.rebase.outputs.failed_prs }}"
+          BRANCH="${{ steps.rebase.outputs.branch }}"
+
+          git push origin "$BRANCH" || true
+
+          gh pr create \
+            --title "Rebase onto $NEW_TAG (conflicts in PRs:$FAILED)" \
+            --body "$(cat <<'EOF'
+          ## Automated Rebase
+
+          Upstream tag: `$NEW_TAG`
+          Failed cherry-picks (conflicts): $FAILED
+
+          Please resolve conflicts manually and merge.
+          After merging, tag as `${NEW_TAG}-openclaw.1`.
+          EOF
+          )" \
+            --base main \
+            --head "$BRANCH" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

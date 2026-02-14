@@ -2,7 +2,7 @@
   "id": "unsloth/gpt-oss-20b-gguf",
   "name": "GPT-OSS-20B GGUF Q8_0",
   "type": "llm",
-  "engine": "llamacpp",
+  "engine": "openclaw2go-llamacpp",
   "repo": "unsloth/gpt-oss-20b-GGUF",
   "files": ["gpt-oss-20b-Q8_0.gguf"],
   "downloadDir": "/workspace/models/gpt-oss-20b-GGUF",

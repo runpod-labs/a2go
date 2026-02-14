@@ -2,7 +2,7 @@
   "id": "unsloth/kimi-k25-tq1-gguf",
   "name": "Kimi K2.5 UD-TQ1_0 (1-bit, 240GB, 5-split)",
   "type": "llm",
-  "engine": "llamacpp",
+  "engine": "openclaw2go-llamacpp",
   "repo": "unsloth/Kimi-K2.5-GGUF",
   "files": [
     "UD-TQ1_0/Kimi-K2.5-UD-TQ1_0-00001-of-00005.gguf",

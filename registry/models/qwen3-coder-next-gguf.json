@@ -2,7 +2,7 @@
   "id": "unsloth/qwen3-coder-next-gguf",
   "name": "Qwen3-Coder-Next GGUF Q3_K_M",
   "type": "llm",
-  "engine": "llamacpp",
+  "engine": "openclaw2go-llamacpp",
   "repo": "unsloth/Qwen3-Coder-Next-GGUF",
   "files": ["Qwen3-Coder-Next-Q3_K_M.gguf"],
   "downloadDir": "/workspace/models/Qwen3-Coder-Next-GGUF",

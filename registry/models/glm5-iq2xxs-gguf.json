@@ -2,7 +2,7 @@
   "id": "unsloth/glm5-iq2xxs-gguf",
   "name": "GLM-5-754B IQ2_XXS (2-bit, 241GB)",
   "type": "llm",
-  "engine": "llamacpp-glm-dsa",
+  "engine": "openclaw2go-llamacpp",
   "repo": "unsloth/GLM-5-GGUF",
   "files": [
     "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00001-of-00006.gguf",

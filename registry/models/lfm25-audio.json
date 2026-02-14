@@ -2,7 +2,7 @@
   "id": "liquidai/lfm25-audio",
   "name": "LFM2.5-Audio-1.5B GGUF Q4_0",
   "type": "audio",
-  "engine": "llamacpp-audio",
+  "engine": "openclaw2go-llamacpp",
   "repo": "LiquidAI/LFM2.5-Audio-1.5B-GGUF",
   "files": [
     "LFM2.5-Audio-1.5B-Q4_0.gguf",

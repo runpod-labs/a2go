@@ -1,35 +1,47 @@
 # engines/Dockerfile - Pre-built llama.cpp binaries for OpenClaw2Go
 #
-# Builds LLM and Audio engines separately (incompatible .so files).
-# Produces a minimal image with just binaries + libs at /opt/engines/.
+# Builds 2 engines:
+#   1. openclaw2go-llamacpp — Our unified fork merging main + unmerged PRs
+#      (audio/TTS, GLM-5 DSA, OuteTTS 1.0, Eagle-3 spec decode)
+#   2. ik-llamacpp — ikawrakow fork (custom quant types IQ2_KS, smol-IQ3_KS)
+#
 # The main Dockerfile.unified COPYs from this image — no compilation needed.
 #
 # Build:
 #   docker build -f engines/Dockerfile -t runpod/openclaw2go-engines:latest .
 #
 # Only rebuild when:
-#   - llama.cpp has a new version you need
+#   - Our openclaw2go-llamacpp fork has a new release
+#   - ik_llama.cpp updates
 #   - Adding a new CUDA architecture (new GPU support)
-#   - The audio PR branch (liquid-audio) updates
 
 ARG CUDA_VERSION=12.8
 ARG UBUNTU_VERSION=24.04
 ARG CUDA_ARCHITECTURES="80;89;90;120"
+ARG LLAMACPP_OPENCLAW_TAG=main
 
 # ============================================================
-# Stage 1: Build llama.cpp LLM server (main branch)
+# Stage 1: Build openclaw2go-llamacpp (unified fork)
 # ============================================================
-FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS llamacpp-llm
+# Our fork at github.com/runpod-workers/openclaw2go-llamacpp merges:
+#   - llama.cpp main (LLM, vision, embeddings, reranking)
+#   - PR #18641 (liquid-audio: TTS/STT for LFM2.5)
+#   - PR #19460 (glm-dsa: GLM-5 MoE dynamic sparse attention)
+#   - PR #12794 (OuteTTS 1.0 native TTS support)
+#   - PR #18039 (Eagle-3 speculative decoding)
+FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS openclaw2go-llamacpp
 
 ARG CUDA_ARCHITECTURES
+ARG LLAMACPP_OPENCLAW_TAG
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git && \
-    cd llama.cpp && \
+RUN git clone --depth 1 --branch ${LLAMACPP_OPENCLAW_TAG} \
+        https://github.com/runpod-workers/openclaw2go-llamacpp.git && \
+    cd openclaw2go-llamacpp && \
     cmake -B build \
         -DGGML_CUDA=ON \
         -DGGML_NATIVE=OFF \
@@ -39,57 +51,10 @@ RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git && \
     cmake --build build --config Release -j$(nproc)
 
 # ============================================================
-# Stage 2: Build llama.cpp Audio server (PR #18641 - liquid-audio)
+# Stage 2: Build ik_llama.cpp (custom quants - IQ2_KS, smol-IQ3_KS)
 # ============================================================
-FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS llamacpp-audio
-
-ARG CUDA_ARCHITECTURES
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake git \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /build
-RUN git clone https://github.com/ggml-org/llama.cpp.git && \
-    cd llama.cpp && \
-    git fetch origin pull/18641/head:liquid-audio && \
-    git checkout liquid-audio && \
-    cmake -B build \
-        -DGGML_CUDA=ON \
-        -DGGML_NATIVE=OFF \
-        -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
-        -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
-    cmake --build build --target llama-liquid-audio-cli llama-liquid-audio-server -j$(nproc)
-
-# ============================================================
-# Stage 3: Build llama.cpp GLM DSA (PR #19460 - experimental)
-# ============================================================
-FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS llamacpp-glm-dsa
-
-ARG CUDA_ARCHITECTURES
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake git \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /build
-RUN git clone https://github.com/ggml-org/llama.cpp.git && \
-    cd llama.cpp && \
-    git fetch origin pull/19460/head:glm-dsa && \
-    git checkout glm-dsa && \
-    cmake -B build \
-        -DGGML_CUDA=ON \
-        -DGGML_NATIVE=OFF \
-        -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
-    cmake --build build --config Release -j$(nproc)
-
-# ============================================================
-# Stage 4: Build ik_llama.cpp (custom quants - IQ2_KS, smol-IQ3_KS)
-# ============================================================
+# Kept separate: custom GGML types (139+) are fundamentally incompatible
+# with standard llama.cpp and cannot be cherry-picked.
 FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS ik-llamacpp
 
 ARG CUDA_ARCHITECTURES
@@ -110,31 +75,24 @@ RUN git clone --depth 1 https://github.com/ikawrakow/ik_llama.cpp.git && \
     cmake --build build --config Release -j$(nproc)
 
 # ============================================================
-# Stage 5: Minimal output image with just binaries + libs
+# Stage 3: Minimal output image with just binaries + libs
 # ============================================================
 FROM ubuntu:24.04
 
-# LLM engine
-COPY --from=llamacpp-llm /build/llama.cpp/build/bin/llama-server /opt/engines/llamacpp-llm/bin/
-COPY --from=llamacpp-llm /build/llama.cpp/build/bin/llama-cli /opt/engines/llamacpp-llm/bin/
-COPY --from=llamacpp-llm /build/llama.cpp/build/bin/*.so* /opt/engines/llamacpp-llm/lib/
+# openclaw2go-llamacpp engine (unified: LLM, Audio, Vision, Embeddings, TTS, etc.)
+COPY --from=openclaw2go-llamacpp /build/openclaw2go-llamacpp/build/bin/llama-server /opt/engines/openclaw2go-llamacpp/bin/
+COPY --from=openclaw2go-llamacpp /build/openclaw2go-llamacpp/build/bin/llama-cli /opt/engines/openclaw2go-llamacpp/bin/
+COPY --from=openclaw2go-llamacpp /build/openclaw2go-llamacpp/build/bin/llama-tts /opt/engines/openclaw2go-llamacpp/bin/
+COPY --from=openclaw2go-llamacpp /build/openclaw2go-llamacpp/build/bin/llama-liquid-audio-cli /opt/engines/openclaw2go-llamacpp/bin/
+COPY --from=openclaw2go-llamacpp /build/openclaw2go-llamacpp/build/bin/llama-liquid-audio-server /opt/engines/openclaw2go-llamacpp/bin/
+COPY --from=openclaw2go-llamacpp /build/openclaw2go-llamacpp/build/bin/*.so* /opt/engines/openclaw2go-llamacpp/lib/
 
-# Audio engine
-COPY --from=llamacpp-audio /build/llama.cpp/build/bin/llama-liquid-audio-cli /opt/engines/llamacpp-audio/bin/
-COPY --from=llamacpp-audio /build/llama.cpp/build/bin/llama-liquid-audio-server /opt/engines/llamacpp-audio/bin/
-COPY --from=llamacpp-audio /build/llama.cpp/build/bin/*.so* /opt/engines/llamacpp-audio/lib/
-
-# GLM DSA engine (PR #19460 - experimental)
-COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/llama-server /opt/engines/llamacpp-glm-dsa/bin/
-COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/llama-cli /opt/engines/llamacpp-glm-dsa/bin/
-COPY --from=llamacpp-glm-dsa /build/llama.cpp/build/bin/*.so* /opt/engines/llamacpp-glm-dsa/lib/
-
-# ik_llama.cpp engine (custom quants - IQ2_KS, smol-IQ3_KS)
+# ik_llama.cpp engine (custom quants: IQ2_KS, smol-IQ3_KS)
 COPY --from=ik-llamacpp /build/ik_llama.cpp/build/bin/llama-server /opt/engines/ik-llamacpp/bin/
 COPY --from=ik-llamacpp /build/ik_llama.cpp/build/bin/llama-cli /opt/engines/ik-llamacpp/bin/
 COPY --from=ik-llamacpp /build/ik_llama.cpp/build/bin/*.so* /opt/engines/ik-llamacpp/lib/
 
-RUN chmod +x /opt/engines/llamacpp-llm/bin/* /opt/engines/llamacpp-audio/bin/* /opt/engines/llamacpp-glm-dsa/bin/* /opt/engines/ik-llamacpp/bin/*
+RUN chmod +x /opt/engines/openclaw2go-llamacpp/bin/* /opt/engines/ik-llamacpp/bin/*
 
 # Metadata
-LABEL org.opencontainers.image.description="Pre-built llama.cpp engines for OpenClaw2Go"
+LABEL org.opencontainers.image.description="Pre-built llama.cpp engines for OpenClaw2Go (unified fork + ik_llama.cpp)"

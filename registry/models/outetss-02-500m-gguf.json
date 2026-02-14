@@ -1,0 +1,18 @@
+{
+  "id": "outeai/outetss-02-500m-gguf",
+  "name": "OuteTTS 0.2-500M GGUF Q8_0",
+  "type": "tts",
+  "engine": "openclaw2go-llamacpp",
+  "repo": "OuteAI/OuteTTS-0.2-500M-GGUF",
+  "files": ["OuteTTS-0.2-500M-Q8_0.gguf"],
+  "vocoder": "wavtokenizer-large-75-f16.gguf",
+  "downloadDir": "/workspace/models/OuteTTS-0.2-500M-GGUF",
+  "servedAs": "outetss-0.2-500m",
+  "vram": { "model": 600, "overhead": 200 },
+  "defaults": { "port": 8006 },
+  "startDefaults": {},
+  "extraStartArgs": [],
+  "provider": { "name": "local-llamacpp", "api": "openai-tts" },
+  "default": true,
+  "status": "experimental"
+}
