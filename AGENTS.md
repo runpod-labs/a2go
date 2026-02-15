@@ -76,8 +76,8 @@ registry/
 ```
 
 **External registry** (fetched at startup from GitHub Pages):
-- URL: `https://runpod-workers.github.io/openclaw2go-registry/v1/catalog.json`
-- Source repo: `runpod-workers/openclaw2go-registry`
+- URL: `https://runpod-workers.github.io/openclaw2go/v1/catalog.json`
+- Built from `site/` + `registry/` in this repo, deployed via GitHub Pages
 - Fetched by `openclaw2go registry fetch` before profile resolution
 - Cached at `/workspace/.openclaw/registry/` (1h TTL, survives pod restarts)
 - Falls back to baked-in registry on fetch failure or offline mode
@@ -131,7 +131,13 @@ openclaw2go/
 ├── fork/                           # Scaffolding for openclaw2go-llamacpp fork repo
 │   ├── workflows/rebase-on-release.yml  # Auto-rebase CI for the fork
 │   └── README.md                   # Fork setup instructions
-├── registry/                       # Configuration registry (models, GPUs, presets)
+├── registry/                       # Configuration registry (models, GPUs, presets, schemas)
+│   └── schemas/                    # JSON Schema validation (model, gpu)
+├── site/                           # Web configurator (React + Vite + TypeScript)
+│   ├── scripts/build-catalog.ts    # Merges registry JSONs → dist/v1/catalog.json
+│   ├── scripts/validate.ts         # Schema validation, duplicate checks, HF repo verification
+│   ├── src/                        # React source (components, lib, types)
+│   └── public/                     # Static assets (logos)
 ├── models/                         # Legacy per-GPU Dockerfiles
 ├── scripts/
 │   ├── entrypoint-unified.sh       # Unified entrypoint (primary)
@@ -194,6 +200,31 @@ docker run --gpus all -e OPENCLAW_CONFIG='{"llm":true,"embedding":true,"rerankin
 # Legacy: build per-GPU image
 docker build -f models/glm47-flash-gguf-llamacpp/Dockerfile -t openclaw-gguf .
 ```
+
+## Web Configurator (`site/`)
+
+Interactive VRAM-first GPU pod configurator served via GitHub Pages.
+
+```bash
+cd site
+
+# Install dependencies
+npm install
+
+# Validate all model/GPU JSON files
+npm run validate
+
+# Validate + check HuggingFace repos exist
+npm run validate:hf
+
+# Development (builds catalog to public/v1, starts Vite dev server)
+npm run dev
+
+# Production build (catalog + site → ../dist/)
+npm run build:prod
+```
+
+Reads model configs from `registry/models/` and GPU configs from `registry/gpus/`. The configurator lets users pick platform → VRAM → model → services → context and generates deploy commands.
 
 ## CLI Tools (inside container)
 
@@ -282,10 +313,9 @@ curl http://localhost:8000/v1/models
 
 | Task | Location |
 |------|----------|
-| Add new model (external) | Submit to `runpod-workers/openclaw2go-registry` via issue or PR |
-| Add new model (baked-in) | Create JSON in `registry/models/` with VRAM costs + start args |
+| Add new model | Create JSON in `registry/models/` with VRAM costs + start args, run `cd site && npm run validate` |
 | Add new GPU | Create JSON in `registry/gpus/` |
-| Add preset profile | Create JSON in `registry/profiles/` or external registry |
+| Add preset profile | Create JSON in `registry/profiles/` |
 | Change startup logic | `scripts/entrypoint-unified.sh` or `scripts/entrypoint-common.sh` |
 | Modify config resolution | `scripts/resolve-profile.py` |
 | Modify registry fetch | `scripts/openclaw2go` (`registry fetch` subcommand) |

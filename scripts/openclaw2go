@@ -37,13 +37,13 @@ KV_CACHE_MB_PER_1K_TOKENS = 40
 # ── Registry fetch constants ─────────────────────────────────
 
 DEFAULT_REGISTRY_URL = (
-    "https://runpod-workers.github.io/openclaw2go-registry/v1/catalog.json"
+    "https://runpod-workers.github.io/openclaw2go/v1/catalog.json"
 )
 FETCH_TIMEOUT = 5  # seconds
 CACHE_DIR = Path(os.environ.get("OPENCLAW_STATE_DIR", "/workspace/.openclaw")) / "registry"
 CACHE_META = CACHE_DIR / ".fetch-meta.json"
 
-ALLOWED_ENGINES = {"llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "ik-llamacpp", "image-gen"}
+ALLOWED_ENGINES = {"llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "ik-llamacpp", "image-gen", "openclaw2go-llamacpp", "mlx", "vllm"}
 REQUIRED_MODEL_FIELDS = {"id", "name", "type", "engine", "vram"}
 REQUIRED_PROFILE_FIELDS = {"id", "name", "services"}
 

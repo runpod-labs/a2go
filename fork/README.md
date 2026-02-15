@@ -8,7 +8,7 @@ Fork created at `runpod-workers/openclaw2go-llamacpp`. Branch `main` has all che
 
 Cherry-picked PRs on `main`:
 - PR #18641 (liquid-audio: TTS/STT for LFM2.5)
-- PR #12794 (OuteTTS 1.0 native TTS support)
+- PR #12794 (OuteTTS 1.0 native TTS support) — build disabled, API stale vs current master
 - PR #18039 (Eagle-3 speculative decoding)
 
 Already merged upstream (no cherry-pick needed):

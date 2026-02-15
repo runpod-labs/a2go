@@ -1,0 +1,14 @@
+{
+  "id": "mlx-community/glm47-flash-mlx",
+  "name": "GLM-4.7-Flash MLX 4-bit",
+  "type": "llm",
+  "engine": "mlx",
+  "repo": "mlx-community/GLM-4.7-Flash-4bit",
+  "vram": { "model": 17300, "overhead": 0 },
+  "kvCacheMbPer1kTokens": 40,
+  "defaults": { "contextLength": 150000 },
+  "provider": { "name": "local-mlx", "api": "openai-completions" },
+  "platform": "mlx",
+  "default": false,
+  "status": "experimental"
+}

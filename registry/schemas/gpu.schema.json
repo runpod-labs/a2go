@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenClaw2Go GPU Config",
+  "description": "Schema for GPU configuration files in the openclaw2go-registry",
+  "type": "object",
+  "required": ["id", "name", "vramMb", "arch"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique GPU ID (lowercase, alphanumeric with hyphens)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable GPU name"
+    },
+    "vramMb": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total VRAM in MB"
+    },
+    "arch": {
+      "type": "string",
+      "pattern": "^sm_\\d+$",
+      "description": "CUDA compute capability (e.g., sm_80, sm_89, sm_90, sm_120)"
+    },
+    "minCuda": {
+      "type": "string",
+      "description": "Minimum CUDA version required"
+    }
+  },
+  "additionalProperties": false
+}

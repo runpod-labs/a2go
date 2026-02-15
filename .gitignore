@@ -29,5 +29,10 @@ __pycache__/
 .venv/
 venv/
 
+# Site build artifacts
+site/node_modules/
+site/public/v1/
+dist/
+
 # Local clones / working dirs
 openclaw2go-registry/
