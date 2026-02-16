@@ -14,9 +14,9 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs'
 import { join, resolve } from 'path'
 
-const REPO_ROOT = resolve(import.meta.dirname, '..', '..')
-const MODELS_DIR = join(REPO_ROOT, 'registry', 'models')
-const GPUS_DIR = join(REPO_ROOT, 'registry', 'gpus')
+export const REPO_ROOT = resolve(import.meta.dirname, '..', '..')
+export const MODELS_DIR = join(REPO_ROOT, 'registry', 'models')
+export const GPUS_DIR = join(REPO_ROOT, 'registry', 'gpus')
 
 function loadAllJson(dir: string): Record<string, unknown>[] {
   const results: Record<string, unknown>[] = []
@@ -71,20 +71,14 @@ function copyJsonFiles(srcDir: string, destDir: string): void {
   }
 }
 
-function main() {
-  const args = process.argv.slice(2)
-  let outputDir = join(REPO_ROOT, 'dist', 'v1')
-  const outputIdx = args.indexOf('--output-dir')
-  if (outputIdx !== -1 && args[outputIdx + 1]) {
-    outputDir = resolve(args[outputIdx + 1])
-  }
-
+/** Build the catalog and write to outputDir. Returns true on success. */
+export function buildCatalog(outputDir: string): boolean {
   mkdirSync(outputDir, { recursive: true })
 
   const models = loadAllJson(MODELS_DIR)
   const gpus = loadAllJson(GPUS_DIR)
 
-  console.log(`Loaded ${models.length} models and ${gpus.length} GPUs`)
+  console.log(`[catalog] Loaded ${models.length} models and ${gpus.length} GPUs`)
 
   let ok = true
 
@@ -99,8 +93,8 @@ function main() {
   if (!checkDuplicates(gpus, 'id', 'gpu')) ok = false
 
   if (!ok) {
-    console.error('Build FAILED due to validation errors')
-    process.exit(1)
+    console.error('[catalog] Build FAILED due to validation errors')
+    return false
   }
 
   // Strip _source metadata
@@ -112,13 +106,24 @@ function main() {
 
   const catalogPath = join(outputDir, 'catalog.json')
   writeFileSync(catalogPath, JSON.stringify(catalog, null, 2) + '\n')
-  console.log(`Written: ${catalogPath}`)
 
   copyJsonFiles(MODELS_DIR, join(outputDir, 'models'))
   copyJsonFiles(GPUS_DIR, join(outputDir, 'gpus'))
 
-  console.log(`Copied ${models.length} model files and ${gpus.length} GPU files to ${outputDir}`)
-  console.log('Build OK')
+  console.log(`[catalog] Written ${catalogPath} (${models.length} models, ${gpus.length} GPUs)`)
+  return true
 }
 
-main()
+// CLI entry point
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+  const args = process.argv.slice(2)
+  let outputDir = join(REPO_ROOT, 'dist', 'v1')
+  const outputIdx = args.indexOf('--output-dir')
+  if (outputIdx !== -1 && args[outputIdx + 1]) {
+    outputDir = resolve(args[outputIdx + 1])
+  }
+
+  if (!buildCatalog(outputDir)) {
+    process.exit(1)
+  }
+}
