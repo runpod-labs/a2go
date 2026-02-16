@@ -80,7 +80,26 @@ export function groupModels(models: CatalogModel[]): ModelGroup[] {
     }
   }
 
-  return Array.from(map.values())
+  // Sort variants: Linux/Windows first, Mac second
+  for (const group of map.values()) {
+    group.variants.sort((a, b) => {
+      const aIsMac = a.os.includes('mac') ? 1 : 0
+      const bIsMac = b.os.includes('mac') ? 1 : 0
+      return aIsMac - bIsMac
+    })
+  }
+
+  // Sort groups: by display name, then by bit level ascending (1-bit → 2-bit → 4-bit …)
+  const groups = Array.from(map.values())
+  groups.sort((a, b) => {
+    const nameCmp = a.displayName.localeCompare(b.displayName)
+    if (nameCmp !== 0) return nameCmp
+    const aBit = a.variants[0]?.shortLabel.match(/^(\d+)bit$/)?.[1]
+    const bBit = b.variants[0]?.shortLabel.match(/^(\d+)bit$/)?.[1]
+    return (aBit ? Number(aBit) : 999) - (bBit ? Number(bBit) : 999)
+  })
+
+  return groups
 }
 
 /** Pick the best variant for a given OS, falling back to the first variant */
