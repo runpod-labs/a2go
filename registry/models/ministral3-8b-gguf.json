@@ -8,7 +8,7 @@
   "downloadDir": "/workspace/models/Ministral-3-8B-GGUF",
   "servedAs": "ministral-3-8b",
   "vram": { "model": 9030, "overhead": 500 },
-  "kvCacheMbPer1kTokens": 45,
+  "kvCacheMbPer1kTokens": 70,
   "defaults": { "contextLength": 131072, "port": 8000 },
   "startDefaults": { "gpuLayers": "999", "parallel": "1" },
   "provider": { "name": "local-llamacpp", "api": "openai-completions" },
