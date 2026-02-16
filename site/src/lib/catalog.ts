@@ -5,6 +5,12 @@ export interface ModelVram {
 
 export type OsPlatform = 'linux' | 'windows' | 'mac'
 
+export interface ModelMlx {
+  engine: string
+  repo: string
+  memoryMb: number
+}
+
 export interface CatalogModel {
   id: string
   name: string
@@ -16,6 +22,8 @@ export interface CatalogModel {
   kvCacheMbPer1kTokens?: number
   contextLength?: number
   os: OsPlatform[]
+  isDefault: boolean
+  mlx?: ModelMlx
 }
 
 export interface GpuInfo {
@@ -131,6 +139,8 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; gpus: Gp
     os: m.platform === 'mlx'
       ? (['mac'] as OsPlatform[])
       : (['linux', 'windows'] as OsPlatform[]),
+    isDefault: (m as Record<string, unknown>).default === true,
+    mlx: m.mlx && m.mlx.repo ? { engine: m.mlx.engine, repo: m.mlx.repo, memoryMb: m.mlx.memoryMb } : undefined,
   }))
 
   const gpus: GpuInfo[] = [
