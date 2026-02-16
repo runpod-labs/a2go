@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { formatContext, formatVram, type CatalogModel, type OsPlatform } from '../lib/catalog'
 import type { ModelGroup, ModelVariant } from '../lib/group-models'
 import { PlatformIcon } from './PlatformSelector'
@@ -196,21 +197,21 @@ function FilledSlotCard({
   visibleVariants,
   accentColor,
   onRemove,
-  onVariantSwitch,
 }: {
   model: CatalogModel
   group: ModelGroup | undefined
   visibleVariants: ModelVariant[]
   accentColor: string
   onRemove: () => void
-  onVariantSwitch: (os: OsPlatform) => void
 }) {
-  // Find which tab index matches the currently selected model
-  const currentIndex = visibleVariants.findIndex((vt) => vt.model.id === model.id)
-  const activeTab = currentIndex >= 0 ? currentIndex : 0
+  // Local tab state — doesn't affect global OS
+  const [activeTab, setActiveTab] = useState(() => {
+    const modelOs = model.os.join(',')
+    const idx = visibleVariants.findIndex((vt) => vt.os.join(',') === modelOs)
+    return idx >= 0 ? idx : 0
+  })
   const displayName = group?.displayName ?? model.name
 
-  // Always show platform tab(s) so users can confirm which platform variant is active
   const showTabs = visibleVariants.length > 0
   const activeVariant = visibleVariants[activeTab] ?? visibleVariants[0]
   const v = activeVariant?.model ?? model
@@ -225,7 +226,7 @@ function FilledSlotCard({
   return (
     <div
       className="group relative flex flex-1 flex-col gap-4 overflow-hidden border bg-foreground/[0.03] p-5 text-left transition-all duration-150 animate-fade-in"
-      style={{ borderColor: `color-mix(in srgb, ${accentColor} 20%, transparent)`, borderLeftWidth: 4, borderLeftColor: accentColor }}
+      style={{ borderColor: `color-mix(in srgb, ${accentColor} 20%, transparent)`, borderTopWidth: 4, borderTopColor: accentColor }}
     >
       {/* Model name + remove X */}
       <div className="flex items-start justify-between gap-2">
@@ -249,13 +250,8 @@ function FilledSlotCard({
       <div className="h-8 flex items-end gap-px">
         {showTabs && visibleVariants.map((vt, i) => (
           <button
-            key={vt.model.id}
-            onClick={() => {
-              if (vt.model.id === model.id) return
-              // Switch global OS — the first OS in the variant's list is the primary one
-              const primaryOs = vt.os[0]
-              if (primaryOs) onVariantSwitch(primaryOs)
-            }}
+            key={`${vt.model.id}-${vt.os.join(',')}`}
+            onClick={() => setActiveTab(i)}
             className={cn(
               "flex items-center gap-1.5 px-3 h-full font-mono text-[10px] uppercase tracking-wider transition-all",
               i === activeTab
@@ -315,12 +311,10 @@ export default function SelectedModels({
   models,
   onToggle,
   modelIdToGroup,
-  onVariantSwitch,
 }: {
   models: CatalogModel[]
   onToggle: (model: CatalogModel) => void
   modelIdToGroup: Map<string, ModelGroup>
-  onVariantSwitch: (os: OsPlatform) => void
 }) {
   const byType = new Map(models.map((m) => [m.type, m]))
 
@@ -347,7 +341,6 @@ export default function SelectedModels({
                 visibleVariants={modelIdToGroup.get(m.id)?.variants ?? []}
                 accentColor={slot.color}
                 onRemove={() => onToggle(m)}
-                onVariantSwitch={onVariantSwitch}
               />
             )}
           </div>

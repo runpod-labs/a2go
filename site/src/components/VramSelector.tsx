@@ -62,9 +62,6 @@ export default function VramGauge({
 
       {/* presets */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 font-mono text-[9px] font-medium uppercase tracking-widest text-foreground/50">
-          vram
-        </span>
         {presets.map((gb) => {
           const isSelected = selectedGb === gb
           const exceedsGpu = maxGb != null && gb > maxGb

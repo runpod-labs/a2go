@@ -2,6 +2,7 @@ import { useMemo, useCallback, useState } from 'react'
 import SectionHeader from './SectionHeader'
 import PlatformSelector from './PlatformSelector'
 import ModelSearch from './ModelSearch'
+import ModelFilters, { type FilterState, type TaskChip, EMPTY_FILTERS } from './ModelFilters'
 import ModelGroupCard from './ModelPicker'
 import type { CatalogModel, OsPlatform } from '../lib/catalog'
 import { groupModels, getVariantForOs, groupHasOs } from '../lib/group-models'
@@ -10,6 +11,22 @@ const SECTION_COLORS: Record<string, string> = {
   llm: '#00e5ff',
   image: '#ec407a',
   audio: '#b388ff',
+  tts: '#ffab40',
+}
+
+type SectionKey = 'llm' | 'image' | 'audio' | 'tts'
+
+/** Which section keys are visible for a given task chip */
+function getVisibleTypes(task: TaskChip | null): Set<SectionKey> {
+  switch (task) {
+    case null:      return new Set(['llm', 'image', 'audio', 'tts'])
+    case 'llm':     return new Set(['llm'])
+    case 'vision':  return new Set(['llm'])
+    case 'image':   return new Set(['image'])
+    case 'audio':   return new Set(['audio'])
+    case 'tts':     return new Set(['tts', 'audio'])
+    case 'stt':     return new Set(['audio'])
+  }
 }
 
 export default function ModelCatalog({
@@ -32,6 +49,7 @@ export default function ModelCatalog({
   effectiveVramMb: number
 }) {
   const [search, setSearch] = useState("")
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
 
   const searchLower = search.toLowerCase().trim()
 
@@ -44,13 +62,18 @@ export default function ModelCatalog({
   const llmModels = useMemo(() => models.filter((m) => m.type === "llm"), [models])
   const imageModels = useMemo(() => models.filter((m) => m.type === "image"), [models])
   const audioModels = useMemo(() => models.filter((m) => m.type === "audio"), [models])
+  const ttsModels = useMemo(() => models.filter((m) => m.type === "tts"), [models])
 
   const llmGroups = useMemo(() => groupModels(llmModels), [llmModels])
   const imageGroups = useMemo(() => groupModels(imageModels), [imageModels])
   const audioGroups = useMemo(() => groupModels(audioModels), [audioModels])
+  const ttsGroups = useMemo(() => groupModels(ttsModels), [ttsModels])
+
+  const visibleTypes = useMemo(() => getVisibleTypes(filters.task), [filters.task])
 
   const filterGroups = useCallback(
-    (groups: ReturnType<typeof groupModels>) => {
+    (groups: ReturnType<typeof groupModels>, type: SectionKey) => {
+      if (!visibleTypes.has(type)) return []
       let result = groups
       if (searchLower) {
         result = result.filter(
@@ -62,19 +85,29 @@ export default function ModelCatalog({
       if (os) {
         result = result.filter((g) => groupHasOs(g, os))
       }
+      // Apply LLM-specific filters
+      if (type === 'llm') {
+        if (filters.contextMin !== null) {
+          result = result.filter((g) => g.contextLength != null && g.contextLength >= filters.contextMin!)
+        }
+        if (filters.task === 'vision') {
+          result = result.filter((g) => g.hasVision)
+        }
+      }
       return result
     },
-    [searchLower, os]
+    [searchLower, os, filters, visibleTypes]
   )
 
   const modelSections = useMemo(
     () =>
       [
-        { key: "llm", label: "LLM", items: filterGroups(llmGroups), color: SECTION_COLORS.llm },
-        { key: "image", label: "Image", items: filterGroups(imageGroups), color: SECTION_COLORS.image },
-        { key: "audio", label: "Audio", items: filterGroups(audioGroups), color: SECTION_COLORS.audio },
+        { key: "llm" as SectionKey, label: "LLM", items: filterGroups(llmGroups, 'llm'), color: SECTION_COLORS.llm },
+        { key: "image" as SectionKey, label: "Image", items: filterGroups(imageGroups, 'image'), color: SECTION_COLORS.image },
+        { key: "audio" as SectionKey, label: "Audio", items: filterGroups(audioGroups, 'audio'), color: SECTION_COLORS.audio },
+        { key: "tts" as SectionKey, label: "TTS", items: filterGroups(ttsGroups, 'tts'), color: SECTION_COLORS.tts },
       ].filter((s) => s.items.length > 0),
-    [filterGroups, llmGroups, imageGroups, audioGroups]
+    [filterGroups, llmGroups, imageGroups, audioGroups, ttsGroups]
   )
 
   /** Click a group → resolve to best variant for current OS, then toggle */
@@ -113,6 +146,7 @@ export default function ModelCatalog({
       </SectionHeader>
 
       <ModelSearch value={search} onChange={setSearch} />
+      <ModelFilters filters={filters} onChange={setFilters} />
 
       {/* column headers */}
       <div className="flex shrink-0 items-center gap-2 border-b border-foreground/[0.04] px-3 py-2">
@@ -132,6 +166,11 @@ export default function ModelCatalog({
 
       {/* scrollable model list */}
       <div className="flex-1 overflow-y-auto py-1">
+        {modelSections.length === 0 && (
+          <div className="flex items-center justify-center py-12">
+            <span className="font-mono text-[10px] text-foreground/30">no models match</span>
+          </div>
+        )}
         {modelSections.map((section) => (
           <div key={section.key} className="flex flex-col">
             <div className="sticky top-0 z-10 bg-background/90 px-5 py-1.5 backdrop-blur-sm">
@@ -163,6 +202,7 @@ export default function ModelCatalog({
                   dimmed={dimmed}
                   os={os}
                   accentColor={section.color}
+                  hasVision={group.hasVision}
                 />
               )
             })}

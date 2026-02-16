@@ -13,8 +13,9 @@ export interface ModelVariant {
 export interface ModelGroup {
   key: string
   displayName: string
-  type: 'llm' | 'image' | 'audio'
+  type: 'llm' | 'image' | 'audio' | 'tts'
   contextLength: number | undefined
+  hasVision: boolean
   variants: ModelVariant[]
 }
 
@@ -65,16 +66,25 @@ export function groupModels(models: CatalogModel[]): ModelGroup[] {
 
     const existing = map.get(key)
     if (existing) {
-      existing.variants.push(variant)
+      // Skip if a variant already covers the same OS set
+      const osKey = [...variant.os].sort().join(',')
+      const duplicate = existing.variants.some(
+        (v) => [...v.os].sort().join(',') === osKey
+      )
+      if (!duplicate) {
+        existing.variants.push(variant)
+      }
       if (model.contextLength && !existing.contextLength) {
         existing.contextLength = model.contextLength
       }
+      if (model.hasVision) existing.hasVision = true
     } else {
       map.set(key, {
         key,
         displayName: getDisplayName(model.name),
         type: model.type,
         contextLength: model.contextLength,
+        hasVision: model.hasVision,
         variants: [variant],
       })
     }

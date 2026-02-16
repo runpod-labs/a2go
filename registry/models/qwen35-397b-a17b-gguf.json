@@ -14,7 +14,7 @@
   "mmproj": "mmproj-F16.gguf",
   "downloadDir": "/workspace/models/Qwen3.5-397B-A17B-GGUF",
   "servedAs": "qwen3.5-397b-a17b",
-  "vram": { "model": 141200, "overhead": 1300 },
+  "vram": { "model": 141200, "overhead": 15800 },
   "kvCacheMbPer1kTokens": 16,
   "defaults": { "contextLength": 1010000, "port": 8000 },
   "startDefaults": { "gpuLayers": "999", "parallel": "1" },

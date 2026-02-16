@@ -12,6 +12,7 @@ export default function ModelGroupCard({
   dimmed,
   os,
   accentColor,
+  hasVision,
 }: {
   group: ModelGroup
   selected: boolean
@@ -20,6 +21,7 @@ export default function ModelGroupCard({
   dimmed: boolean
   os: OsPlatform | null
   accentColor: string
+  hasVision?: boolean
 }) {
   const variant = getVariantForOs(group, os)
 
@@ -55,6 +57,13 @@ export default function ModelGroupCard({
       >
         {group.displayName}
       </span>
+
+      {/* vision badge */}
+      {hasVision && (
+        <span className="shrink-0 bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[8px] font-medium text-foreground/50">
+          vision
+        </span>
+      )}
 
       {/* quant badge */}
       <span className="shrink-0 bg-foreground/[0.06] px-1.5 py-0.5 font-mono text-[9px] font-semibold tabular-nums text-foreground/70">

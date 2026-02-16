@@ -50,10 +50,19 @@ function App() {
 
   const filteredGpus = useMemo(() => getGpusForOs(os, allGpus), [os, allGpus])
 
-  const selectedModels = useMemo(
-    () => allModels.filter((m) => selectedModelIds.has(m.id)),
-    [selectedModelIds, allModels]
-  )
+  const selectedModels = useMemo(() => {
+    const byId = new Map<string, CatalogModel[]>()
+    for (const m of allModels) {
+      if (!selectedModelIds.has(m.id)) continue
+      const arr = byId.get(m.id) ?? []
+      arr.push(m)
+      byId.set(m.id, arr)
+    }
+    return Array.from(byId.values()).map((variants) => {
+      if (variants.length === 1 || !os) return variants[0]
+      return variants.find((v) => v.os.includes(os)) ?? variants[0]
+    })
+  }, [selectedModelIds, allModels, os])
 
   const totalVramMb = useMemo(() => getTotalVram(selectedModels), [selectedModels])
   const totalVramGb = totalVramMb / 1024
@@ -113,21 +122,7 @@ function App() {
     setSelectedVramGb(null)
   }, [os, modelIdToGroup])
 
-  /** Switch all selected models to the given platform variant without changing global OS */
-  const handleVariantSwitch = useCallback((targetOs: OsPlatform) => {
-    setSelectedModelIds((prevIds) => {
-      if (prevIds.size === 0) return prevIds
-      const next = new Set<string>()
-      for (const id of prevIds) {
-        const group = modelIdToGroup.get(id)
-        if (group) {
-          const variant = getVariantForOs(group, targetOs)
-          next.add(variant.model.id)
-        }
-      }
-      return next
-    })
-  }, [modelIdToGroup])
+
 
   const effectiveVramGb = selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * gpuCount) / 1024 : 0)
   const effectiveVramMb = effectiveVramGb * 1024
@@ -186,7 +181,7 @@ function App() {
         }}
         modelIdToGroup={modelIdToGroup}
         os={os}
-        onVariantSwitch={handleVariantSwitch}
+
       />
     </div>
   )
