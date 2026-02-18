@@ -71,6 +71,7 @@ RUN git clone --depth 1 https://github.com/ikawrakow/ik_llama.cpp.git && \
         -DGGML_NATIVE=OFF \
         -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" \
         -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=/build/ik_llama.cpp/build/bin \
         -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined && \
     cmake --build build --config Release -j$(nproc)
 
