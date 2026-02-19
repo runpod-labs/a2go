@@ -58,7 +58,6 @@ registry/
 │   ├── nemotron3-nano-gguf.json    # LLM: Nemotron-3-Nano-30B MoE (kvCache: 4 MB/1k)
 │   ├── arcee-trinity-mini-gguf.json # LLM: Arcee Trinity Mini 26B/3B MoE
 │   ├── olmo31-think-32b-gguf.json  # LLM: OLMo 3.1 Think 32B dense
-│   ├── glm47-full-gguf.json        # LLM: GLM-4.7 355B/32B MoE (B200)
 │   ├── lfm25-audio.json            # Audio: LFM2.5-Audio-1.5B (default: true)
 │   ├── qwen35-397b-a17b-gguf.json  # LLM: Qwen3.5 397B/17B MoE Q2_K_XL (B200)
 │   ├── qwen25-vl-7b-gguf.json     # Vision: Qwen2.5-VL-7B + mmproj (default: true)
