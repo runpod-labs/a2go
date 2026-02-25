@@ -10,6 +10,9 @@ media/
 tests/
 engines/
 docker-compose.yml
+package.json
+package-lock.json
+.changeset/
 Dockerfile
 Dockerfile.*
 openclaw2go-registry/
