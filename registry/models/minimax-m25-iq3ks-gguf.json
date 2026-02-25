@@ -19,5 +19,6 @@
   "tps": { "b200-180gb": 93 },
   "provider": { "name": "local-llamacpp", "api": "openai-completions" },
   "default": false,
-  "status": "experimental"
+  "status": "experimental",
+  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/MiniMax-M2.5-3bit", "memoryMb": 100000 }
 }

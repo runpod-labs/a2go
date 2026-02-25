@@ -15,5 +15,6 @@
   "provider": { "name": "local-llamacpp", "api": "openai-completions" },
   "tps": { "rtx-5090": 182 },
   "default": false,
-  "status": "experimental"
+  "status": "experimental",
+  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/GLM-4.7-Flash-Claude-Opus-4.5-High-Reasoning-Distill-8bit", "memoryMb": 31800 }
 }

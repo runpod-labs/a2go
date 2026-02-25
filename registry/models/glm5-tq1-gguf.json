@@ -39,5 +39,6 @@
   "extraStartArgs": ["-fa", "on"],
   "tps": { "b200-180gb": 27 },
   "default": false,
-  "status": "experimental"
+  "status": "experimental",
+  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/GLM-5-4bit", "memoryMb": 419000 }
 }

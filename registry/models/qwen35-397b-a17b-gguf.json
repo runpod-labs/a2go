@@ -23,5 +23,6 @@
   "default": false,
   "status": "experimental",
   "tps": { "b200-180gb": 43 },
-  "verifiedOn": ["b200-180gb"]
+  "verifiedOn": ["b200-180gb"],
+  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/Qwen3.5-397B-A17B-4bit", "memoryMb": 224000 }
 }

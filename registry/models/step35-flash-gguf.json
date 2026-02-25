@@ -18,5 +18,6 @@
   "provider": { "name": "local-llamacpp", "api": "openai-completions" },
   "tps": { "a100-80gb": 69 },
   "default": false,
-  "status": "experimental"
+  "status": "experimental",
+  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/Step-3.5-Flash-4bit", "memoryMb": 111000 }
 }

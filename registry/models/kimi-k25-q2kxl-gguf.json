@@ -25,5 +25,6 @@
   "provider": { "name": "local-llamacpp", "api": "openai-completions" },
   "tps": { "2x-h200-sxm": 19 },
   "default": false,
-  "status": "experimental"
+  "status": "experimental",
+  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/Kimi-K2.5-3bit", "memoryMb": 449000 }
 }
