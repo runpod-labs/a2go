@@ -1,23 +1,20 @@
 {
-  "id": "unsloth/qwen35-397b-a17b-gguf",
-  "name": "Qwen3.5-397B-A17B UD-Q2_K_XL (2-bit, 137GB, 1M context, 4-split)",
+  "id": "unsloth/qwen35-122b-a10b-gguf",
+  "name": "Qwen3.5-122B-A10B UD-Q2_K_XL (2-bit, 46.7GB, 1M context, multimodal)",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
   "bits": 2,
-  "repo": "unsloth/Qwen3.5-397B-A17B-GGUF",
+  "repo": "unsloth/Qwen3.5-122B-A10B-GGUF",
   "files": [
-    "UD-Q2_K_XL/Qwen3.5-397B-A17B-UD-Q2_K_XL-00001-of-00004.gguf",
-    "UD-Q2_K_XL/Qwen3.5-397B-A17B-UD-Q2_K_XL-00002-of-00004.gguf",
-    "UD-Q2_K_XL/Qwen3.5-397B-A17B-UD-Q2_K_XL-00003-of-00004.gguf",
-    "UD-Q2_K_XL/Qwen3.5-397B-A17B-UD-Q2_K_XL-00004-of-00004.gguf",
+    "Qwen3.5-122B-A10B-UD-Q2_K_XL.gguf",
     "mmproj-F16.gguf"
   ],
   "mmproj": "mmproj-F16.gguf",
-  "downloadDir": "/workspace/models/Qwen3.5-397B-A17B-GGUF",
-  "servedAs": "qwen3.5-397b-a17b",
+  "downloadDir": "/workspace/models/Qwen3.5-122B-A10B-GGUF",
+  "servedAs": "qwen3.5-122b-a10b",
   "vram": {
-    "model": 141200,
-    "overhead": 15800
+    "model": 47900,
+    "overhead": 2000
   },
   "kvCacheMbPer1kTokens": 16,
   "defaults": {
@@ -33,7 +30,7 @@
     "on",
     "--no-context-shift",
     "--alias",
-    "qwen3.5-397b-a17b",
+    "qwen3.5-122b-a10b",
     "--temp",
     "0.6",
     "--top-p",
@@ -50,15 +47,15 @@
   "default": false,
   "status": "experimental",
   "tps": {
-    "b200-180gb": 43
+    "a100-80gb": 47
   },
   "verifiedOn": [
-    "b200-180gb"
+    "a100-80gb"
   ],
   "mlx": {
     "engine": "mlx-lm",
-    "repo": "mlx-community/Qwen3.5-397B-A17B-4bit",
-    "memoryMb": 224000,
+    "repo": "mlx-community/Qwen3.5-122B-A10B-4bit",
+    "memoryMb": 72000,
     "bits": 4
   }
 }

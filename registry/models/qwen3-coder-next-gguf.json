@@ -3,18 +3,44 @@
   "name": "Qwen3-Coder-Next GGUF Q3_K_M",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
+  "bits": 3,
   "repo": "unsloth/Qwen3-Coder-Next-GGUF",
-  "files": ["Qwen3-Coder-Next-Q3_K_M.gguf"],
+  "files": [
+    "Qwen3-Coder-Next-Q3_K_M.gguf"
+  ],
   "downloadDir": "/workspace/models/Qwen3-Coder-Next-GGUF",
   "servedAs": "qwen3-coder-next",
-  "vram": { "model": 38300, "overhead": 1000 },
+  "vram": {
+    "model": 38300,
+    "overhead": 1000
+  },
   "kvCacheMbPer1kTokens": 13,
-  "defaults": { "contextLength": 32768, "port": 8000 },
-  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
-  "extraStartArgs": ["-fa", "on", "--no-context-shift"],
-  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
-  "tps": { "l40": 118 },
+  "defaults": {
+    "contextLength": 32768,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "-fa",
+    "on",
+    "--no-context-shift"
+  ],
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "tps": {
+    "l40": 118
+  },
   "default": false,
   "status": "experimental",
-  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/Qwen3-Coder-Next-4bit", "memoryMb": 45000 }
+  "mlx": {
+    "engine": "mlx-lm",
+    "repo": "mlx-community/Qwen3-Coder-Next-4bit",
+    "memoryMb": 45000,
+    "bits": 4
+  }
 }

@@ -3,29 +3,59 @@
   "name": "GLM-4.7-Flash GGUF Q4_K_M",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
+  "bits": 4,
   "repo": "unsloth/GLM-4.7-Flash-GGUF",
-  "files": ["GLM-4.7-Flash-Q4_K_M.gguf"],
+  "files": [
+    "GLM-4.7-Flash-Q4_K_M.gguf"
+  ],
   "downloadDir": "/workspace/models/GLM-4.7-Flash-GGUF",
   "servedAs": "glm-4.7-flash",
-  "vram": { "model": 17300, "overhead": 500 },
+  "vram": {
+    "model": 17300,
+    "overhead": 500
+  },
   "kvCacheMbPer1kTokens": 40,
-  "defaults": { "contextLength": 150000, "port": 8000 },
+  "defaults": {
+    "contextLength": 150000,
+    "port": 8000
+  },
   "startArgs": [
-    "-m", "{modelPath}/{files[0]}",
-    "--host", "0.0.0.0",
-    "--port", "{port}",
-    "-ngl", "{gpuLayers}",
-    "--parallel", "{parallel}",
-    "-c", "{contextLength}",
+    "-m",
+    "{modelPath}/{files[0]}",
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "{port}",
+    "-ngl",
+    "{gpuLayers}",
+    "--parallel",
+    "{parallel}",
+    "-c",
+    "{contextLength}",
     "--jinja",
-    "-ctk", "q8_0",
-    "-ctv", "q8_0",
-    "--api-key", "{apiKey}"
+    "-ctk",
+    "q8_0",
+    "-ctv",
+    "q8_0",
+    "--api-key",
+    "{apiKey}"
   ],
-  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
-  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
-  "tps": { "rtx-5090": 179 },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "tps": {
+    "rtx-5090": 179
+  },
   "default": true,
   "status": "stable",
-  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/GLM-4.7-Flash-4bit", "memoryMb": 17000 }
+  "mlx": {
+    "engine": "mlx-lm",
+    "repo": "mlx-community/GLM-4.7-Flash-4bit",
+    "memoryMb": 17000
+  }
 }

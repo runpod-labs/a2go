@@ -3,18 +3,31 @@
   "name": "FLUX.2 Klein 4B SDNQ 4-bit Dynamic",
   "type": "image",
   "engine": "image-gen",
+  "bits": 4,
   "repo": "Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic",
   "files": [],
   "downloadDir": "",
-  "vram": { "model": 3500, "overhead": 500 },
-  "defaults": { "port": 8002 },
+  "vram": {
+    "model": 3500,
+    "overhead": 500
+  },
+  "defaults": {
+    "port": 8002
+  },
   "startArgs": [
-    "--model", "{repo}",
-    "--host", "0.0.0.0",
-    "--port", "{port}"
+    "--model",
+    "{repo}",
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "{port}"
   ],
   "startDefaults": {},
   "default": true,
   "status": "stable",
-  "mlx": { "engine": "mflux", "repo": "FLUX.2-klein-4B", "memoryMb": 5000 }
+  "mlx": {
+    "engine": "mflux",
+    "repo": "FLUX.2-klein-4B",
+    "memoryMb": 5000
+  }
 }

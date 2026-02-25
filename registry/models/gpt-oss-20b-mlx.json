@@ -3,11 +3,20 @@
   "name": "GPT-OSS-20B MLX 8-bit",
   "type": "llm",
   "engine": "mlx",
+  "bits": 4,
   "repo": "mlx-community/gpt-oss-20b-MXFP4-Q8",
-  "vram": { "model": 12100, "overhead": 0 },
+  "vram": {
+    "model": 12100,
+    "overhead": 0
+  },
   "kvCacheMbPer1kTokens": 2,
-  "defaults": { "contextLength": 131072 },
-  "provider": { "name": "local-mlx", "api": "openai-completions" },
+  "defaults": {
+    "contextLength": 131072
+  },
+  "provider": {
+    "name": "local-mlx",
+    "api": "openai-completions"
+  },
   "platform": "mlx",
   "default": false,
   "status": "experimental"

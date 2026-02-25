@@ -2,11 +2,20 @@
   "id": "mlx/lfm25-audio",
   "name": "LFM2.5-Audio-1.5B MLX 4-bit",
   "type": "audio",
-  "capabilities": ["tts", "stt"],
+  "capabilities": [
+    "tts",
+    "stt"
+  ],
   "engine": "mlx-audio",
+  "bits": 4,
   "repo": "mlx-community/LFM2.5-Audio-1.5B-4bit",
-  "vram": { "model": 500, "overhead": 0 },
-  "defaults": { "port": 8001 },
+  "vram": {
+    "model": 500,
+    "overhead": 0
+  },
+  "defaults": {
+    "port": 8001
+  },
   "platform": "mlx",
   "default": false,
   "status": "experimental"

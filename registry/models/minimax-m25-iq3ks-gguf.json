@@ -3,6 +3,7 @@
   "name": "MiniMax-M2.5 GGUF smol-IQ3_KS (87GB, 3-split, ik_llama.cpp)",
   "type": "llm",
   "engine": "ik-llamacpp",
+  "bits": 3,
   "repo": "ubergarm/MiniMax-M2.5-GGUF",
   "files": [
     "smol-IQ3_KS/MiniMax-M2.5-smol-IQ3_KS-00001-of-00003.gguf",
@@ -11,14 +12,35 @@
   ],
   "downloadDir": "/workspace/models/MiniMax-M2.5-GGUF",
   "servedAs": "minimax-m2.5",
-  "vram": { "model": 87000, "overhead": 2000 },
+  "vram": {
+    "model": 87000,
+    "overhead": 2000
+  },
   "kvCacheMbPer1kTokens": 130,
-  "defaults": { "contextLength": 196608, "port": 8000 },
-  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
-  "extraStartArgs": ["-fa", "on"],
-  "tps": { "b200-180gb": 93 },
-  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
+  "defaults": {
+    "contextLength": 196608,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "-fa",
+    "on"
+  ],
+  "tps": {
+    "b200-180gb": 93
+  },
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
   "default": false,
   "status": "experimental",
-  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/MiniMax-M2.5-3bit", "memoryMb": 100000 }
+  "mlx": {
+    "engine": "mlx-lm",
+    "repo": "mlx-community/MiniMax-M2.5-3bit",
+    "memoryMb": 100000
+  }
 }

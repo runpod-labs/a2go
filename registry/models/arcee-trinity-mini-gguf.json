@@ -3,6 +3,7 @@
   "name": "Arcee Trinity Mini 26B/3B MoE GGUF Q4_K_M",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
+  "bits": 4,
   "repo": "arcee-ai/Trinity-Mini-GGUF",
   "files": [
     "Trinity-Mini-Q4_K_M.gguf"

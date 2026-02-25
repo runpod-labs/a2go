@@ -94,6 +94,12 @@
       "type": "string",
       "description": "Multimodal projection file for vision-capable models (downloaded from same repo)"
     },
+    "bits": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16,
+      "description": "Quantization bit depth of the primary (GGUF) weights"
+    },
     "provider": {
       "type": "object",
       "properties": {
@@ -130,7 +136,8 @@
       "properties": {
         "engine": { "type": "string", "enum": ["mlx-lm", "mlx-audio", "mflux"] },
         "repo": { "type": "string" },
-        "memoryMb": { "type": "integer", "minimum": 0 }
+        "memoryMb": { "type": "integer", "minimum": 0 },
+        "bits": { "type": "integer", "minimum": 1, "maximum": 16 }
       },
       "required": ["engine", "memoryMb"]
     }

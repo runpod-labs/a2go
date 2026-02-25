@@ -3,6 +3,7 @@
   "name": "OLMo 3.1 Think 32B GGUF Q4_K_M",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
+  "bits": 4,
   "repo": "unsloth/Olmo-3.1-32B-Think-GGUF",
   "files": [
     "Olmo-3.1-32B-Think-Q4_K_M.gguf"
@@ -35,5 +36,9 @@
   },
   "default": false,
   "status": "stable",
-  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/Olmo-3.1-32B-Think-4bit", "memoryMb": 18100 }
+  "mlx": {
+    "engine": "mlx-lm",
+    "repo": "mlx-community/Olmo-3.1-32B-Think-4bit",
+    "memoryMb": 18100
+  }
 }

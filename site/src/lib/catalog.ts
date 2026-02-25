@@ -9,6 +9,7 @@ export interface ModelMlx {
   engine: string
   repo: string
   memoryMb: number
+  bits?: number
 }
 
 export interface CatalogModel {
@@ -16,6 +17,7 @@ export interface CatalogModel {
   name: string
   type: 'llm' | 'image' | 'audio'
   engine: string
+  bits?: number
   status: string
   repo: string
   vram: ModelVram
@@ -109,6 +111,7 @@ interface RawModel {
   name: string
   type: 'llm' | 'audio' | 'image'
   engine: string
+  bits?: number
   status?: string
   repo?: string
   vram: ModelVram
@@ -118,7 +121,7 @@ interface RawModel {
   defaults?: { contextLength?: number }
   mmproj?: string
   platform?: 'nvidia' | 'mlx'
-  mlx?: { engine: string; repo: string; memoryMb: number }
+  mlx?: { engine: string; repo: string; memoryMb: number; bits?: number }
   [key: string]: unknown
 }
 
@@ -149,6 +152,7 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; gpus: Gp
         name: m.name.toLowerCase(),
         type: m.type,
         engine: m.engine,
+        bits: m.bits,
         status: m.status ?? 'stable',
         repo: m.repo ?? m.id,
         vram: m.vram,
@@ -169,6 +173,7 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; gpus: Gp
       name: m.name.toLowerCase(),
       type: m.type,
       engine: m.engine,
+      bits: m.bits,
       status: m.status ?? 'stable',
       repo: m.repo ?? m.id,
       vram: m.vram,
@@ -188,6 +193,7 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; gpus: Gp
         name: m.name.toLowerCase(),
         type: m.type,
         engine: m.mlx.engine,
+        bits: m.mlx.bits ?? m.bits,
         status: m.status ?? 'stable',
         repo: m.mlx.repo,
         vram: { model: m.mlx.memoryMb, overhead: 0 },

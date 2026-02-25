@@ -3,6 +3,7 @@
   "name": "Qwen2.5-VL-7B Instruct GGUF Q4_K_M (Vision + LLM)",
   "type": "vision",
   "engine": "openclaw2go-llamacpp",
+  "bits": 4,
   "repo": "unsloth/Qwen2.5-VL-7B-Instruct-GGUF",
   "files": [
     "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf"

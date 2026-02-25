@@ -3,6 +3,7 @@
   "name": "Kimi K2.5 UD-TQ1_0 (1-bit, 240GB, 5-split)",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
+  "bits": 1,
   "repo": "unsloth/Kimi-K2.5-GGUF",
   "files": [
     "UD-TQ1_0/Kimi-K2.5-UD-TQ1_0-00001-of-00005.gguf",
@@ -13,15 +14,42 @@
   ],
   "downloadDir": "/workspace/models/Kimi-K2.5-GGUF",
   "servedAs": "kimi-k2.5",
-  "vram": { "model": 240000, "overhead": 2000 },
+  "vram": {
+    "model": 240000,
+    "overhead": 2000
+  },
   "kvCacheMbPer1kTokens": 36,
-  "defaults": { "contextLength": 98304, "port": 8000 },
-  "startDefaults": { "gpuLayers": "auto", "parallel": "1" },
-  "extraStartArgs": ["--fit", "on", "-fa", "on", "--kv-unified"],
-  "extraEnvVars": { "LLAMA_SET_ROWS": "1" },
-  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
-  "tps": { "b200-180gb": 9 },
+  "defaults": {
+    "contextLength": 98304,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "auto",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "--fit",
+    "on",
+    "-fa",
+    "on",
+    "--kv-unified"
+  ],
+  "extraEnvVars": {
+    "LLAMA_SET_ROWS": "1"
+  },
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "tps": {
+    "b200-180gb": 9
+  },
   "default": false,
   "status": "experimental",
-  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/Kimi-K2.5-3bit", "memoryMb": 449000 }
+  "mlx": {
+    "engine": "mlx-lm",
+    "repo": "mlx-community/Kimi-K2.5-3bit",
+    "memoryMb": 449000,
+    "bits": 3
+  }
 }

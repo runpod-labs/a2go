@@ -3,6 +3,7 @@
   "name": "Step-3.5-Flash GGUF Q2_K",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
+  "bits": 2,
   "repo": "bartowski/stepfun-ai_Step-3.5-Flash-GGUF",
   "files": [
     "stepfun-ai_Step-3.5-Flash-Q2_K/stepfun-ai_Step-3.5-Flash-Q2_K-00001-of-00002.gguf",
@@ -10,14 +11,38 @@
   ],
   "downloadDir": "/workspace/models/Step-3.5-Flash-GGUF",
   "servedAs": "step-3.5-flash",
-  "vram": { "model": 69600, "overhead": 2000 },
+  "vram": {
+    "model": 69600,
+    "overhead": 2000
+  },
   "kvCacheMbPer1kTokens": 10,
-  "defaults": { "contextLength": 262144, "port": 8000 },
-  "startDefaults": { "gpuLayers": "999", "parallel": "1" },
-  "extraStartArgs": ["-fa", "on", "--chat-template-file", "/opt/openclaw/templates/step35-flash.jinja"],
-  "provider": { "name": "local-llamacpp", "api": "openai-completions" },
-  "tps": { "a100-80gb": 69 },
+  "defaults": {
+    "contextLength": 262144,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "-fa",
+    "on",
+    "--chat-template-file",
+    "/opt/openclaw/templates/step35-flash.jinja"
+  ],
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "tps": {
+    "a100-80gb": 69
+  },
   "default": false,
   "status": "experimental",
-  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/Step-3.5-Flash-4bit", "memoryMb": 111000 }
+  "mlx": {
+    "engine": "mlx-lm",
+    "repo": "mlx-community/Step-3.5-Flash-4bit",
+    "memoryMb": 111000,
+    "bits": 4
+  }
 }

@@ -1,10 +1,9 @@
 import type { CatalogModel, OsPlatform } from './catalog'
-import { parseQuant } from './parse-quant'
 
 export interface ModelVariant {
   model: CatalogModel
   os: OsPlatform[]
-  quant: string
+  bits?: number
   shortLabel: string
   vramTotal: number
   tps?: Record<string, number>
@@ -21,46 +20,41 @@ export interface ModelGroup {
   variants: ModelVariant[]
 }
 
-/** Clean base name: strip GGUF/MLX/MoE-suffix markers */
+/** Clean base name: strip GGUF/MLX/MoE-suffix markers, quant tokens, bit labels, and parenthesized info */
 function cleanBaseName(name: string): string {
   return name
     .replace(/\bgguf\b/gi, '')
     .replace(/\bmlx\b/gi, '')
     .replace(/-a\d+b\b/gi, '')
+    .replace(/\b(ud-?|smol-)?(i?t?q\d+[\w_]*|sdnq)\b/gi, '')
+    .replace(/\b\d+-?bit\b/gi, '')
+    .replace(/\s*\([^)]*\)/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
-/**
- * Group key includes bit level so different quants stay separate.
- * Same model at same bit level but different platforms (GGUF 4-bit + MLX 4-bit) group together.
- * Quant method prefixes (e.g. "sdnq") are stripped so "sdnq 4bit" and "4bit" produce the same key.
- */
-function getGroupKey(name: string): string {
-  const { baseName, shortLabel } = parseQuant(name)
-  const clean = cleanBaseName(baseName)
-  // Normalize to just the bit level: "sdnq 4bit" → "4bit"
-  const bitOnly = shortLabel !== '--' ? (shortLabel.match(/(\d+bit)$/)?.[1] ?? shortLabel) : '--'
-  return bitOnly !== '--' ? `${clean}::${bitOnly}` : clean
+/** Group key includes bit level so different quants stay separate */
+function getGroupKey(model: CatalogModel): string {
+  const clean = cleanBaseName(model.name)
+  return `${clean}::${model.bits ?? '--'}`
 }
 
 /** Display name is just the clean model name without bit level */
 function getDisplayName(name: string): string {
-  const { baseName } = parseQuant(name)
-  return cleanBaseName(baseName)
+  return cleanBaseName(name)
 }
 
 export function groupModels(models: CatalogModel[]): ModelGroup[] {
   const map = new Map<string, ModelGroup>()
 
   for (const model of models) {
-    const key = getGroupKey(model.name)
-    const { shortLabel, fullQuant } = parseQuant(model.name)
+    const key = getGroupKey(model)
+    const shortLabel = model.bits != null ? `${model.bits}bit` : '--'
 
     const variant: ModelVariant = {
       model,
       os: model.os,
-      quant: fullQuant,
+      bits: model.bits,
       shortLabel,
       vramTotal: model.vram.model + model.vram.overhead,
       tps: model.tps,
@@ -111,9 +105,7 @@ export function groupModels(models: CatalogModel[]): ModelGroup[] {
   groups.sort((a, b) => {
     const nameCmp = a.displayName.localeCompare(b.displayName)
     if (nameCmp !== 0) return nameCmp
-    const aBit = a.variants[0]?.shortLabel.match(/^(\d+)bit$/)?.[1]
-    const bBit = b.variants[0]?.shortLabel.match(/^(\d+)bit$/)?.[1]
-    return (aBit ? Number(aBit) : 999) - (bBit ? Number(bBit) : 999)
+    return (a.variants[0]?.model.bits ?? 999) - (b.variants[0]?.model.bits ?? 999)
   })
 
   return groups

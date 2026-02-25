@@ -3,6 +3,7 @@
   "name": "GLM-5-754B IQ2_XXS (2-bit, 241GB)",
   "type": "llm",
   "engine": "openclaw2go-llamacpp",
+  "bits": 2,
   "repo": "unsloth/GLM-5-GGUF",
   "files": [
     "UD-IQ2_XXS/GLM-5-UD-IQ2_XXS-00001-of-00006.gguf",
@@ -24,16 +25,25 @@
     "port": 8000
   },
   "startArgs": [
-    "-m", "{modelPath}/{files[0]}",
-    "--host", "0.0.0.0",
-    "--port", "{port}",
-    "-ngl", "{gpuLayers}",
-    "--parallel", "{parallel}",
-    "-c", "{contextLength}",
+    "-m",
+    "{modelPath}/{files[0]}",
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "{port}",
+    "-ngl",
+    "{gpuLayers}",
+    "--parallel",
+    "{parallel}",
+    "-c",
+    "{contextLength}",
     "--jinja",
-    "-ctk", "q8_0",
-    "-ctv", "q8_0",
-    "--api-key", "{apiKey}"
+    "-ctk",
+    "q8_0",
+    "-ctv",
+    "q8_0",
+    "--api-key",
+    "{apiKey}"
   ],
   "startDefaults": {
     "gpuLayers": "999",
@@ -43,9 +53,19 @@
     "name": "local-llamacpp",
     "api": "openai-completions"
   },
-  "extraStartArgs": ["-fa", "on"],
-  "tps": { "2x-h200-sxm": 34 },
+  "extraStartArgs": [
+    "-fa",
+    "on"
+  ],
+  "tps": {
+    "2x-h200-sxm": 34
+  },
   "default": false,
   "status": "experimental",
-  "mlx": { "engine": "mlx-lm", "repo": "mlx-community/GLM-5-4bit", "memoryMb": 419000 }
+  "mlx": {
+    "engine": "mlx-lm",
+    "repo": "mlx-community/GLM-5-4bit",
+    "memoryMb": 419000,
+    "bits": 4
+  }
 }
