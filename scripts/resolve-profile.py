@@ -249,7 +249,11 @@ def build_from_models(config, models, engines, gpu_vram_mb):
             continue
 
         engine_id = model["engine"]
-        engine = engines.get(engine_id, {})
+        engine = engines.get(engine_id)
+        if not engine:
+            print(f"ERROR: model '{model['id']}' references unknown engine '{engine_id}'", file=sys.stderr)
+            print(f"Available engines: {', '.join(engines.keys())}", file=sys.stderr)
+            sys.exit(1)
         port = ROLE_PORTS[role]
         overrides = {}
 

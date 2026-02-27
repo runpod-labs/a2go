@@ -9,7 +9,7 @@ Usage:
   openclaw2go fit --vram 32768              Show what fits on a specific VRAM
   openclaw2go presets                       List available presets
   openclaw2go presets show <id>             Show preset details
-  openclaw2go validate <json-string>        Validate an OPENCLAW_CONFIG
+  openclaw2go validate <json-string>        Validate an OPENCLAW2GO_CONFIG
 
   openclaw2go registry fetch                Fetch external registry (runs at startup too)
   openclaw2go registry fetch --force        Force fetch, ignoring cache TTL
@@ -43,7 +43,7 @@ FETCH_TIMEOUT = 5  # seconds
 CACHE_DIR = Path(os.environ.get("OPENCLAW_STATE_DIR", "/workspace/.openclaw")) / "registry"
 CACHE_META = CACHE_DIR / ".fetch-meta.json"
 
-ALLOWED_ENGINES = {"llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "ik-llamacpp", "image-gen", "openclaw2go-llamacpp", "mlx", "vllm"}
+ALLOWED_ENGINES = {"openclaw2go-llamacpp", "ik-llamacpp", "image-gen", "qwen3-tts", "mlx-lm", "mlx-audio", "mflux"}
 REQUIRED_MODEL_FIELDS = {"id", "name", "type", "engine", "vram"}
 REQUIRED_PROFILE_FIELDS = {"id", "name", "services"}
 
@@ -531,7 +531,7 @@ def cmd_presets_show(args):
 # ── Command: validate ─────────────────────────────────────────
 
 def cmd_validate(args):
-    """Validate an OPENCLAW_CONFIG JSON string."""
+    """Validate an OPENCLAW2GO_CONFIG JSON string."""
     models = load_all_json(REGISTRY_DIR / "models")
     profiles = load_all_json(REGISTRY_DIR / "profiles")
 
@@ -747,7 +747,7 @@ Examples:
   openclaw2go fit --vram 81920               Show what fits on 80GB GPU
   openclaw2go presets                        List preset profiles
   openclaw2go presets show <id>              Show preset details
-  openclaw2go validate '{"llm":true}'        Validate a config
+  openclaw2go validate '{"llm":"unsloth/glm47-flash-gguf"}'  Validate a config
   openclaw2go registry fetch                 Fetch/refresh external registry
   openclaw2go registry fetch --force         Force fetch, ignore cache TTL
   openclaw2go registry export                Export current model config (JSON)
@@ -772,7 +772,7 @@ Examples:
     presets_show.add_argument("preset_id", help="Preset ID")
 
     # validate
-    validate_parser = sub.add_parser("validate", help="Validate an OPENCLAW_CONFIG JSON")
+    validate_parser = sub.add_parser("validate", help="Validate an OPENCLAW2GO_CONFIG JSON")
     validate_parser.add_argument("config_json", help="JSON string to validate")
 
     # registry
