@@ -227,8 +227,8 @@ export default function DeployCard({
         ))}
       </div>
 
-      {/* Tab content — fixed height, never changes */}
-      <div className="flex h-[200px] flex-col">
+      {/* Tab content — content-driven height */}
+      <div className="flex min-h-[120px] flex-col">
         {!hasModels && (
           <div className="flex flex-1 items-center justify-center">
             <span className="font-mono text-[10px] text-foreground/30">

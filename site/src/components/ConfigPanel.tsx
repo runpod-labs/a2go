@@ -38,13 +38,18 @@ export default function ConfigPanel({
   modelIdToGroup: Map<string, ModelGroup>
   os: OsPlatform | null
 }) {
+  const hasModels = selectedModels.length > 0
+
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Memory + Hardware + Logo row */}
-      <div className="flex shrink-0 border-b border-foreground/[0.06]">
-        <div className="flex flex-1 flex-col border-r border-foreground/[0.06]">
-          {/* Memory section */}
-          <div className="border-b border-foreground/[0.06]">
+    <div className="flex flex-1 flex-col overflow-y-auto">
+      {/* Toolbar row: Memory + Hardware + Logo as CSS Grid */}
+      <div className="shrink-0 border-b border-foreground/[0.06]">
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: '1fr 1fr auto' }}
+        >
+          {/* Memory */}
+          <div className="border-r border-foreground/[0.06]">
             <SectionHeader>
               <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
                 Memory
@@ -61,8 +66,8 @@ export default function ConfigPanel({
             </div>
           </div>
 
-          {/* Hardware section */}
-          <div>
+          {/* Hardware */}
+          <div className="border-r border-foreground/[0.06]">
             <SectionHeader>
               <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
                 Hardware
@@ -79,33 +84,33 @@ export default function ConfigPanel({
               />
             </div>
           </div>
-        </div>
 
-        {/* Logo card */}
-        <a
-          href="https://github.com/runpod-workers/openclaw2go"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-[280px] shrink-0 flex-col items-center justify-center transition-opacity hover:opacity-80"
-        >
-          <img
-            src={`${import.meta.env.BASE_URL}openclaw2go_logo_nobg.png`}
-            alt="openclaw2go"
-            width={200}
-            height={200}
-            className="-mb-4 h-48 w-48 object-contain"
-          />
-          <span className="font-mono text-[14px] font-bold tracking-tight text-foreground/70">
-            openclaw2go
-          </span>
-          <span className="font-mono text-[9px] text-foreground/30">
-            v{__APP_VERSION__}
-          </span>
-        </a>
+          {/* Logo */}
+          <a
+            href="https://github.com/runpod-workers/openclaw2go"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-[280px] shrink-0 flex-col items-center justify-center transition-opacity hover:opacity-80"
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}openclaw2go_logo_nobg.png`}
+              alt="openclaw2go"
+              width={200}
+              height={200}
+              className="-mb-4 h-48 w-48 object-contain"
+            />
+            <span className="font-mono text-[14px] font-bold tracking-tight text-foreground/70">
+              openclaw2go
+            </span>
+            <span className="font-mono text-[9px] text-foreground/30">
+              v{__APP_VERSION__}
+            </span>
+          </a>
+        </div>
       </div>
 
-      {/* Selected Models */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Selected Models — sticky header */}
+      <div className="sticky top-0 z-10 bg-background border-b border-foreground/[0.06]">
         <SectionHeader className="justify-between">
           <div className="flex items-center gap-3">
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
@@ -128,18 +133,20 @@ export default function ConfigPanel({
             </button>
           )}
         </SectionHeader>
+      </div>
 
-        {/* Selected model slots */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <SelectedModels
-            models={selectedModels}
-            onToggle={onToggleModel}
-            modelIdToGroup={modelIdToGroup}
-            gpus={gpus}
-          />
-        </div>
+      {/* Selected model cards */}
+      <div className="p-4">
+        <SelectedModels
+          models={selectedModels}
+          onToggle={onToggleModel}
+          modelIdToGroup={modelIdToGroup}
+          gpus={gpus}
+        />
+      </div>
 
-        {/* Deploy */}
+      {/* Deploy — only when models are selected */}
+      {hasModels && (
         <div className="shrink-0 border-t border-foreground/[0.06]">
           <SectionHeader>
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
@@ -154,7 +161,7 @@ export default function ConfigPanel({
             />
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

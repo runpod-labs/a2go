@@ -182,15 +182,6 @@ function VramBreakdownBar({
   )
 }
 
-function EmptySlotCard({ accentColor }: { accentColor: string }) {
-  return (
-    <div
-      className="flex flex-1 flex-col border-2 border-dashed p-6"
-      style={{ borderColor: `color-mix(in srgb, ${accentColor} 15%, transparent)` }}
-    />
-  )
-}
-
 function FilledSlotCard({
   model,
   group,
@@ -332,14 +323,26 @@ export default function SelectedModels({
   modelIdToGroup: Map<string, ModelGroup>
   gpus: GpuInfo[]
 }) {
-  const byType = new Map(models.map((m) => [m.type, m]))
+  if (models.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <span className="font-mono text-[11px] text-foreground/30">
+          select models from the catalog
+        </span>
+      </div>
+    )
+  }
 
   return (
-    <div className="grid h-full grid-cols-3 gap-3">
-      {SLOTS.map((slot) => {
-        const m = byType.get(slot.type)
+    <div
+      className="grid gap-4"
+      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}
+    >
+      {SLOTS.flatMap((slot) => {
+        const m = models.find((model) => model.type === slot.type)
+        if (!m) return []
 
-        return (
+        return [(
           <div key={slot.type} className="flex flex-col gap-2">
             <span
               className="font-mono text-sm font-bold uppercase tracking-[0.2em]"
@@ -348,20 +351,16 @@ export default function SelectedModels({
               {slot.label}
             </span>
 
-            {!m ? (
-              <EmptySlotCard accentColor={slot.color} />
-            ) : (
-              <FilledSlotCard
-                model={m}
-                group={modelIdToGroup.get(m.id)}
-                visibleVariants={modelIdToGroup.get(m.id)?.variants ?? []}
-                accentColor={slot.color}
-                gpus={gpus}
-                onRemove={() => onToggle(m)}
-              />
-            )}
+            <FilledSlotCard
+              model={m}
+              group={modelIdToGroup.get(m.id)}
+              visibleVariants={modelIdToGroup.get(m.id)?.variants ?? []}
+              accentColor={slot.color}
+              gpus={gpus}
+              onRemove={() => onToggle(m)}
+            />
           </div>
-        )
+        )]
       })}
     </div>
   )
