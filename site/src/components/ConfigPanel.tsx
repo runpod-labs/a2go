@@ -3,6 +3,7 @@ import GpuSelector from './VramLegend'
 import VramGauge from './VramSelector'
 import SelectedModels from './SelectedModels'
 import DeployCard from './DeployOutput'
+import SecurityGuide from './SecurityGuide'
 import type { CatalogModel, GpuInfo, GpuCount, OsPlatform } from '../lib/catalog'
 import { VRAM_PRESETS } from '../lib/catalog'
 import type { ModelGroup } from '../lib/group-models'
@@ -146,18 +147,38 @@ export default function ConfigPanel({
 
       {/* Deploy — only when models are selected */}
       {hasModels && (
-        <div className="shrink-0 border-t border-foreground/[0.06]">
-          <SectionHeader>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
-              Deploy
-            </span>
-          </SectionHeader>
-          <div className="p-4">
-            <DeployCard
-              selectedModels={selectedModels}
-              modelIdToGroup={modelIdToGroup}
-              os={os}
-            />
+        <div className="flex-1 border-t border-foreground/[0.06]">
+          <div
+            className="grid h-full"
+            style={{ gridTemplateColumns: '260px 1fr' }}
+          >
+            {/* Before You Deploy — left column */}
+            <div className="border-r border-foreground/[0.06]">
+              <SectionHeader>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
+                  Before You Deploy
+                </span>
+              </SectionHeader>
+              <div className="p-4">
+                <SecurityGuide />
+              </div>
+            </div>
+
+            {/* Deploy — right column */}
+            <div>
+              <SectionHeader>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
+                  Deploy
+                </span>
+              </SectionHeader>
+              <div className="p-4">
+                <DeployCard
+                  selectedModels={selectedModels}
+                  modelIdToGroup={modelIdToGroup}
+                  os={os}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
