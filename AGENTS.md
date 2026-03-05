@@ -55,6 +55,12 @@ Internal only: 8001 (audio), 8002 (image), 8003 (vision), 8004 (embedding), 8005
 - `workflow_dispatch` only works from default branch — feature branch workflows can't be manually triggered until merged to main.
 - Fork CI auto-rebases cherry-picks onto new llama.cpp releases. Tag convention: `{upstream-tag}-openclaw.{patch}`.
 
+### Site: OS Tab State in Selected Models
+The selected model cards share a synchronized OS tab state (`sharedOs` in `SelectedModels.tsx`). This is **separate** from the global OS selector:
+- **Global OS** (`os` prop from `ConfigPanel`) **filters** which variant tabs are visible (e.g. Mac selected → only Mac tabs shown).
+- **Shared tab state** (`sharedOs`) syncs which tab is **active** across all cards when a user clicks a tab — it does NOT change the global OS.
+- `FilledSlotCard` must NOT have its own local tab state — the active tab index and `onTabSelect` callback are passed in as props. If you add local `useState` for the active tab, cross-card sync will break silently.
+
 ## Where to Make Changes
 
 | Task | Location |
