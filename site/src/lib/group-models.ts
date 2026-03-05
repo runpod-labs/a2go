@@ -104,7 +104,7 @@ export function groupModels(models: CatalogModel[]): ModelGroup[] {
   // Sort groups: by display name, then by bit level ascending (1-bit → 2-bit → 4-bit …)
   const groups = Array.from(map.values())
   groups.sort((a, b) => {
-    const nameCmp = a.displayName.localeCompare(b.displayName)
+    const nameCmp = a.displayName.localeCompare(b.displayName, undefined, { numeric: true })
     if (nameCmp !== 0) return nameCmp
     return (a.variants[0]?.model.primaryBits ?? 999) - (b.variants[0]?.model.primaryBits ?? 999)
   })
