@@ -142,6 +142,7 @@ export default function ConfigPanel({
           onToggle={onToggleModel}
           modelIdToGroup={modelIdToGroup}
           gpus={gpus}
+          os={os}
         />
       </div>
 

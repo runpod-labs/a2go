@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatContext, formatVram, type CatalogModel, type GpuInfo, type OsPlatform } from '../lib/catalog'
 import type { ModelGroup, ModelVariant } from '../lib/group-models'
 import { PlatformIcon } from './PlatformSelector'
@@ -186,6 +186,8 @@ function FilledSlotCard({
   model,
   group,
   visibleVariants,
+  activeTabIndex,
+  onTabSelect,
   accentColor,
   gpus,
   onRemove,
@@ -193,16 +195,13 @@ function FilledSlotCard({
   model: CatalogModel
   group: ModelGroup | undefined
   visibleVariants: ModelVariant[]
+  activeTabIndex: number
+  onTabSelect: (os: OsPlatform) => void
   accentColor: string
   gpus: GpuInfo[]
   onRemove: () => void
 }) {
-  // Local tab state — doesn't affect global OS
-  const [activeTab, setActiveTab] = useState(() => {
-    const modelOs = model.os.join(',')
-    const idx = visibleVariants.findIndex((vt) => vt.os.join(',') === modelOs)
-    return idx >= 0 ? idx : 0
-  })
+  const activeTab = activeTabIndex
   const displayName = group?.displayName ?? model.name
 
   const showTabs = visibleVariants.length > 0
@@ -249,7 +248,7 @@ function FilledSlotCard({
         {showTabs && visibleVariants.map((vt, i) => (
           <button
             key={`${vt.model.id}-${vt.os.join(',')}`}
-            onClick={() => setActiveTab(i)}
+            onClick={() => onTabSelect(vt.os[0])}
             className={cn(
               "flex items-center gap-1.5 px-3 h-full font-mono text-[10px] uppercase tracking-wider transition-all",
               i === activeTab
@@ -317,12 +316,22 @@ export default function SelectedModels({
   onToggle,
   modelIdToGroup,
   gpus,
+  os,
 }: {
   models: CatalogModel[]
   onToggle: (model: CatalogModel) => void
   modelIdToGroup: Map<string, ModelGroup>
   gpus: GpuInfo[]
+  os: OsPlatform | null
 }) {
+  // Shared OS tab state across all cards (independent of global OS selector)
+  const [sharedOs, setSharedOs] = useState<OsPlatform | null>(os)
+
+  // When global OS changes, reset shared tab state to match
+  useEffect(() => {
+    setSharedOs(os)
+  }, [os])
+
   if (models.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -342,6 +351,17 @@ export default function SelectedModels({
         const m = models.find((model) => model.type === slot.type)
         if (!m) return []
 
+        const allVariants = modelIdToGroup.get(m.id)?.variants ?? []
+        // Filter variants by global OS if set
+        const filtered = os
+          ? allVariants.filter((vt) => vt.os.includes(os))
+          : allVariants
+
+        // Derive active tab index from sharedOs
+        const activeIdx = sharedOs
+          ? Math.max(0, filtered.findIndex((vt) => vt.os.includes(sharedOs)))
+          : 0
+
         return [(
           <div key={slot.type} className="flex flex-col gap-2">
             <span
@@ -354,7 +374,9 @@ export default function SelectedModels({
             <FilledSlotCard
               model={m}
               group={modelIdToGroup.get(m.id)}
-              visibleVariants={modelIdToGroup.get(m.id)?.variants ?? []}
+              visibleVariants={filtered}
+              activeTabIndex={activeIdx}
+              onTabSelect={setSharedOs}
               accentColor={slot.color}
               gpus={gpus}
               onRemove={() => onToggle(m)}
