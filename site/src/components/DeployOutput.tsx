@@ -49,11 +49,11 @@ function CodeBlock({ code, requirements }: { code: string; requirements: string[
       </div>
 
       {/* Code column */}
-      <div className="flex min-w-0 flex-1 max-w-[620px] flex-col overflow-hidden rounded border border-foreground/[0.06] bg-[#080706]">
+      <div className="relative flex min-w-0 flex-1 max-w-[620px] flex-col overflow-hidden rounded border border-foreground/[0.06] bg-[#080706]">
+        <div className="absolute top-3 right-3 z-10">
+          <CopyButton text={code} />
+        </div>
         <div className="flex-1 overflow-auto p-3">
-          <div className="float-right sticky top-0 ml-2 mb-1">
-            <CopyButton text={code} />
-          </div>
           <pre className="font-mono text-[10px] leading-relaxed text-foreground/90">
             <code>{code}</code>
           </pre>
