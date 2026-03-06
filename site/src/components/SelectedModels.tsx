@@ -87,13 +87,11 @@ type SegmentPattern = keyof typeof SEGMENT_PATTERNS
 function SegmentLabel({
   label,
   value,
-  detail,
   color,
   pattern = 'solid',
 }: {
   label: string
   value: string
-  detail?: string
   color: string
   pattern?: SegmentPattern
 }) {
@@ -101,9 +99,8 @@ function SegmentLabel({
     <div className="flex flex-col">
       <span className="inline-block h-10 w-full" style={SEGMENT_PATTERNS[pattern](color)} />
       <div className="flex flex-col gap-0.5 px-2.5 py-2.5">
-        <span className="font-mono text-[15px] font-bold tabular-nums text-foreground/80">{value}</span>
+        <span className="whitespace-nowrap font-mono text-[15px] font-bold tabular-nums text-foreground/80">{value}</span>
         <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/35">{label}</span>
-        <span className="font-mono text-[9px] text-foreground/30">{detail || '\u00A0'}</span>
       </div>
     </div>
   )
@@ -113,16 +110,12 @@ function VramBreakdownBar({
   modelMb,
   overheadMb,
   kvCacheMb,
-  contextLength,
   platformOs,
-  engine,
 }: {
   modelMb: number
   overheadMb: number
   kvCacheMb: number
-  contextLength?: number
   platformOs?: OsPlatform[]
-  engine?: string
 }) {
   const showRuntime = overheadMb > 0
   const totalMb = modelMb + overheadMb + kvCacheMb
@@ -163,19 +156,13 @@ function VramBreakdownBar({
       </div>
 
       {/* Segment labels as proportional blocks — model → kv cache → runtime */}
-      <div className="grid" style={{ gridTemplateColumns: cols }}>
+      <div className="grid min-h-[5.5rem]" style={{ gridTemplateColumns: cols }}>
         <SegmentLabel label="weights" value={formatVram(modelMb)} color={segmentColor} pattern="solid" />
         {kvCacheMb > 0 && (
-          <SegmentLabel
-            label="kv cache"
-            value={formatVram(kvCacheMb)}
-            detail={contextLength ? `@ ${formatContext(contextLength)} ctx` : undefined}
-            color={segmentColor}
-            pattern="stripes"
-          />
+          <SegmentLabel label="kv cache" value={formatVram(kvCacheMb)} color={segmentColor} pattern="stripes" />
         )}
         {showRuntime && (
-          <SegmentLabel label="runtime" value={formatVram(overheadMb)} detail={engine} color={segmentColor} pattern="dots" />
+          <SegmentLabel label="runtime" value={formatVram(overheadMb)} color={segmentColor} pattern="dots" />
         )}
       </div>
     </div>
@@ -274,9 +261,7 @@ function FilledSlotCard({
         modelMb={v.vram.model}
         overheadMb={v.vram.overhead}
         kvCacheMb={kvCacheMb}
-        contextLength={v.contextLength}
         platformOs={activeVariant?.os ?? model.os}
-        engine={engine}
       />
 
       {/* Info table */}
@@ -345,7 +330,7 @@ export default function SelectedModels({
   return (
     <div
       className="grid gap-4"
-      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}
+      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))' }}
     >
       {SLOTS.flatMap((slot) => {
         const m = models.find((model) => model.type === slot.type)
