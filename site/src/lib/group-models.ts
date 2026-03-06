@@ -27,6 +27,7 @@ function cleanBaseName(name: string): string {
     .replace(/\bmlx\b/gi, '')
     .replace(/-a\d+b\b/gi, '')
     .replace(/\b(ud-?|smol-)?(i?t?q\d+[\w_]*|sdnq)\b/gi, '')
+    .replace(/\bdynamic\b/gi, '')
     .replace(/\b\d+-?bit\b/gi, '')
     .replace(/\s*\([^)]*\)/g, '')
     .replace(/\s+/g, ' ')
