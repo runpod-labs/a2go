@@ -5,13 +5,6 @@ export interface ModelVram {
 
 export type OsPlatform = 'linux' | 'windows' | 'mac'
 
-export interface ModelMlx {
-  engine: string
-  repo: string
-  memoryMb: number
-  bits?: number
-}
-
 export interface CatalogModel {
   id: string
   name: string
@@ -29,7 +22,6 @@ export interface CatalogModel {
   isDefault: boolean
   hasVision: boolean
   capabilities?: string[]
-  mlx?: ModelMlx
 }
 
 export interface GpuInfo {
@@ -122,7 +114,6 @@ interface RawModel {
   defaults?: { contextLength?: number }
   mmproj?: string
   platform?: 'nvidia' | 'mlx'
-  mlx?: { engine: string; repo: string; memoryMb: number; bits?: number }
   [key: string]: unknown
 }
 
@@ -165,7 +156,6 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; gpus: Gp
         isDefault: (m as Record<string, unknown>).default === true,
         hasVision: false,
         capabilities: m.capabilities,
-        mlx: { engine: m.engine, repo: m.repo ?? m.id, memoryMb: m.vram.model },
       }]
     }
 
@@ -187,30 +177,6 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; gpus: Gp
       isDefault: (m as Record<string, unknown>).default === true,
       hasVision,
       capabilities: m.capabilities,
-    }
-
-    // Models with embedded mlx config → additional Mac entry
-    if (m.mlx && m.mlx.repo) {
-      const mlxEntry: CatalogModel = {
-        id: m.id,
-        name: m.name.toLowerCase(),
-        type: m.type,
-        engine: m.mlx.engine,
-        bits: m.mlx.bits ?? m.bits,
-        primaryBits: m.bits,
-        status: m.status ?? 'stable',
-        repo: m.mlx.repo,
-        vram: { model: m.mlx.memoryMb, overhead: 0 },
-        kvCacheMbPer1kTokens: m.kvCacheMbPer1kTokens,
-        tps: m.tps,
-        contextLength: m.defaults?.contextLength,
-        os: ['mac'] as OsPlatform[],
-        isDefault: (m as Record<string, unknown>).default === true,
-        hasVision: false,
-        capabilities: m.capabilities,
-        mlx: { engine: m.mlx.engine, repo: m.mlx.repo, memoryMb: m.mlx.memoryMb },
-      }
-      return [ggufEntry, mlxEntry]
     }
 
     return [ggufEntry]

@@ -35,10 +35,5 @@
     "rtx-5090": 289
   },
   "default": false,
-  "status": "stable",
-  "mlx": {
-    "engine": "mlx-lm",
-    "repo": "mlx-community/Nemotron-3-Nano-30B-A3B-4bit",
-    "memoryMb": 18000
-  }
+  "status": "stable"
 }

@@ -24,10 +24,5 @@
   ],
   "startDefaults": {},
   "default": true,
-  "status": "stable",
-  "mlx": {
-    "engine": "mflux",
-    "repo": "FLUX.2-klein-4B",
-    "memoryMb": 5000
-  }
+  "status": "stable"
 }

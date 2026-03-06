@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { formatContext, formatVram, type CatalogModel, type GpuInfo, type OsPlatform } from '../lib/catalog'
 import type { ModelGroup, ModelVariant } from '../lib/group-models'
 import { PlatformIcon } from './PlatformSelector'
-import { X, ExternalLink } from 'lucide-react'
+import { X, ExternalLink, HelpCircle } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 const SLOTS: { type: 'llm' | 'image' | 'audio'; label: string; color: string }[] = [
@@ -52,6 +52,65 @@ function InfoBlockLink({ label, url, text }: { label: string; url: string; text:
         <ExternalLink size={11} className="shrink-0" />
         <span className="truncate">{text}</span>
       </a>
+    </div>
+  )
+}
+
+const REPO_URL = 'https://github.com/runpod/openclaw2go'
+
+/** TPS info row — shows value when available, or a "help us measure" CTA */
+function InfoBlockTps({ tpsValue, gpuName }: { tpsValue: number | null; gpuName: string | null }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [open])
+
+  return (
+    <div className="flex items-stretch" ref={ref}>
+      <span className="flex w-1/3 shrink-0 items-center justify-end px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-foreground/40">
+        tps
+      </span>
+      <span className="w-px shrink-0 bg-foreground/[0.08]" />
+      <div className="relative flex w-2/3 items-center px-3 py-2.5">
+        {tpsValue != null ? (
+          <span className="font-mono text-[13px] font-bold tabular-nums text-foreground/80">
+            {tpsValue} tok/s · {gpuName}
+          </span>
+        ) : (
+          <>
+            <button
+              onClick={() => setOpen(!open)}
+              className="flex items-center gap-1.5 font-mono text-[12px] text-foreground/35 transition-colors hover:text-foreground/60"
+            >
+              <HelpCircle size={13} className="shrink-0" />
+              <span>not yet measured</span>
+            </button>
+            {open && (
+              <div className="absolute left-2 top-full z-50 mt-1 w-64 rounded border border-foreground/10 bg-[#141310] p-3 shadow-lg">
+                <p className="font-mono text-[11px] leading-relaxed text-foreground/60">
+                  help us measure this! run the model, benchmark it, and submit your results via a PR.
+                </p>
+                <a
+                  href={`${REPO_URL}#contributing`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] font-semibold text-primary/80 transition-colors hover:text-primary"
+                >
+                  <ExternalLink size={10} />
+                  submit on github
+                </a>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -266,12 +325,8 @@ function FilledSlotCard({
 
       {/* Info table */}
       <div className="flex flex-col overflow-hidden border border-foreground/[0.08]">
-        {tpsEntry && (
-          <>
-            <InfoBlock label="tps" value={`${tpsEntry[1]} tok/s · ${tpsGpuName}`} />
-            <div className="h-px bg-foreground/[0.06]" />
-          </>
-        )}
+        <InfoBlockTps tpsValue={tpsEntry ? tpsEntry[1] : null} gpuName={tpsGpuName} />
+        <div className="h-px bg-foreground/[0.06]" />
 
         {quant && quant !== '--' && (
           <>

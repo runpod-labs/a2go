@@ -37,11 +37,5 @@
     "api": "openai-completions"
   },
   "default": false,
-  "status": "experimental",
-  "mlx": {
-    "engine": "mlx-lm",
-    "repo": "mlx-community/gpt-oss-20b-MXFP4-Q8",
-    "memoryMb": 12100,
-    "bits": 4
-  }
+  "status": "experimental"
 }

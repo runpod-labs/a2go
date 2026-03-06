@@ -41,10 +41,5 @@
   ],
   "startDefaults": {},
   "default": true,
-  "status": "stable",
-  "mlx": {
-    "engine": "mlx-audio",
-    "repo": "mlx-community/LFM2.5-Audio-1.5B-4bit",
-    "memoryMb": 500
-  }
+  "status": "stable"
 }

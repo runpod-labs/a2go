@@ -29,13 +29,5 @@
   "status": "stable",
   "verifiedOn": [
     "rtx-4090"
-  ],
-  "mlx": {
-    "engine": "mlx-audio",
-    "repo": "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit",
-    "memoryMb": 4200,
-    "tps": 33,
-    "rtf": 2.16,
-    "bits": 4
-  }
+  ]
 }

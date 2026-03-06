@@ -121,7 +121,7 @@ function buildMlxCommand(models: CatalogModel[]): { command: string; missing: st
   const missing: string[] = []
 
   const mlxModels = models.filter((m) => {
-    if (!m.mlx) {
+    if (!m.os.includes('mac')) {
       missing.push(m.name)
       return false
     }
@@ -140,7 +140,7 @@ function buildMlxCommand(models: CatalogModel[]): { command: string; missing: st
   )
 
   // Group by engine to show pip installs
-  const engines = new Set(mlxModels.map((m) => m.mlx!.engine))
+  const engines = new Set(mlxModels.map((m) => m.engine))
   if (engines.size > 0) {
     sections.push(
       [...engines].map((e) => `pip install ${e}`).join('\n')
@@ -149,12 +149,12 @@ function buildMlxCommand(models: CatalogModel[]): { command: string; missing: st
 
   for (const m of mlxModels) {
     const port = m.type === 'llm' ? 8000 : m.type === 'audio' ? 8001 : 8002
-    if (m.mlx!.engine === 'mlx-lm') {
-      sections.push(`# llm (run in separate terminal)\npython -m mlx_lm.server --model ${m.mlx!.repo} --host 0.0.0.0 --port ${port}`)
-    } else if (m.mlx!.engine === 'mlx-audio') {
+    if (m.engine === 'mlx-lm') {
+      sections.push(`# llm (run in separate terminal)\npython -m mlx_lm.server --model ${m.repo} --host 0.0.0.0 --port ${port}`)
+    } else if (m.engine === 'mlx-audio') {
       sections.push(`# audio (run in separate terminal)\npython -m mlx_audio.server --host 0.0.0.0 --port ${port}`)
-    } else if (m.mlx!.engine === 'mflux') {
-      sections.push(`# image (one-shot generation)\nmflux-generate --prompt "your prompt" --model ${m.mlx!.repo} --steps 4`)
+    } else if (m.engine === 'mflux') {
+      sections.push(`# image (one-shot generation)\nmflux-generate --prompt "your prompt" --model ${m.repo} --steps 4`)
     }
   }
 

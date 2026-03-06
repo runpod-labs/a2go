@@ -38,11 +38,5 @@
     "a100-80gb": 69
   },
   "default": false,
-  "status": "experimental",
-  "mlx": {
-    "engine": "mlx-lm",
-    "repo": "mlx-community/Step-3.5-Flash-4bit",
-    "memoryMb": 111000,
-    "bits": 4
-  }
+  "status": "experimental"
 }

@@ -1,0 +1,23 @@
+{
+  "id": "mlx-community/glm47-claude-distill-mlx",
+  "name": "GLM-4.7-Flash Claude Distill MLX 8-bit",
+  "type": "llm",
+  "engine": "mlx-lm",
+  "bits": 8,
+  "repo": "mlx-community/GLM-4.7-Flash-Claude-Opus-4.5-High-Reasoning-Distill-8bit",
+  "vram": {
+    "model": 31800,
+    "overhead": 0
+  },
+  "kvCacheMbPer1kTokens": 40,
+  "defaults": {
+    "contextLength": 150000
+  },
+  "provider": {
+    "name": "local-mlx",
+    "api": "openai-completions"
+  },
+  "platform": "mlx",
+  "default": false,
+  "status": "experimental"
+}

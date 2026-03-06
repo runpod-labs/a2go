@@ -51,10 +51,5 @@
   },
   "verifiedOn": [
     "rtx-5090"
-  ],
-  "mlx": {
-    "engine": "mlx-lm",
-    "repo": "mlx-community/Qwen3.5-27B-4bit",
-    "memoryMb": 20000
-  }
+  ]
 }

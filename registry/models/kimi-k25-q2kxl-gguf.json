@@ -48,11 +48,5 @@
     "2x-h200-sxm": 19
   },
   "default": false,
-  "status": "experimental",
-  "mlx": {
-    "engine": "mlx-lm",
-    "repo": "mlx-community/Kimi-K2.5-3bit",
-    "memoryMb": 449000,
-    "bits": 3
-  }
+  "status": "experimental"
 }
