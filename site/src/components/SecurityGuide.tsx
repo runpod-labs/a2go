@@ -9,13 +9,13 @@ const ESSENTIAL_LINKS: GuideLink[] = [
   {
     step: 1,
     label: 'Getting Started',
-    href: 'https://openclaw.ai/start/getting-started',
+    href: 'https://docs.openclaw.ai/getting-started',
     description: 'Install, onboarding wizard, first chat',
   },
   {
     step: 2,
     label: 'Security Guide',
-    href: 'https://openclaw.ai/gateway/security',
+    href: 'https://trust.openclaw.ai',
     description: 'Trust model, access control, hardening',
   },
 ]
@@ -37,9 +37,11 @@ function ArrowIcon({ className }: { className?: string }) {
 export default function SecurityGuide() {
   return (
     <div className="flex flex-col gap-4">
-      <p className="font-mono text-[9px] leading-relaxed text-foreground/40">
-        OpenClaw gives AI agents shell access, file access, and network
-        tools on your GPU. Read these first.
+      {/* Intro text */}
+      <p className="font-mono text-[11px] leading-relaxed text-foreground/80">
+        OpenClaw agents can execute shell commands, read and write files, and
+        fetch arbitrary URLs on your machine. Review the security guide before
+        you start.
       </p>
 
       {/* Numbered essential guides */}
@@ -50,19 +52,19 @@ export default function SecurityGuide() {
             href={link.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-start gap-3 px-2 py-2 -mx-2 transition-colors hover:bg-foreground/[0.04]"
+            className="group flex items-start gap-3 px-2 py-2 -mx-2 transition-colors hover:bg-primary/[0.08]"
           >
-            <span className="font-mono text-[10px] font-bold tabular-nums text-primary/50 transition-colors group-hover:text-primary/80">
+            <span className="font-mono text-[12px] font-bold tabular-nums text-primary">
               {link.step}
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="font-mono text-[10px] font-medium text-foreground/70 transition-colors group-hover:text-foreground/90">
+                <span className="font-mono text-[11px] font-medium text-foreground/90 transition-colors group-hover:text-foreground">
                   {link.label}
                 </span>
-                <ArrowIcon className="h-2.5 w-2.5 shrink-0 text-foreground/15 transition-colors group-hover:text-foreground/40" />
+                <ArrowIcon className="h-2.5 w-2.5 shrink-0 text-foreground/25 transition-colors group-hover:text-foreground/50" />
               </div>
-              <span className="font-mono text-[8px] text-foreground/30">
+              <span className="font-mono text-[10px] text-foreground/50">
                 {link.description}
               </span>
             </div>
@@ -71,23 +73,23 @@ export default function SecurityGuide() {
       </div>
 
       {/* Separator */}
-      <div className="border-t border-foreground/[0.06]" />
+      <div className="border-t border-primary/20" />
 
       {/* Vulnerability reporting */}
       <a
         href={VULN_LINK.href}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex items-start gap-2 px-2 py-1.5 -mx-2 transition-colors hover:bg-foreground/[0.04]"
+        className="group flex items-start gap-2 px-2 py-1.5 -mx-2 transition-colors hover:bg-primary/[0.08]"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="font-mono text-[9px] font-medium text-foreground/40 transition-colors group-hover:text-foreground/60">
+            <span className="font-mono text-[10px] font-medium text-foreground/60 transition-colors group-hover:text-foreground/80">
               {VULN_LINK.label}
             </span>
-            <ArrowIcon className="h-2.5 w-2.5 shrink-0 text-foreground/15 transition-colors group-hover:text-foreground/30" />
+            <ArrowIcon className="h-2.5 w-2.5 shrink-0 text-foreground/20 transition-colors group-hover:text-foreground/40" />
           </div>
-          <span className="font-mono text-[8px] text-foreground/25">
+          <span className="font-mono text-[9px] text-foreground/40">
             {VULN_LINK.description}
           </span>
         </div>

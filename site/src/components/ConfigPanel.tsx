@@ -8,7 +8,7 @@ import SecurityGuide from './SecurityGuide'
 import type { CatalogModel, GpuInfo, GpuCount, OsPlatform } from '../lib/catalog'
 import { VRAM_PRESETS } from '../lib/catalog'
 import type { ModelGroup } from '../lib/group-models'
-import { Link } from 'lucide-react'
+import { Link, TriangleAlert } from 'lucide-react'
 
 function CopyLinkButton() {
   const [copied, setCopied] = useState(false)
@@ -177,12 +177,14 @@ export default function ConfigPanel({
         <div className="flex-1 border-t border-foreground/[0.06]">
           <div
             className="grid h-full"
-            style={{ gridTemplateColumns: '260px 1fr' }}
+            style={{ gridTemplateColumns: '300px 1fr' }}
           >
             {/* Before You Deploy — left column */}
-            <div className="border-r border-foreground/[0.06]">
+            <div className="border-r border-primary/40 bg-primary/[0.04] flex flex-col">
+              <div className="h-[3px] bg-primary/60 shrink-0" />
               <SectionHeader>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
+                  <TriangleAlert size={12} />
                   Before You Deploy
                 </span>
               </SectionHeader>
