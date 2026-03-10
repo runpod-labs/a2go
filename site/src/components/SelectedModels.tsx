@@ -79,7 +79,7 @@ function InfoBlockTps({ tpsValue, gpuName }: { tpsValue: number | null; gpuName:
         tps
       </span>
       <span className="w-px shrink-0 bg-foreground/[0.08]" />
-      <div className="relative flex w-2/3 items-center px-3 py-2.5">
+      <div className="relative flex w-2/3 items-center px-3 py-2.5 min-h-[39.5px]">
         {tpsValue != null ? (
           <span className="font-mono text-[13px] font-bold tabular-nums text-foreground/80">
             {tpsValue} tok/s · {gpuName}
@@ -385,8 +385,12 @@ function FilledSlotCard({
 
           {/* Info table */}
           <div className="flex flex-col overflow-hidden border border-foreground/[0.08]">
-            <InfoBlockTps tpsValue={tpsEntry ? tpsEntry[1] : null} gpuName={tpsGpuName} />
-            <div className="h-px bg-foreground/[0.06]" />
+            {model.type === 'llm' && (
+              <>
+                <InfoBlockTps tpsValue={tpsEntry ? tpsEntry[1] : null} gpuName={tpsGpuName} />
+                <div className="h-px bg-foreground/[0.06]" />
+              </>
+            )}
 
             {quant && quant !== '--' && (
               <>
