@@ -112,21 +112,23 @@ export default function ConfigPanel({
             href="https://github.com/runpod-workers/openclaw2go"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-[280px] shrink-0 flex-col items-center justify-center transition-opacity hover:opacity-80"
+            className="flex w-[280px] shrink-0 items-center justify-center py-6 transition-opacity hover:opacity-80"
           >
-            <img
-              src={`${import.meta.env.BASE_URL}openclaw2go_logo_nobg.png`}
-              alt="openclaw2go"
-              width={200}
-              height={200}
-              className="-mb-4 h-48 w-48 object-contain"
-            />
-            <span className="font-mono text-[14px] font-bold tracking-tight text-foreground/70">
-              openclaw2go
-            </span>
-            <span className="font-mono text-[9px] text-foreground/30">
-              v{__APP_VERSION__}
-            </span>
+            <div className="flex flex-col items-center">
+              <img
+                src={`${import.meta.env.BASE_URL}openclaw2go_logo_nobg.png`}
+                alt="openclaw2go"
+                width={200}
+                height={200}
+                className="-mb-4 h-40 w-40 object-contain"
+              />
+              <span className="font-mono text-[14px] font-bold tracking-tight text-foreground/70">
+                openclaw2go
+              </span>
+              <span className="font-mono text-[9px] text-foreground/30">
+                v{__APP_VERSION__}
+              </span>
+            </div>
           </a>
         </div>
       </div>
