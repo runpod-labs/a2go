@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenClaw2Go Model Config",
+  "description": "Schema for model configuration files in the openclaw2go registry",
+  "type": "object",
+  "required": ["id", "name", "type", "engine", "vram"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]+/[a-z0-9._-]+$",
+      "description": "Unique model ID in provider/name format (lowercase)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable model name"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["llm", "audio", "image", "vision", "tts"],
+      "description": "Model type"
+    },
+    "engine": {
+      "type": "string",
+      "enum": ["llamacpp", "llamacpp-audio", "llamacpp-glm-dsa", "ik-llamacpp", "image-gen", "qwen3-tts", "mlx", "mlx-lm", "mlx-audio", "mflux", "openclaw2go-llamacpp", "vllm"],
+      "description": "Engine to use for this model"
+    },
+    "repo": {
+      "type": "string",
+      "description": "HuggingFace repository name (case-sensitive)"
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files to download from the repo"
+    },
+    "downloadDir": {
+      "type": "string",
+      "pattern": "^/workspace/models/",
+      "description": "Directory to download model files to (must start with /workspace/models/)"
+    },
+    "downloadMode": {
+      "type": "string",
+      "enum": ["files", "repo"],
+      "default": "files",
+      "description": "Download mode: 'files' for individual files, 'repo' for full snapshot"
+    },
+    "servedAs": {
+      "type": "string",
+      "description": "Model name exposed via the API (for LLM models)"
+    },
+    "vram": {
+      "type": "object",
+      "required": ["model", "overhead"],
+      "properties": {
+        "model": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "VRAM for model weights in MB"
+        },
+        "overhead": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "VRAM overhead in MB (compute buffers, etc.)"
+        }
+      }
+    },
+    "kvCacheMbPer1kTokens": {
+      "type": "number",
+      "minimum": 0,
+      "description": "KV cache VRAM per 1k context tokens in MB (with q8_0 quantization)"
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "contextLength": { "type": "integer", "minimum": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "startArgs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Template start arguments"
+    },
+    "startDefaults": {
+      "type": "object",
+      "description": "Default values for start argument templates"
+    },
+    "extraStartArgs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional CLI arguments appended to start command"
+    },
+    "mmproj": {
+      "type": "string",
+      "description": "Multimodal projection file for vision-capable models (downloaded from same repo)"
+    },
+    "bits": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16,
+      "description": "Quantization bit depth of the primary (GGUF) weights"
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "api": { "type": "string" }
+      }
+    },
+    "default": {
+      "type": "boolean",
+      "description": "Whether this is the default model for its type"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["stable", "experimental", "deprecated"],
+      "description": "Model stability status"
+    },
+    "tps": {
+      "type": "object",
+      "description": "Generation tokens/sec benchmarks per GPU (keys = GPU IDs from registry/gpus/)",
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+    "verifiedOn": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of GPUs this model has been verified on"
+    },
+    "verifiedContext": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Context length (tokens) used during TPS verification — documents the exact context the benchmarks were measured at"
+    },
+    "platform": {
+      "type": "string",
+      "description": "Target platform (e.g., mlx for Apple Silicon)"
+    }
+  },
+  "additionalProperties": false
+}

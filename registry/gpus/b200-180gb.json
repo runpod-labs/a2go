@@ -1,0 +1,7 @@
+{
+  "id": "b200-180gb",
+  "name": "NVIDIA B200 180GB",
+  "vramMb": 184320,
+  "arch": "sm_100",
+  "minCuda": "12.8"
+}

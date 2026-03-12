@@ -1,10 +1,9 @@
 {
-  "$schema": "https://clawdbot.com/schema/config.json",
-  "_comment": "Clawdbot configuration for RunPod vLLM integration",
+  "_comment": "OpenClaw configuration for Runpod vLLM integration",
   "_instructions": [
-    "Replace <POD_ID> with your RunPod pod ID",
+    "Replace <POD_ID> with your Runpod pod ID",
     "Replace <VLLM_API_KEY> with your vLLM API key",
-    "Adjust model settings based on your tier (see templates/clawdbot-vllm.json)"
+    "Adjust model settings based on your tier (see templates/openclaw-vllm.json)"
   ],
 
   "agents": {

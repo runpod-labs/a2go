@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""
+openclaw-tts - Text-to-Speech using LFM2.5-Audio server
+Converts text to speech using the persistent audio server (near-instant inference)
+
+Usage:
+  openclaw-tts "Hello world" --output /tmp/hello.wav
+  openclaw-tts --text "Hello" --output /tmp/hello.wav --voice "UK female"
+"""
+
+import argparse
+import base64
+import json
+import os
+import struct
+import sys
+import wave
+import urllib.request
+
+AUDIO_SERVER_URL = "http://localhost:8001/v1/chat/completions"
+SAMPLE_RATE = 24000
+
+VOICES = {
+    "US male": "Perform TTS. Use the US male voice.",
+    "UK male": "Perform TTS. Use the UK male voice.",
+    "US female": "Perform TTS. Use the US female voice.",
+    "UK female": "Perform TTS. Use the UK female voice.",
+}
+
+
+def tts_stream(text: str, voice: str = "US male") -> list:
+    """Stream TTS from server, return audio samples as 16-bit integers."""
+    system_prompt = VOICES.get(voice, VOICES["US male"])
+    
+    payload = {
+        "model": "",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text}
+        ],
+        "stream": True,
+        "max_tokens": 4096
+    }
+    
+    req = urllib.request.Request(
+        AUDIO_SERVER_URL,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+    
+    all_samples = []
+    
+    try:
+        with urllib.request.urlopen(req, timeout=120) as response:
+            for line in response:
+                line = line.decode('utf-8').strip()
+                if not line or line == "data: [DONE]":
+                    continue
+                if line.startswith("data: "):
+                    try:
+                        data = json.loads(line[6:])
+                        delta = data.get("choices", [{}])[0].get("delta", {})
+                        if "audio" in delta and delta["audio"] and "data" in delta["audio"]:
+                            chunk_data = delta["audio"]["data"]
+                            pcm_bytes = base64.b64decode(chunk_data)
+                            n_samples = len(pcm_bytes) // 2
+                            if n_samples > 0:
+                                samples = struct.unpack(f"<{n_samples}h", pcm_bytes)
+                                all_samples.extend(samples)
+                    except (json.JSONDecodeError, struct.error):
+                        pass
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    
+    return all_samples
+
+
+def save_wav(samples: list, output_path: str, sample_rate: int = SAMPLE_RATE):
+    """Save 16-bit samples to WAV file."""
+    output_dir = os.path.dirname(os.path.abspath(output_path))
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    with wave.open(output_path, 'wb') as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)  # 16-bit
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(struct.pack(f"<{len(samples)}h", *samples))
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Convert text to speech using LFM2.5-Audio")
+    parser.add_argument("text", nargs="?", help="Text to convert to speech")
+    parser.add_argument("-t", "--text", dest="text_opt", help="Text to convert (alternative)")
+    parser.add_argument("-o", "--output", required=True, help="Output WAV file path")
+    parser.add_argument("-v", "--voice", default="US male", 
+                        choices=list(VOICES.keys()), help="Voice to use")
+    
+    args = parser.parse_args()
+    text = args.text or args.text_opt
+    
+    if not text:
+        print("Error: Text is required", file=sys.stderr)
+        parser.print_help()
+        sys.exit(1)
+    
+    print(f"Generating speech for: \"{text}\"", file=sys.stderr)
+    
+    samples = tts_stream(text, args.voice)
+    
+    if not samples:
+        print("Error: No audio generated", file=sys.stderr)
+        sys.exit(1)
+    
+    save_wav(samples, args.output)
+    duration = len(samples) / SAMPLE_RATE
+    print(f"Success! Audio saved to: {args.output} ({duration:.2f}s)", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

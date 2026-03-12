@@ -1,0 +1,7 @@
+{
+  "id": "rtx-4090",
+  "name": "NVIDIA RTX 4090",
+  "vramMb": 24576,
+  "arch": "sm_89",
+  "minCuda": "12.0"
+}

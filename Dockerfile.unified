@@ -1,0 +1,151 @@
+# Dockerfile.unified - Unified OpenClaw2Go image
+#
+# Uses pre-built llama.cpp binaries from the engines image (no compilation).
+# Build the engines image first: see engines/Dockerfile and engines-build.yml.
+#
+# Multi-stage build:
+#   Stage 1 (build-pytorch): Build shared PyTorch venv (image-gen + Qwen3-TTS) in devel image
+#   Stage 2 (runtime):       Slim runtime with only pre-built artifacts
+#
+# Configuration at runtime via OPENCLAW2GO_CONFIG env var:
+#   {"llm": "unsloth/glm47-flash-gguf", "audio": "liquidai/lfm25-audio", "image": "disty0/flux2-klein-sdnq"}
+#   {"llm": "unsloth/glm47-flash-gguf", "audio": "liquidai/lfm25-audio"}
+#   {"llm": "unsloth/GLM-4.7-Flash-GGUF", "contextLength": 200000}
+#   {"profile": "rtx5090-full-stack"}                              — use a preset
+#
+# Model names are case-insensitive. Use HuggingFace repo names or short IDs.
+#
+# Build: docker build -f Dockerfile.unified -t openclaw2go .
+
+ARG ENGINES_IMAGE=runpod/openclaw2go-engines:latest
+ARG CUDA_VERSION=12.8
+ARG UBUNTU_VERSION=24.04
+
+# Pull pre-built engines (llama.cpp LLM + Audio binaries)
+FROM ${ENGINES_IMAGE} AS engines
+
+# ============================================================
+# Stage 1: Build shared PyTorch venv (image-gen + Qwen3-TTS)
+# ============================================================
+FROM nvcr.io/nvidia/cuda-dl-base:25.03-cuda${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} AS build-pytorch
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-dev python3-venv python3-pip \
+    && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
+    && rm -rf /var/lib/apt/lists/*
+
+# Shared PyTorch venv for image-gen + Qwen3-TTS
+# PyTorch cu128 required for RTX 5090 (Blackwell sm_120), works on all others too
+# Diffusers from git required for Flux2KleinPipeline
+# qwen-tts + soundfile for Qwen3-TTS, flash-attn for performance (optional)
+RUN python3 -m venv /opt/engines/pytorch/venv && \
+    /opt/engines/pytorch/venv/bin/pip install --no-cache-dir \
+        torch --index-url https://download.pytorch.org/whl/cu128 && \
+    /opt/engines/pytorch/venv/bin/pip install --no-cache-dir \
+        sdnq git+https://github.com/huggingface/diffusers.git \
+        transformers accelerate safetensors \
+        qwen-tts soundfile && \
+    /opt/engines/pytorch/venv/bin/pip install --no-cache-dir \
+        flash-attn --no-build-isolation || true && \
+    find /opt/engines/pytorch/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \
+    find /opt/engines/pytorch/venv -type f -name "*.pyc" -delete 2>/dev/null; \
+    rm -rf /opt/engines/pytorch/venv/lib/python*/site-packages/torch/test \
+           /opt/engines/pytorch/venv/lib/python*/site-packages/torch/include \
+           /opt/engines/pytorch/venv/lib/python*/site-packages/torch/share \
+           /opt/engines/pytorch/venv/lib/python*/site-packages/caffe2 \
+    ; true
+
+# ============================================================
+# Stage 2: Slim runtime image
+# ============================================================
+FROM nvidia/cuda:${CUDA_VERSION}.1-runtime-ubuntu${UBUNTU_VERSION}
+
+ARG CUDA_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Runtime-only system dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git libgomp1 \
+    python3 python3-pip \
+    openssh-server \
+    && rm -f /etc/ssh/ssh_host_* && mkdir -p /var/run/sshd \
+    && rm -f /usr/lib/python*/EXTERNALLY-MANAGED \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── Engine: openclaw2go-llamacpp ──────────────────────────────
+# Unified fork: LLM, Audio, Vision, Embeddings, TTS, GLM-5 DSA, Eagle-3
+COPY --from=engines /opt/engines/openclaw2go-llamacpp/ /opt/engines/openclaw2go-llamacpp/
+RUN ldconfig /opt/engines/openclaw2go-llamacpp/lib/
+
+# ── Engine: ik-llamacpp ─────────────────────────────────────
+# ik_llama.cpp fork (custom quants: IQ2_KS, smol-IQ3_KS, etc.)
+# Libs NOT registered with ldconfig — entrypoint sets LD_LIBRARY_PATH per-engine
+COPY --from=engines /opt/engines/ik-llamacpp/ /opt/engines/ik-llamacpp/
+
+# ── Engine: shared PyTorch venv (image-gen + Qwen3-TTS, from Stage 1) ──
+COPY --from=build-pytorch /opt/engines/pytorch/venv/ /opt/engines/pytorch/venv/
+
+# ── Node.js + GitHub CLI ──────────────────────────────────
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+    dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    > /etc/apt/sources.list.d/github-cli.list && \
+    apt-get update && apt-get install -y --no-install-recommends nodejs gh && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── Python tools ──────────────────────────────────────────
+RUN python3 -m pip install --no-cache-dir huggingface_hub
+
+# ── OpenClaw + Claude Code ────────────────────────────────
+RUN npm install -g --prefer-offline --omit=dev @anthropic-ai/claude-code openclaw@latest && \
+    npm cache clean --force && \
+    find /usr/lib/node_modules -name "README*" -o -name "CHANGELOG*" -o -name "LICENSE*" -o -name "*.md" | xargs rm -f 2>/dev/null; true
+
+WORKDIR /
+
+# ── Environment defaults ──────────────────────────────────
+ENV LLAMA_API_KEY="changeme" \
+    OPENCLAW_WEB_PASSWORD="changeme" \
+    OPENCLAW_STATE_DIR="/workspace/.openclaw" \
+    OPENCLAW_WORKSPACE="/workspace/openclaw" \
+    OPENCLAW_REGISTRY_DIR="/opt/openclaw/registry" \
+    OPENCLAW_REGISTRY_URL="https://runpod-workers.github.io/openclaw2go-registry/v1/catalog.json" \
+    OPENCLAW_REGISTRY_OFFLINE="" \
+    OPENCLAW_REGISTRY_TTL_SECONDS="3600"
+
+# ── Copy application files ────────────────────────────────
+COPY registry/ /opt/openclaw/registry/
+COPY registry/templates/ /opt/openclaw/templates/
+COPY skills/ /opt/openclaw/skills/
+COPY web/ /opt/openclaw/web/
+COPY plugins/ /opt/openclaw/plugins/
+COPY config/ /opt/openclaw/config/
+COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
+COPY scripts/entrypoint-unified.sh /opt/openclaw/entrypoint-unified.sh
+COPY scripts/resolve-profile.py /opt/openclaw/scripts/resolve-profile.py
+COPY scripts/vram-budget.py /opt/openclaw/scripts/vram-budget.py
+COPY scripts/openclaw-profiles /usr/local/bin/openclaw-profiles
+COPY scripts/openclaw2go /usr/local/bin/openclaw2go
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
+COPY scripts/openclaw-image-server /usr/local/bin/openclaw-image-server
+COPY scripts/openclaw-tts /usr/local/bin/openclaw-tts
+COPY scripts/openclaw-tts-server /usr/local/bin/openclaw-tts-server
+COPY scripts/openclaw-stt /usr/local/bin/openclaw-stt
+COPY scripts/openclaw-web-proxy /usr/local/bin/openclaw-web-proxy
+
+RUN chmod +x /opt/openclaw/entrypoint-unified.sh \
+    /opt/openclaw/scripts/resolve-profile.py \
+    /opt/openclaw/scripts/vram-budget.py \
+    /usr/local/bin/openclaw-profiles \
+    /usr/local/bin/openclaw2go \
+    /usr/local/bin/openclaw-image-gen \
+    /usr/local/bin/openclaw-image-server \
+    /usr/local/bin/openclaw-tts \
+    /usr/local/bin/openclaw-tts-server \
+    /usr/local/bin/openclaw-stt \
+    /usr/local/bin/openclaw-web-proxy
+
+EXPOSE 8000 8080 18789 22
+ENTRYPOINT ["/opt/openclaw/entrypoint-unified.sh"]

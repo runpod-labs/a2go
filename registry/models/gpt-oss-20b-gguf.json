@@ -1,0 +1,41 @@
+{
+  "id": "unsloth/gpt-oss-20b-gguf",
+  "name": "GPT-OSS-20B GGUF Q8_0",
+  "type": "llm",
+  "engine": "openclaw2go-llamacpp",
+  "bits": 8,
+  "repo": "unsloth/gpt-oss-20b-GGUF",
+  "files": [
+    "gpt-oss-20b-Q8_0.gguf"
+  ],
+  "downloadDir": "/workspace/models/gpt-oss-20b-GGUF",
+  "servedAs": "gpt-oss-20b",
+  "vram": {
+    "model": 12100,
+    "overhead": 500
+  },
+  "kvCacheMbPer1kTokens": 2,
+  "defaults": {
+    "contextLength": 131072,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "-fa",
+    "on",
+    "--reasoning-format",
+    "none"
+  ],
+  "tps": {
+    "rtx-4090": 92
+  },
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "default": false,
+  "status": "experimental"
+}

@@ -27,9 +27,9 @@ Best quality with auto-detected context based on GPU.
 
 ## Quick Start
 
-### 1. Create RunPod Pod
+### 1. Create Runpod Pod
 
-- **Image**: `yourusername/clawdbot-glm47-flash-fp16:latest`
+- **Image**: `yourusername/openclaw2go-glm4.7-flash-fp16:latest`
 - **GPU**: 1x H100 80GB or A100 80GB
 - **Volume**: 50GB at `/workspace`
 - **Container Disk**: 100GB (model stored here)
@@ -67,11 +67,11 @@ Model is stored on container disk (100GB required), state persists on workspace 
 ```
 /root/.cache/huggingface/          # Model files (container disk)
 /workspace/
-├── .clawdbot/
-│   ├── clawdbot.json              # Config
+├── .openclaw/                     # OpenClaw state path
+│   ├── openclaw.json              # Config
 │   ├── agents/                    # State
 │   └── telegram/                  # Session
-└── clawd/                         # Workspace
+└── openclaw/                      # Workspace
 ```
 
 ## vLLM Configuration

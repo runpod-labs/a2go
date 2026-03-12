@@ -20,7 +20,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Node (if running Clawdbot locally)
+# Node (if running OpenClaw locally)
 node_modules/
 
 # Python
@@ -28,3 +28,11 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Site build artifacts
+site/node_modules/
+site/public/v1/
+dist/
+
+# Local clones / working dirs
+openclaw2go-registry/

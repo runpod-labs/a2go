@@ -1,4 +1,4 @@
-# Dockerfile for GLM-4.7-REAP W4A16 on RunPod B200
+# Dockerfile for GLM-4.7-REAP W4A16 on Runpod B200
 # This uses the 40% expert-pruned, INT4 quantized version of GLM-4.7
 # Model: 0xSero/GLM-4.7-REAP-40-W4A16 (~108GB VRAM)
 #
@@ -30,13 +30,17 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-13.1/lib64:$LD_LIBRARY_PATH
 # Install vLLM nightly (required for GLM-4.7 support)
 RUN uv pip install --system -U vllm --pre
 
-# Install Clawdbot
-RUN npm install -g --prefer-offline clawdbot@latest && \
+# Image generation dependencies (SDNQ + Diffusers)
+RUN uv pip install --system sdnq diffusers accelerate safetensors
+
+# Install OpenClaw
+RUN npm install -g --prefer-offline openclaw@latest && \
     npm cache clean --force
 
 # Environment variables
 ENV HF_HOME=/workspace/huggingface
-ENV CLAWDBOT_STATE_DIR=/workspace/.clawdbot
+ENV OPENCLAW_STATE_DIR=/workspace/.openclaw
+ENV OPENCLAW_WORKSPACE=/workspace/openclaw
 ENV MODEL_NAME=0xSero/GLM-4.7-REAP-40-W4A16
 ENV SERVED_MODEL_NAME=glm-4.7-reap
 ENV VLLM_API_KEY=changeme
@@ -45,15 +49,18 @@ ENV GPU_MEMORY_UTILIZATION=0.90
 ENV TOOL_CALL_PARSER=glm45
 
 # Create directories
-RUN mkdir -p /workspace/huggingface /workspace/.clawdbot /workspace/clawd
+RUN mkdir -p /workspace/huggingface /workspace/.openclaw /workspace/openclaw
 
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy entrypoint script + skills + CLI
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
+COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
+COPY models/glm47-reap-w4a16/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
 
 # Expose ports
 # 8000: vLLM API
-# 18789: Clawdbot Gateway
+# 18789: OpenClaw Gateway
 # 22: SSH
 EXPOSE 8000 18789 22
 

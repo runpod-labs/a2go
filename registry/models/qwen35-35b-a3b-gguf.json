@@ -1,0 +1,55 @@
+{
+  "id": "unsloth/qwen35-35b-a3b-gguf",
+  "name": "Qwen3.5-35B-A3B Q4_K_M (4-bit, 21.2GB, 770K context, multimodal)",
+  "type": "llm",
+  "engine": "openclaw2go-llamacpp",
+  "bits": 4,
+  "repo": "unsloth/Qwen3.5-35B-A3B-GGUF",
+  "files": [
+    "Qwen3.5-35B-A3B-Q4_K_M.gguf",
+    "mmproj-F16.gguf"
+  ],
+  "mmproj": "mmproj-F16.gguf",
+  "downloadDir": "/workspace/models/Qwen3.5-35B-A3B-GGUF",
+  "servedAs": "qwen3.5-35b-a3b",
+  "vram": {
+    "model": 21700,
+    "overhead": 3200
+  },
+  "kvCacheMbPer1kTokens": 10,
+  "defaults": {
+    "contextLength": 1010000,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "-fa",
+    "on",
+    "--no-context-shift",
+    "--alias",
+    "qwen3.5-35b-a3b",
+    "--temp",
+    "0.6",
+    "--top-p",
+    "0.95",
+    "--top-k",
+    "20",
+    "--override-kv",
+    "qwen35moe.context_length=int:1010000"
+  ],
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "default": false,
+  "status": "experimental",
+  "tps": {
+    "rtx-5090": 105
+  },
+  "verifiedOn": [
+    "rtx-5090"
+  ]
+}

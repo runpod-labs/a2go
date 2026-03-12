@@ -33,18 +33,22 @@ RUN uv pip install --system -U vllm \
     --extra-index-url https://wheels.vllm.ai/nightly && \
     uv pip install --system git+https://github.com/huggingface/transformers.git
 
-# Install Clawdbot
-RUN npm install -g --prefer-offline clawdbot@latest && \
+# Image generation dependencies (SDNQ + Diffusers)
+RUN uv pip install --system sdnq diffusers accelerate safetensors
+
+# Install OpenClaw
+RUN npm install -g --prefer-offline openclaw@latest && \
     npm cache clean --force
 
 # Keep model files on container disk (requires 100GB)
-# Only use workspace for persistent Clawdbot state
-RUN mkdir -p /workspace/.clawdbot /workspace/clawd
+# Only use workspace for persistent OpenClaw state
+RUN mkdir -p /workspace/.openclaw /workspace/openclaw
 
 # Environment variables
-# HF_HOME on container disk (100GB needed), Clawdbot state on workspace
+# HF_HOME on container disk (100GB needed), OpenClaw state on workspace
 ENV HF_HOME=/root/.cache/huggingface
-ENV CLAWDBOT_STATE_DIR=/workspace/.clawdbot
+ENV OPENCLAW_STATE_DIR=/workspace/.openclaw
+ENV OPENCLAW_WORKSPACE=/workspace/openclaw
 ENV MODEL_NAME=zai-org/GLM-4.7-Flash
 ENV SERVED_MODEL_NAME=glm-4.7-flash
 ENV VLLM_API_KEY=changeme
@@ -52,13 +56,16 @@ ENV GPU_MEMORY_UTILIZATION=0.92
 ENV TOOL_CALL_PARSER=glm47
 # MAX_MODEL_LEN is auto-detected based on GPU - don't set here
 
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy entrypoint scripts + skills + CLI
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
+COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
+COPY models/glm47-flash-fp16/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
 
 # Expose ports
 # 8000: vLLM API
-# 18789: Clawdbot Gateway
+# 18789: OpenClaw Gateway
 # 22: SSH
 EXPOSE 8000 18789 22
 

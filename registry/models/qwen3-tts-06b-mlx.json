@@ -1,0 +1,18 @@
+{
+  "id": "mlx-community/qwen3-tts-06b-mlx",
+  "name": "Qwen3-TTS 0.6B MLX 4-bit",
+  "type": "audio",
+  "capabilities": [
+    "tts"
+  ],
+  "engine": "mlx-audio",
+  "bits": 4,
+  "repo": "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-4bit",
+  "vram": {
+    "model": 4200,
+    "overhead": 0
+  },
+  "platform": "mlx",
+  "default": false,
+  "status": "experimental"
+}

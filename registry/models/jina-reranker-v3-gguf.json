@@ -1,0 +1,28 @@
+{
+  "id": "jinaai/jina-reranker-v3-gguf",
+  "name": "Jina Reranker v3 GGUF Q8_0",
+  "type": "reranking",
+  "engine": "openclaw2go-llamacpp",
+  "bits": 8,
+  "repo": "jinaai/jina-reranker-v3-GGUF",
+  "files": [
+    "jina-reranker-v3-q8_0.gguf"
+  ],
+  "downloadDir": "/workspace/models/Jina-Reranker-v3-GGUF",
+  "servedAs": "jina-reranker-v3",
+  "vram": {
+    "model": 700,
+    "overhead": 100
+  },
+  "defaults": {
+    "port": 8005
+  },
+  "startDefaults": {},
+  "extraStartArgs": [],
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-rerank"
+  },
+  "default": true,
+  "status": "experimental"
+}

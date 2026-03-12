@@ -1,0 +1,57 @@
+{
+  "id": "unsloth/qwen35-122b-a10b-q4km-gguf",
+  "name": "Qwen3.5-122B-A10B Q4_K_M (4-bit, 74.3GB, 1M context, 3-split, multimodal)",
+  "type": "llm",
+  "engine": "openclaw2go-llamacpp",
+  "bits": 4,
+  "repo": "unsloth/Qwen3.5-122B-A10B-GGUF",
+  "files": [
+    "Q4_K_M/Qwen3.5-122B-A10B-Q4_K_M-00001-of-00003.gguf",
+    "Q4_K_M/Qwen3.5-122B-A10B-Q4_K_M-00002-of-00003.gguf",
+    "Q4_K_M/Qwen3.5-122B-A10B-Q4_K_M-00003-of-00003.gguf",
+    "mmproj-F16.gguf"
+  ],
+  "mmproj": "mmproj-F16.gguf",
+  "downloadDir": "/workspace/models/Qwen3.5-122B-A10B-GGUF",
+  "servedAs": "qwen3.5-122b-a10b-q4km",
+  "vram": {
+    "model": 76100,
+    "overhead": 2500
+  },
+  "kvCacheMbPer1kTokens": 16,
+  "defaults": {
+    "contextLength": 1010000,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "-fa",
+    "on",
+    "--no-context-shift",
+    "--alias",
+    "qwen3.5-122b-a10b-q4km",
+    "--temp",
+    "0.6",
+    "--top-p",
+    "0.95",
+    "--top-k",
+    "20",
+    "--override-kv",
+    "qwen35moe.context_length=int:1010000"
+  ],
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "default": false,
+  "status": "experimental",
+  "tps": {
+    "b200-180gb": 53
+  },
+  "verifiedOn": [
+    "b200-180gb"
+  ]
+}

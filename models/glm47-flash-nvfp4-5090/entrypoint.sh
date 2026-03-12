@@ -1,48 +1,14 @@
 #!/bin/bash
 # Don't use set -e - we want to continue even if some commands fail
 
+source /opt/openclaw/entrypoint-common.sh
+
 echo "================================================"
 echo "  GLM-4.7-Flash NVFP4 on RTX 5090 (Blackwell)"
 echo "================================================"
 
-# Setup SSH for remote access (mirrors RunPod's /start.sh behavior)
-setup_ssh() {
-    echo "Setting up SSH..."
-
-    # Setup authorized_keys from PUBLIC_KEY env var
-    if [ -n "$PUBLIC_KEY" ]; then
-        mkdir -p ~/.ssh
-        echo "$PUBLIC_KEY" >> ~/.ssh/authorized_keys
-        chmod 700 ~/.ssh
-        chmod 600 ~/.ssh/authorized_keys
-        echo "  Added public key to authorized_keys"
-    else
-        echo "  WARNING: No PUBLIC_KEY set - SSH login will not work"
-    fi
-
-    # Generate host keys if they don't exist
-    for keytype in rsa ecdsa ed25519; do
-        keyfile="/etc/ssh/ssh_host_${keytype}_key"
-        if [ ! -f "$keyfile" ]; then
-            ssh-keygen -t $keytype -f $keyfile -N "" -q 2>/dev/null || true
-            echo "  Generated $keytype host key"
-        fi
-    done
-
-    # Create run directory for sshd
-    mkdir -p /var/run/sshd
-
-    # Start sshd directly (not via service command which may not exist)
-    if [ -x /usr/sbin/sshd ]; then
-        /usr/sbin/sshd
-        echo "  SSH daemon started"
-    else
-        echo "  WARNING: sshd not found, SSH will not be available"
-    fi
-}
-
-# Run SSH setup (errors are non-fatal)
-setup_ssh || echo "SSH setup had issues but continuing..."
+# Setup SSH for remote access (mirrors Runpod's /start.sh behavior)
+oc_setup_ssh_manual || echo "SSH setup had issues but continuing..."
 
 # Persist vLLM cache (CUDA graphs, torch compile) on network storage
 # This speeds up subsequent pod starts by reusing cached compiled kernels
@@ -75,11 +41,14 @@ fi
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-200000}"
-CLAWDBOT_HOME="${CLAWDBOT_HOME:-/workspace/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-# Web UI password - users enter this to access the Clawdbot control panel
-CLAWDBOT_WEB_PASSWORD="${CLAWDBOT_WEB_PASSWORD:-clawdbot}"
+# Web UI password - users enter this to access the OpenClaw control panel
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
+
+BOT_CMD="openclaw"
 
 echo "Starting vLLM server..."
 echo "  Model: $MODEL_PATH"
@@ -128,11 +97,14 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     # Don't exit - keep container running for debugging
 fi
 
-# Setup Clawdbot config
-mkdir -p "$CLAWDBOT_HOME"
+# Setup OpenClaw config
+mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" \
+    "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
-if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
-    echo "Creating Clawdbot config..."
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw config..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -141,9 +113,9 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    # Create a minimal config - clawdbot doctor will fix any missing fields
+    # Create a minimal config - openclaw doctor will fix any missing fields
     # contextTokens: 180000 leaves room for output within 200K context
-    cat > "$CLAWDBOT_HOME/clawdbot.json" << EOF
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "models": {
     "providers": {
@@ -166,25 +138,32 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
   "agents": {
     "defaults": {
       "model": { "primary": "local-vllm/$SERVED_MODEL_NAME" },
-      "contextTokens": 180000
+      "contextTokens": 180000,
+      "workspace": "$OPENCLAW_WORKSPACE"
     }
   },
   "channels": {
     ${TELEGRAM_CONFIG}
   },
+  "skills": {
+    "load": { "extraDirs": ["/opt/openclaw/skills"] }
+  },
   "gateway": {
     "mode": "local",
-    "bind": "lan"
+    "bind": "lan",
+    "auth": { "mode": "password", "password": "$OPENCLAW_WEB_PASSWORD" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_HOME/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
 fi
 
-# Auto-fix config to match current Clawdbot version's schema
-echo "Running clawdbot doctor to validate/fix config..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot doctor --fix 2>/dev/null || true
+# Auto-fix config to match current OpenClaw version's schema
+echo "Running openclaw doctor to validate/fix config..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" doctor --fix 2>/dev/null || true
+chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json" 2>/dev/null || true
+oc_sync_gateway_auth "password"
 
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -204,23 +183,15 @@ fi
 export OPENAI_API_KEY="$VLLM_API_KEY"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 
-# Start Clawdbot gateway with password auth for web UI access
+# Start OpenClaw gateway with password auth for web UI access
 echo ""
-echo "Starting Clawdbot gateway..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot gateway --auth password --password "$CLAWDBOT_WEB_PASSWORD" 2>/dev/null &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" gateway --auth password --password "$OPENCLAW_WEB_PASSWORD" 2>/dev/null &
 GATEWAY_PID=$!
 
 echo ""
-echo "================================================"
-echo "  Ready! (RTX 5090 Blackwell SM120)"
-echo "  vLLM API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
-echo "  Web UI: https://<pod-id>-18789.proxy.runpod.net"
-echo "  Web UI Password: $CLAWDBOT_WEB_PASSWORD"
-echo "  Model: $SERVED_MODEL_NAME (NVFP4)"
-echo "  Context: $MAX_MODEL_LEN tokens"
-echo "  Cost: ~\$0.89/hr (36% savings vs A100)"
-echo "================================================"
+oc_print_ready "vLLM API" "$SERVED_MODEL_NAME (NVFP4)" "$MAX_MODEL_LEN tokens" "password" \
+    "Cost: ~\$0.89/hr (36% savings vs A100)"
 
 # Handle shutdown
 cleanup() {

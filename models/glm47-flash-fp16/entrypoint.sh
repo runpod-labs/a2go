@@ -1,9 +1,10 @@
 #!/bin/bash
-# entrypoint.sh - GLM-4.7-Flash FP16 + Clawdbot startup script
+# entrypoint.sh - GLM-4.7-Flash FP16 + OpenClaw startup script
 set -e
+source /opt/openclaw/entrypoint-common.sh
 
 echo "============================================"
-echo "  GLM-4.7-Flash FP16 + Clawdbot Startup"
+echo "  GLM-4.7-Flash FP16 + OpenClaw Startup"
 echo "============================================"
 echo ""
 echo "IMPORTANT: This requires vLLM NIGHTLY (not PyPI stable)!"
@@ -13,31 +14,25 @@ echo ""
 # Auto-detect GPU and set optimal context length
 # GLM-4.7-Flash: ~31GB model weights, KV cache ~160KB/token (BF16) or ~80KB/token (FP8)
 detect_optimal_context() {
-    local gpu_mem_mb=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1)
-    local gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+    local gpu_mem_mb
+    gpu_mem_mb=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1)
+    local gpu_name
+    gpu_name=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
 
     echo "Detected GPU: $gpu_name with ${gpu_mem_mb}MB VRAM"
 
-    # Calculate optimal context based on GPU memory
-    # Model weights: ~31GB, leaving rest for KV cache
-    # Using conservative estimates with FP8 KV cache
     if [ -z "$gpu_mem_mb" ]; then
-        echo "32768"  # Fallback
+        echo "32768"
     elif [ "$gpu_mem_mb" -ge 180000 ]; then
-        # B200 180GB: Can do 200k+ easily
-        echo "196608"  # 192k
+        echo "196608"
     elif [ "$gpu_mem_mb" -ge 140000 ]; then
-        # H200 141GB: Can do ~150k
-        echo "131072"  # 128k
+        echo "131072"
     elif [ "$gpu_mem_mb" -ge 80000 ]; then
-        # H100/A100 80GB: Can do ~64k safely, maybe 96k with FP8 KV
-        echo "65536"   # 64k
+        echo "65536"
     elif [ "$gpu_mem_mb" -ge 48000 ]; then
-        # A100 40GB or similar: ~32k
-        echo "32768"   # 32k
+        echo "32768"
     else
-        # Smaller GPUs
-        echo "16384"   # 16k
+        echo "16384"
     fi
 }
 
@@ -46,15 +41,17 @@ MODEL_NAME="${MODEL_NAME:-zai-org/GLM-4.7-Flash}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.92}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-}"
 # glm47 parser requires vLLM nightly from wheels.vllm.ai
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-glm47}"
 # Keep model on container disk (requires 100GB containerDiskInGb)
 HF_HOME="${HF_HOME:-/root/.cache/huggingface}"
-CLAWDBOT_STATE_DIR="${CLAWDBOT_STATE_DIR:-/workspace/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
 
-# Auto-detect optimal context if not explicitly set
 if [ -z "$MAX_MODEL_LEN" ]; then
     MAX_MODEL_LEN=$(detect_optimal_context)
     echo "Auto-detected optimal context length: $MAX_MODEL_LEN tokens"
@@ -63,8 +60,10 @@ else
 fi
 
 export HF_HOME
-export CLAWDBOT_STATE_DIR
+export OPENCLAW_STATE_DIR
 export MAX_MODEL_LEN
+
+BOT_CMD="openclaw"
 
 # Set CUDA 13.1 paths for B200 (no-op on other GPUs if not installed)
 if [ -d "/usr/local/cuda-13.1" ]; then
@@ -75,7 +74,10 @@ if [ -d "/usr/local/cuda-13.1" ]; then
 fi
 
 # Ensure directories exist (HF cache on container disk, state on workspace)
-mkdir -p "$HF_HOME" "$CLAWDBOT_STATE_DIR" /workspace/clawd
+mkdir -p "$HF_HOME" "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" \
+    "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
 # Configure GitHub CLI
 # Priority: 1) GITHUB_TOKEN env var, 2) Persisted config in /workspace/.config/gh
@@ -115,9 +117,9 @@ if command -v nvcc &> /dev/null; then
 fi
 echo ""
 
-# Initialize Clawdbot config if not exists
-if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
-    echo "Creating Clawdbot configuration..."
+# Initialize OpenClaw config if not exists
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw configuration..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -135,12 +137,12 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
     # Reserve tokens for compaction: 15% of context
     RESERVE_TOKENS=$((MAX_MODEL_LEN * 15 / 100))
 
-    cat > "$CLAWDBOT_STATE_DIR/clawdbot.json" << EOF
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "agents": {
     "defaults": {
       "model": { "primary": "local-vllm/${SERVED_MODEL_NAME}" },
-      "workspace": "/workspace/clawd",
+      "workspace": "/workspace/openclaw",
       "contextTokens": ${CONTEXT_TOKENS},
       "systemPrompt": "Be concise and direct. Avoid unnecessary verbosity.",
       "compaction": {
@@ -174,17 +176,24 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
   "channels": {
     ${TELEGRAM_CONFIG}
   },
+  "skills": {
+    "load": { "extraDirs": ["/opt/openclaw/skills"] }
+  },
   "gateway": {
-    "mode": "local"
+    "mode": "local",
+    "bind": "lan",
+    "auth": { "mode": "password", "password": "${OPENCLAW_WEB_PASSWORD}" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_STATE_DIR/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
     echo "Config created. Telegram token: ${TELEGRAM_BOT_TOKEN:+provided}${TELEGRAM_BOT_TOKEN:-NOT SET - add manually}"
 else
-    echo "Existing config found at $CLAWDBOT_STATE_DIR/clawdbot.json - preserving it"
+    echo "Existing config found at $OPENCLAW_STATE_DIR/openclaw.json - preserving it"
 fi
+
+oc_sync_gateway_auth "password"
 
 # Build vLLM command
 # Note: GLM-4.7-Flash requires:
@@ -232,23 +241,14 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Start Clawdbot gateway
+# Start OpenClaw gateway
 echo ""
-echo "Starting Clawdbot gateway..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_STATE_DIR clawdbot gateway &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" gateway --auth password --password "$OPENCLAW_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
 echo ""
-echo "============================================"
-echo "  Services Running"
-echo "============================================"
-echo "  vLLM API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
-echo ""
-echo "  vLLM PID: $VLLM_PID"
-echo "  Gateway PID: $GATEWAY_PID"
-echo "============================================"
-echo ""
+oc_print_ready "vLLM API" "$SERVED_MODEL_NAME" "$MAX_MODEL_LEN tokens" "password"
 
 # Keep container running and handle signals
 trap "kill $VLLM_PID $GATEWAY_PID 2>/dev/null; exit 0" SIGTERM SIGINT

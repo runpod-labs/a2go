@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-clawdbot.sh - Install and configure Clawdbot on RunPod
+# setup-openclaw.sh - Install and configure OpenClaw on Runpod
 # Prerequisites: vLLM server running on port 8000
 
 set -e
@@ -21,17 +21,17 @@ VLLM_HOST="${VLLM_HOST:-localhost}"
 VLLM_PORT="${VLLM_PORT:-8000}"
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-qwen3-30b-a3b}"
-CLAWDBOT_CONFIG_DIR="${CLAWDBOT_CONFIG_DIR:-$HOME/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
 RUNPOD_POD_ID="${RUNPOD_POD_ID:-}"
 
 # Print banner
 echo ""
 echo "==========================================="
-echo "  Clawdbot Setup Script"
+echo "  OpenClaw Setup Script"
 echo "==========================================="
 echo ""
 
-# Check if running as root (common on RunPod)
+# Check if running as root (common on Runpod)
 if [ "$EUID" -eq 0 ]; then
     log_info "Running as root"
 fi
@@ -55,10 +55,11 @@ if ! command -v npm &> /dev/null; then
 fi
 log_info "npm version: $(npm --version)"
 
-# Step 2: Install Clawdbot
-log_info "Installing Clawdbot..."
-npm install -g clawdbot@latest
-log_success "Clawdbot installed: $(clawdbot --version 2>/dev/null || echo 'version check failed')"
+# Step 2: Install OpenClaw
+log_info "Installing OpenClaw..."
+npm install -g openclaw@latest
+BOT_CMD="openclaw"
+log_success "OpenClaw installed: $("$BOT_CMD" --version 2>/dev/null || echo 'version check failed')"
 
 # Step 3: Wait for vLLM to be ready
 log_info "Waiting for vLLM server to be ready..."
@@ -86,21 +87,21 @@ MODELS_RESPONSE=$(curl -s "http://${VLLM_HOST}:${VLLM_PORT}/v1/models" \
     -H "Authorization: Bearer ${VLLM_API_KEY}")
 echo "Available models: $MODELS_RESPONSE"
 
-# Step 4: Create Clawdbot configuration directory
-log_info "Creating Clawdbot configuration..."
-mkdir -p "$CLAWDBOT_CONFIG_DIR"
+# Step 4: Create OpenClaw configuration directory
+log_info "Creating OpenClaw configuration..."
+mkdir -p "$OPENCLAW_STATE_DIR"
 
 # Determine the base URL for the vLLM endpoint
 if [ -n "$RUNPOD_POD_ID" ]; then
-    # Running on RunPod - use proxy URL
+    # Running on Runpod - use proxy URL
     VLLM_BASE_URL="https://${RUNPOD_POD_ID}-${VLLM_PORT}.proxy.runpod.net/v1"
 else
     # Local or direct connection
     VLLM_BASE_URL="http://${VLLM_HOST}:${VLLM_PORT}/v1"
 fi
 
-# Step 5: Create Clawdbot configuration file
-cat > "$CLAWDBOT_CONFIG_DIR/clawdbot.json" << EOF
+# Step 5: Create OpenClaw configuration file
+cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "agents": {
     "defaults": {
@@ -132,15 +133,15 @@ cat > "$CLAWDBOT_CONFIG_DIR/clawdbot.json" << EOF
 }
 EOF
 
-log_success "Clawdbot configuration created at $CLAWDBOT_CONFIG_DIR/clawdbot.json"
+log_success "OpenClaw configuration created at $OPENCLAW_STATE_DIR/openclaw.json"
 
-# Step 6: Test Clawdbot connection
-log_info "Testing Clawdbot configuration..."
+# Step 6: Test OpenClaw connection
+log_info "Testing OpenClaw configuration..."
 echo ""
 echo "Configuration summary:"
 echo "  vLLM URL: $VLLM_BASE_URL"
 echo "  Model: $SERVED_MODEL_NAME"
-echo "  Config dir: $CLAWDBOT_CONFIG_DIR"
+echo "  Config dir: $OPENCLAW_STATE_DIR"
 echo ""
 
 # Test a simple completion
@@ -166,11 +167,11 @@ echo "==========================================="
 echo "  Setup Complete!"
 echo "==========================================="
 echo ""
-echo "To start Clawdbot, run:"
-echo "  clawdbot"
+echo "To start OpenClaw, run:"
+echo "  openclaw"
 echo ""
 echo "To start with daemon mode:"
-echo "  clawdbot onboard --install-daemon"
+echo "  openclaw onboard --install-daemon"
 echo ""
-echo "Configuration file: $CLAWDBOT_CONFIG_DIR/clawdbot.json"
+echo "Configuration file: $OPENCLAW_STATE_DIR/openclaw.json"
 echo ""

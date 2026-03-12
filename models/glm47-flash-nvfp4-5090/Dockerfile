@@ -53,8 +53,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 
 # Install tools
 RUN uv pip install --system "huggingface_hub[cli]" && \
-    npm install -g --prefer-offline @anthropic-ai/claude-code clawdbot && \
+    npm install -g --prefer-offline @anthropic-ai/claude-code openclaw@latest && \
     npm cache clean --force
+
+# Image generation dependencies (SDNQ + Diffusers)
+RUN uv pip install --system sdnq diffusers accelerate safetensors
 
 WORKDIR /
 
@@ -63,11 +66,14 @@ ENV MODEL_NAME="GadflyII/GLM-4.7-Flash-NVFP4" \
     SERVED_MODEL_NAME="glm-4.7-flash" \
     MAX_MODEL_LEN="200000" \
     VLLM_API_KEY="changeme" \
-    CLAWDBOT_HOME="/workspace/.clawdbot" \
-    CLAWDBOT_WORKSPACE="/workspace/clawd"
+    OPENCLAW_STATE_DIR="/workspace/.openclaw" \
+    OPENCLAW_WORKSPACE="/workspace/openclaw"
 
-COPY entrypoint.sh benchmark.sh /
-RUN chmod +x /entrypoint.sh /benchmark.sh
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
+COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
+COPY models/glm47-flash-nvfp4-5090/entrypoint.sh models/glm47-flash-nvfp4-5090/benchmark.sh /
+RUN chmod +x /entrypoint.sh /benchmark.sh /usr/local/bin/openclaw-image-gen
 
 EXPOSE 8000 18789 22
 ENTRYPOINT ["/entrypoint.sh"]

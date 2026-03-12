@@ -1,0 +1,35 @@
+name: Validate PR
+
+on:
+  pull_request:
+    paths:
+      - "registry/models/**"
+      - "registry/gpus/**"
+      - "registry/schemas/**"
+      - "site/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: site
+        run: npm ci
+
+      - name: Validate JSON files
+        working-directory: site
+        run: npm run validate
+
+      - name: Check HuggingFace repos exist
+        working-directory: site
+        run: npm run validate:hf
+
+      - name: Test full build
+        working-directory: site
+        run: npm run build:prod

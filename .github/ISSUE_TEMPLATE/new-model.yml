@@ -1,0 +1,131 @@
+name: New Model Request
+description: Submit a new model for the OpenClaw2Go registry
+title: "[Model] "
+labels: ["new-model"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Submit a New Model
+
+        Add a model to the OpenClaw2Go registry. You can generate this config
+        automatically by running `openclaw2go registry export --format issue` on a running pod.
+
+  - type: input
+    id: model-id
+    attributes:
+      label: Model ID
+      description: "Unique ID in provider/name format (e.g., `unsloth/glm47-flash-gguf`)"
+      placeholder: "provider/model-name"
+    validations:
+      required: true
+
+  - type: input
+    id: model-name
+    attributes:
+      label: Model Name
+      description: "Human-readable name"
+      placeholder: "GLM-4.7-Flash GGUF Q4_K_M"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: model-type
+    attributes:
+      label: Model Type
+      options:
+        - llm
+        - audio
+        - image
+    validations:
+      required: true
+
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Engine
+      options:
+        - openclaw2go-llamacpp
+        - ik-llamacpp
+        - llamacpp
+        - llamacpp-audio
+        - image-gen
+        - mlx
+        - vllm
+    validations:
+      required: true
+
+  - type: input
+    id: hf-repo
+    attributes:
+      label: HuggingFace Repository
+      description: "Full repo name (e.g., `unsloth/GLM-4.7-Flash-GGUF`)"
+      placeholder: "org/repo-name"
+    validations:
+      required: true
+
+  - type: textarea
+    id: model-json
+    attributes:
+      label: Full Model Config JSON
+      description: |
+        Paste the complete model config JSON here. You can generate this with
+        `openclaw2go registry export --format json` on a running pod.
+      render: json
+      placeholder: |
+        {
+          "id": "provider/model-name",
+          "name": "Model Name",
+          "type": "llm",
+          "engine": "openclaw2go-llamacpp",
+          "repo": "org/repo-name",
+          "files": ["model-file.gguf"],
+          "downloadDir": "/workspace/models/ModelName",
+          "servedAs": "model-name",
+          "vram": { "model": 17300, "overhead": 500 },
+          "kvCacheMbPer1kTokens": 40,
+          "defaults": { "contextLength": 150000, "port": 8000 },
+          "startDefaults": { "gpuLayers": "999", "parallel": "1" },
+          "provider": { "name": "local-llamacpp", "api": "openai-completions" },
+          "default": false,
+          "status": "experimental"
+        }
+    validations:
+      required: true
+
+  - type: dropdown
+    id: gpu-tested
+    attributes:
+      label: GPU Tested On
+      options:
+        - RTX 5090 (32 GB)
+        - RTX 4090 (24 GB)
+        - L40 (48 GB)
+        - A100 80GB
+        - H100 80GB
+        - B200 180GB
+        - Other (specify in notes)
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-evidence
+    attributes:
+      label: Test Evidence
+      description: |
+        Paste output from `nvidia-smi` showing VRAM usage, health check results,
+        and any other evidence that the model works correctly.
+      placeholder: |
+        GPU: NVIDIA RTX 5090 (32768 MB)
+        VRAM Used: 28500 MB
+        Context Length: 150000 tokens
+        Health Check: PASS
+        curl http://localhost:8000/health → OK
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: "Any additional information (known issues, recommended settings, etc.)"

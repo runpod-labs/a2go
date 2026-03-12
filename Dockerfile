@@ -1,14 +1,15 @@
-# Clawdbot + vLLM Docker Image for RunPod
+# OpenClaw + vLLM Docker Image for Runpod
 # Pre-configured with everything needed for AI coding assistant
 FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
-LABEL maintainer="RunPod Clawdbot"
-LABEL description="Clawdbot AI assistant with vLLM for local LLM inference"
+LABEL maintainer="Runpod OpenClaw2Go"
+LABEL description="OpenClaw2Go with vLLM for local LLM inference"
 
 # Avoid interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 ENV HF_HOME=/workspace/huggingface
-ENV CLAWDBOT_STATE_DIR=/workspace/.clawdbot
+ENV OPENCLAW_STATE_DIR=/workspace/.openclaw
+ENV OPENCLAW_WORKSPACE=/workspace/openclaw
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,32 +28,39 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # Install vLLM
 RUN pip install --no-cache-dir vllm
 
-# Install Clawdbot
-RUN npm install -g clawdbot@latest
+# Image generation dependencies (SDNQ + Diffusers)
+RUN python3 -m pip install --no-cache-dir sdnq diffusers transformers accelerate safetensors
+
+# Install OpenClaw
+RUN npm install -g openclaw@latest
 
 # Create workspace directories
 RUN mkdir -p /workspace/huggingface \
-    /workspace/.clawdbot \
-    /workspace/clawd \
+    /workspace/.openclaw \
+    /workspace/openclaw \
     /workspace/scripts
 
-# Copy startup script
+# Copy startup scripts + skills + CLI
+COPY skills/ /opt/openclaw/skills/
+COPY scripts/openclaw-image-gen /usr/local/bin/openclaw-image-gen
+COPY scripts/entrypoint-common.sh /opt/openclaw/entrypoint-common.sh
 COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh /usr/local/bin/openclaw-image-gen
 
-# Copy default Clawdbot workspace files
-COPY config/workspace/ /workspace/clawd/
+# Copy default OpenClaw workspace files
+COPY config/workspace/ /workspace/openclaw/
 
 # Expose ports
 # 8000 - vLLM API
-# 18789 - Clawdbot Gateway WebSocket
-# 18790 - Clawdbot Bridge
-# 18793 - Clawdbot Canvas
-# 22 - SSH (RunPod adds this)
+# 18789 - OpenClaw Gateway WebSocket
+# 18790 - OpenClaw Bridge
+# 18793 - OpenClaw Canvas
+# 22 - SSH (Runpod adds this)
 EXPOSE 8000 18789 18790 18793
 
 # Environment variables (can be overridden at runtime)
 ENV VLLM_API_KEY=changeme
+ENV OPENCLAW_WEB_PASSWORD=changeme
 ENV MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct
 ENV SERVED_MODEL_NAME=local-coder
 ENV MAX_MODEL_LEN=16384

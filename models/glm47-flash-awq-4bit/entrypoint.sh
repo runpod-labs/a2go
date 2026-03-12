@@ -1,18 +1,14 @@
 #!/bin/bash
 set -e
+source /opt/openclaw/entrypoint-common.sh
 
 echo "================================================"
 echo "  GLM-4.7-Flash AWQ (4-bit) on A100 80GB"
 echo "================================================"
 
-# RunPod's /start.sh handles SSH setup using PUBLIC_KEY env var
+# Runpod's /start.sh handles SSH setup using PUBLIC_KEY env var
 # It ends with 'sleep infinity' so we run it in background
-if [ -f /start.sh ]; then
-    echo "Running RunPod start script (background)..."
-    /start.sh &
-    # Give it a moment to set up SSH
-    sleep 5
-fi
+oc_start_runpod_ssh
 
 # Persist vLLM cache (CUDA graphs, torch compile) on network storage
 # This speeds up subsequent pod starts by reusing cached compiled kernels
@@ -48,11 +44,14 @@ fi
 VLLM_API_KEY="${VLLM_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-114688}"
-CLAWDBOT_HOME="${CLAWDBOT_HOME:-/workspace/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-# Web UI password - users enter this to access the Clawdbot control panel
-CLAWDBOT_WEB_PASSWORD="${CLAWDBOT_WEB_PASSWORD:-clawdbot}"
+# Web UI token/password - users enter this to access the OpenClaw control panel
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
+
+BOT_CMD="openclaw"
 
 echo "Starting vLLM server..."
 echo "  Model: $MODEL_PATH"
@@ -99,11 +98,13 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     # Don't exit - keep container running for debugging
 fi
 
-# Setup Clawdbot config
-mkdir -p "$CLAWDBOT_HOME"
+# Setup OpenClaw config
+mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
-if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
-    echo "Creating Clawdbot config..."
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw config..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -112,8 +113,8 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    # Create a minimal config - clawdbot doctor will fix any missing fields
-    cat > "$CLAWDBOT_HOME/clawdbot.json" << EOF
+    # Create a minimal config - openclaw doctor will fix any missing fields
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "models": {
     "providers": {
@@ -136,25 +137,32 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
   "agents": {
     "defaults": {
       "model": { "primary": "local-vllm/$SERVED_MODEL_NAME" },
-      "contextTokens": 98304
+      "contextTokens": 98304,
+      "workspace": "$OPENCLAW_WORKSPACE"
     }
   },
   "channels": {
     ${TELEGRAM_CONFIG}
   },
+  "skills": {
+    "load": { "extraDirs": ["/opt/openclaw/skills"] }
+  },
   "gateway": {
     "mode": "local",
-    "bind": "lan"
+    "bind": "lan",
+    "auth": { "mode": "password", "password": "$OPENCLAW_WEB_PASSWORD" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_HOME/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
 fi
 
-# Auto-fix config to match current Clawdbot version's schema
-echo "Running clawdbot doctor to validate/fix config..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot doctor --fix || true
+# Auto-fix config to match current OpenClaw version's schema
+echo "Running openclaw doctor to validate/fix config..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" doctor --fix || true
+chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json" 2>/dev/null || true
+oc_sync_gateway_auth "password"
 
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -174,22 +182,14 @@ fi
 export OPENAI_API_KEY="$VLLM_API_KEY"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 
-# Start Clawdbot gateway with password auth for web UI access
+# Start OpenClaw gateway with password auth for web UI access
 echo ""
-echo "Starting Clawdbot gateway..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot gateway --auth password --password "$CLAWDBOT_WEB_PASSWORD" &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" gateway --auth password --password "$OPENCLAW_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
 echo ""
-echo "================================================"
-echo "  Ready!"
-echo "  vLLM API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
-echo "  Web UI: https://<pod-id>-18789.proxy.runpod.net"
-echo "  Web UI Password: $CLAWDBOT_WEB_PASSWORD"
-echo "  Model: $SERVED_MODEL_NAME"
-echo "  Context: $MAX_MODEL_LEN tokens"
-echo "================================================"
+oc_print_ready "vLLM API" "$SERVED_MODEL_NAME" "$MAX_MODEL_LEN tokens" "password"
 
 # Handle shutdown
 cleanup() {

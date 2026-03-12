@@ -36,10 +36,10 @@ Full 200K context window with MLA for reduced KV cache memory.
 
 ## Quick Start
 
-### 1. Create RunPod Pod
+### 1. Create Runpod Pod
 
 **Settings:**
-- **Image**: `runpod/clawdbot-glm47-flash-nvfp4-5090:latest`
+- **Image**: `runpod/openclaw2go-glm4.7-flash-nvfp4-5090:latest`
 - **GPU**: 1x RTX 5090 32GB
 - **Volume**: 100GB at `/workspace` (network storage)
 - **Container Disk**: 50GB
@@ -54,7 +54,7 @@ Full 200K context window with MLA for reduced KV cache memory.
 | `HF_TOKEN` | Recommended | - | [HuggingFace token](https://huggingface.co/settings/tokens) for faster model downloads |
 | `TELEGRAM_BOT_TOKEN` | No | - | Telegram bot token |
 | `GITHUB_TOKEN` | No | - | GitHub token for `gh` CLI |
-| `CLAWDBOT_WEB_PASSWORD` | No | `clawdbot` | Password for web UI |
+| `OPENCLAW_WEB_PASSWORD` | No | `changeme` | Password for web UI |
 
 ### 3. Test It
 

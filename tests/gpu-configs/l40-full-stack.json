@@ -1,0 +1,8 @@
+{
+  "_test": "L40 Full Stack - LLM + Audio + Image",
+  "_gpu": "L40 (48GB, Ada Lovelace sm_89)",
+  "_expected": "All 3 services running with full 150k context, ~18 GB free",
+  "llm": true,
+  "audio": true,
+  "image": true
+}

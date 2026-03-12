@@ -1,9 +1,10 @@
 #!/bin/bash
-# entrypoint.sh - GLM-4.7-REAP W4A16 + Clawdbot startup script for RunPod B200
+# entrypoint.sh - GLM-4.7-REAP W4A16 + OpenClaw startup script for Runpod B200
 set -e
+source /opt/openclaw/entrypoint-common.sh
 
 echo "============================================"
-echo "  GLM-4.7-REAP W4A16 + Clawdbot Startup"
+echo "  GLM-4.7-REAP W4A16 + OpenClaw Startup"
 echo "============================================"
 
 # Configuration from environment
@@ -14,18 +15,25 @@ MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-glm45}"
 HF_HOME="${HF_HOME:-/workspace/huggingface}"
-CLAWDBOT_STATE_DIR="${CLAWDBOT_STATE_DIR:-/workspace/.clawdbot}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
 
 export HF_HOME
-export CLAWDBOT_STATE_DIR
+export OPENCLAW_STATE_DIR
 export PATH=/usr/local/cuda-13.1/bin:$PATH
 export CUDA_HOME=/usr/local/cuda-13.1
 export LD_LIBRARY_PATH=/usr/local/cuda-13.1/lib64:$LD_LIBRARY_PATH
 
 # Ensure directories exist
-mkdir -p "$HF_HOME" "$CLAWDBOT_STATE_DIR" /workspace/clawd
+mkdir -p "$HF_HOME" "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" \
+    "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
+
+BOT_CMD="openclaw"
 
 # Configure GitHub CLI
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -54,9 +62,9 @@ echo "  Tool parser: $TOOL_CALL_PARSER"
 echo "  CUDA: $(nvcc --version | grep release | awk '{print $5}' | tr -d ',')"
 echo ""
 
-# Initialize Clawdbot config if not exists
-if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
-    echo "Creating Clawdbot configuration..."
+# Initialize OpenClaw config if not exists
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw configuration..."
 
     # Build telegram config based on whether token is provided
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
@@ -65,12 +73,12 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    cat > "$CLAWDBOT_STATE_DIR/clawdbot.json" << EOF
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "agents": {
     "defaults": {
       "model": { "primary": "local-vllm/${SERVED_MODEL_NAME}" },
-      "workspace": "/workspace/clawd"
+      "workspace": "/workspace/openclaw"
     }
   },
   "models": {
@@ -94,17 +102,24 @@ if [ ! -f "$CLAWDBOT_STATE_DIR/clawdbot.json" ]; then
   "channels": {
     ${TELEGRAM_CONFIG}
   },
+  "skills": {
+    "load": { "extraDirs": ["/opt/openclaw/skills"] }
+  },
   "gateway": {
-    "mode": "local"
+    "mode": "local",
+    "bind": "lan",
+    "auth": { "mode": "password", "password": "${OPENCLAW_WEB_PASSWORD}" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_STATE_DIR/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
     echo "Config created. Telegram token: ${TELEGRAM_BOT_TOKEN:+provided}${TELEGRAM_BOT_TOKEN:-NOT SET - add manually}"
 else
-    echo "Existing config found at $CLAWDBOT_STATE_DIR/clawdbot.json - preserving it"
+    echo "Existing config found at $OPENCLAW_STATE_DIR/openclaw.json - preserving it"
 fi
+
+oc_sync_gateway_auth "password"
 
 # Build vLLM command
 # Note: GLM-4.7-REAP requires:
@@ -148,23 +163,14 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Start Clawdbot gateway
+# Start OpenClaw gateway
 echo ""
-echo "Starting Clawdbot gateway..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_STATE_DIR clawdbot gateway &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" gateway --auth password --password "$OPENCLAW_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
 echo ""
-echo "============================================"
-echo "  Services Running"
-echo "============================================"
-echo "  vLLM API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
-echo ""
-echo "  vLLM PID: $VLLM_PID"
-echo "  Gateway PID: $GATEWAY_PID"
-echo "============================================"
-echo ""
+oc_print_ready "vLLM API" "$SERVED_MODEL_NAME" "$MAX_MODEL_LEN tokens" "password"
 
 # Keep container running and handle signals
 trap "kill $VLLM_PID $GATEWAY_PID 2>/dev/null; exit 0" SIGTERM SIGINT

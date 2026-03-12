@@ -1,0 +1,8 @@
+{
+  "_test": "RTX 5090 Full Stack - LLM + Audio + Image",
+  "_gpu": "RTX 5090 (32GB, Blackwell sm_120)",
+  "_expected": "All 3 services running, ~29-30 GB VRAM used",
+  "llm": true,
+  "audio": true,
+  "image": true
+}

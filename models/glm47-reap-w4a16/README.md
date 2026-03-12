@@ -19,9 +19,9 @@ High-end option for maximum performance.
 
 ## Quick Start
 
-### 1. Create RunPod Pod
+### 1. Create Runpod Pod
 
-- **Image**: `yourusername/clawdbot-glm47-reap-w4a16:latest`
+- **Image**: `yourusername/openclaw2go-glm4.7-reap-w4a16:latest`
 - **GPU**: 1x B200 180GB
 - **Volume**: 200GB at `/workspace`
 - **Container Disk**: 50GB
@@ -59,11 +59,11 @@ Files persist on network volume `/workspace`:
 ```
 /workspace/
 ├── huggingface/                   # Model cache
-├── .clawdbot/
-│   ├── clawdbot.json              # Config
+├── .openclaw/                     # OpenClaw state path
+│   ├── openclaw.json              # Config
 │   ├── agents/                    # State
 │   └── telegram/                  # Session
-└── clawd/                         # Workspace
+└── openclaw/                      # Workspace
 ```
 
 ## B200 (Blackwell) Support

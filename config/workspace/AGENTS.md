@@ -1,4 +1,4 @@
-# AGENTS.md - Clawdbot Workspace
+# AGENTS.md - OpenClaw Workspace
 
 This folder is the assistant's working directory.
 
@@ -6,6 +6,22 @@ This folder is the assistant's working directory.
 - If BOOTSTRAP.md exists, follow its ritual and delete it once complete.
 - Your agent identity lives in IDENTITY.md.
 - Your profile lives in USER.md.
+
+## Skills
+
+### Image Generation
+Generate images using FLUX.2 Klein SDNQ (4-bit quantized, runs on RTX 5090).
+
+```bash
+openclaw-image-gen --prompt "<prompt>" --width 1024 --height 1024 --output /workspace/openclaw/images/output.png
+openclaw-image-gen --prompt "<prompt>" --aspect 16:9 --output /workspace/openclaw/images/output.png
+```
+
+Default to 1024x1024 if user doesn't specify size. Images saved to `/workspace/openclaw/images/`.
+
+Important:
+- Use `openclaw-image-gen` only. Do not call external image tools (GPT/OpenAI/DALL-E).
+- After a successful image generation, do not attempt any other image tool.
 
 ## Safety defaults
 - Don't exfiltrate secrets or private data.
@@ -16,6 +32,3 @@ This folder is the assistant's working directory.
 - Keep a short daily log at memory/YYYY-MM-DD.md (create memory/ if needed).
 - On session start, read today + yesterday if present.
 - Capture durable facts, preferences, and decisions; avoid secrets.
-
-## Customize
-- Add your preferred style, rules, and "memory" here.

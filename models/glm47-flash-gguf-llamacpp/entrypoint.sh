@@ -2,31 +2,12 @@
 # Don't exit on error - we want the container to stay alive for debugging
 set +e
 
+source /opt/openclaw/entrypoint-common.sh
+
 # ============================================================
 # Setup SSH server FIRST so we can always connect
 # ============================================================
-echo "Setting up SSH server..."
-
-# Generate host keys if they don't exist
-if [ ! -f /etc/ssh/ssh_host_rsa_key ]; then
-    ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
-    ssh-keygen -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N ''
-    ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
-fi
-
-# Setup authorized_keys from PUBLIC_KEY env var
-if [ -n "$PUBLIC_KEY" ]; then
-    mkdir -p ~/.ssh
-    echo "$PUBLIC_KEY" > ~/.ssh/authorized_keys
-    chmod 700 ~/.ssh
-    chmod 600 ~/.ssh/authorized_keys
-    echo "SSH public key configured"
-fi
-
-# Start SSH daemon
-mkdir -p /var/run/sshd
-/usr/sbin/sshd
-echo "SSH server started on port 22"
+oc_setup_ssh_manual
 
 echo ""
 echo "================================================"
@@ -73,24 +54,176 @@ print('Download complete!')
     }
 fi
 
+# ============================================================
+# Download LFM2.5-Audio model for TTS/STT
+# ============================================================
+AUDIO_MODEL_PATH="${AUDIO_MODEL_PATH:-/workspace/models/LFM2.5-Audio-GGUF}"
+AUDIO_MODEL_NAME="${AUDIO_MODEL_NAME:-LiquidAI/LFM2.5-Audio-1.5B-GGUF}"
+AUDIO_QUANT="${AUDIO_QUANT:-Q4_0}"
+
+# Files needed for audio model
+AUDIO_FILES=(
+    "LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+    "mmproj-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+    "vocoder-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+    "tokenizer-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+)
+
+# Check if all audio files exist
+AUDIO_DOWNLOAD_NEEDED=false
+for audio_file in "${AUDIO_FILES[@]}"; do
+    if [ ! -f "$AUDIO_MODEL_PATH/$audio_file" ]; then
+        AUDIO_DOWNLOAD_NEEDED=true
+        break
+    fi
+done
+
+if [ "$AUDIO_DOWNLOAD_NEEDED" = true ]; then
+    echo ""
+    echo "Downloading LFM2.5-Audio model for TTS/STT..."
+    mkdir -p "$AUDIO_MODEL_PATH"
+
+    for audio_file in "${AUDIO_FILES[@]}"; do
+        if [ ! -f "$AUDIO_MODEL_PATH/$audio_file" ]; then
+            echo "  Downloading $audio_file..."
+            python3 -c "
+from huggingface_hub import hf_hub_download
+hf_hub_download(
+    repo_id='$AUDIO_MODEL_NAME',
+    filename='$audio_file',
+    local_dir='$AUDIO_MODEL_PATH',
+    local_dir_use_symlinks=False
+)
+print('  Done: $audio_file')
+" || echo "  WARNING: Failed to download $audio_file"
+        fi
+    done
+    echo "Audio model download complete!"
+else
+    echo "Audio model files already present at $AUDIO_MODEL_PATH"
+fi
+
 # Set defaults
 LLAMA_API_KEY="${LLAMA_API_KEY:-changeme}"
 SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-glm-4.7-flash}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-200000}"
-CLAWDBOT_HOME="${CLAWDBOT_HOME:-/workspace/.clawdbot}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-150000}"
+LLAMA_PARALLEL="${LLAMA_PARALLEL:-1}"
+LLAMA_GPU_LAYERS="${LLAMA_GPU_LAYERS:-999}"
+OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/workspace/.openclaw}"
+OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-/workspace/openclaw}"
+OPENCLAW_WEB_PROXY_PORT="${OPENCLAW_WEB_PROXY_PORT:-8080}"
+export OPENCLAW_STATE_DIR OPENCLAW_WORKSPACE OPENCLAW_WEB_PROXY_PORT
+if [ -n "${RUNPOD_POD_ID:-}" ] && [ -z "${OPENCLAW_IMAGE_PUBLIC_BASE_URL:-}" ]; then
+    OPENCLAW_IMAGE_PUBLIC_BASE_URL="https://${RUNPOD_POD_ID}-${OPENCLAW_WEB_PROXY_PORT}.proxy.runpod.net"
+    export OPENCLAW_IMAGE_PUBLIC_BASE_URL
+fi
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-CLAWDBOT_WEB_PASSWORD="${CLAWDBOT_WEB_PASSWORD:-clawdbot}"
+OPENCLAW_WEB_PASSWORD="${OPENCLAW_WEB_PASSWORD:-changeme}"
+
+BOT_CMD="openclaw"
+if ! command -v "$BOT_CMD" >/dev/null 2>&1; then
+    echo "ERROR: openclaw command not found in PATH"
+    echo "PATH=$PATH"
+    echo "Container staying alive for debugging."
+    sleep infinity
+fi
+
+oc_fatal_gpu() {
+    local details="$1"
+    echo ""
+    echo "================================================================================"
+    echo "================================================================================"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "!!!!!!!!!!!!!!!!!!!! GPU INITIALIZATION FAILED - ABORTING !!!!!!!!!!!!!!!!!!!!!"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "================================================================================"
+    echo "We can not continue. The GPU or GPU driver has a problem that we can not resolve."
+    echo "Contact Runpod support at help@runpod.io"
+    echo "--------------------------------------------------------------------------------"
+    if [ -n "$details" ]; then
+        echo "Details:"
+        echo "$details"
+        echo "--------------------------------------------------------------------------------"
+    fi
+    cat <<'EOF'
+   ____                   ________                  __          __          
+  / __ \____  ___  ____  / ____/ /___ __      _____/ /_  ____ _/ /__________
+ / / / / __ \/ _ \/ __ \/ /   / / __ \ | /| / / __  / / / / __  / / ___/ ___/
+/ /_/ / /_/ /  __/ / / / /___/ / /_/ / |/ |/ / /_/ / /_/ / /_/ / / /  (__  ) 
+\____/ .___/\___/_/ /_/\____/_/\____/|__/|__/\__,_/\__,_/\__,_/_/_/  /____/  
+    /_/                                                                      
+EOF
+    echo "================================================================================"
+    exit 1
+}
+
+oc_check_cuda() {
+    if ! command -v python3 >/dev/null 2>&1; then
+        oc_fatal_gpu "python3 is missing; unable to verify CUDA availability."
+    fi
+    local check_output=""
+    check_output="$(python3 - <<'PY'
+import ctypes
+import os
+import sys
+from ctypes import c_int, c_char_p
+
+def err_string(lib, code):
+    msg = c_char_p()
+    try:
+        lib.cuGetErrorString(code, ctypes.byref(msg))
+        return msg.value.decode() if msg.value else "unknown"
+    except Exception:
+        return "unknown"
+
+try:
+    lib = ctypes.CDLL("libcuda.so.1")
+except OSError as exc:
+    print(f"libcuda.so.1 load failed: {exc}")
+    sys.exit(1)
+
+lib.cuInit.argtypes = [ctypes.c_uint]
+lib.cuInit.restype = c_int
+err = lib.cuInit(0)
+if err != 0:
+    print(f"cuInit failed: {err} {err_string(lib, err)}")
+    sys.exit(1)
+
+lib.cuDeviceGetCount.argtypes = [ctypes.POINTER(c_int)]
+lib.cuDeviceGetCount.restype = c_int
+count = c_int()
+err2 = lib.cuDeviceGetCount(ctypes.byref(count))
+if err2 != 0 or count.value < 1:
+    print(f"cuDeviceGetCount failed: {err2} {err_string(lib, err2)} count={count.value}")
+    sys.exit(1)
+
+visible = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+nvidia_visible = os.environ.get("NVIDIA_VISIBLE_DEVICES", "")
+print(f"CUDA_VISIBLE_DEVICES={visible or '(unset)'}")
+print(f"NVIDIA_VISIBLE_DEVICES={nvidia_visible or '(unset)'}")
+print(f"cuda_device_count={count.value}")
+PY
+)"
+    local check_status=$?
+    if [ $check_status -ne 0 ]; then
+        oc_fatal_gpu "$check_output"
+    fi
+}
+
+oc_check_cuda
 
 echo "Starting llama.cpp server..."
 echo "  Model: $MODEL_PATH/$MODEL_FILE"
 echo "  Context: $MAX_MODEL_LEN tokens"
+echo "  Parallel slots: $LLAMA_PARALLEL"
+echo "  GPU layers: $LLAMA_GPU_LAYERS"
 echo "  API Key: ${LLAMA_API_KEY:0:4}..."
 
 # Start llama-server with OpenAI-compatible API
 # Key flags:
 #   -ngl 999: Offload all layers to GPU
-#   -c: Context length (200k tokens)
+#   -c: Context length (default 150k tokens)
 #   --jinja: Required for GLM-4.7 chat template
 #   -ctk q8_0 -ctv q8_0: Quantize KV cache to fit 200k in 32GB VRAM
 #   --api-key: Enable API key authentication
@@ -98,7 +231,8 @@ llama-server \
     -m "$MODEL_PATH/$MODEL_FILE" \
     --host 0.0.0.0 \
     --port 8000 \
-    -ngl 999 \
+    -ngl "$LLAMA_GPU_LAYERS" \
+    --parallel "$LLAMA_PARALLEL" \
     -c "$MAX_MODEL_LEN" \
     --jinja \
     -ctk q8_0 \
@@ -107,6 +241,39 @@ llama-server \
     2>&1 &
 
 LLAMA_PID=$!
+
+# Start LFM2.5-Audio server for TTS/STT (GPU inference)
+echo ""
+echo "Starting LFM2.5-Audio server for TTS/STT..."
+echo "  Model: $AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf"
+echo "  Port: 8001 (GPU accelerated, ~845 MiB VRAM)"
+
+env LD_LIBRARY_PATH="/usr/local/bin" llama-liquid-audio-server \
+    -m "$AUDIO_MODEL_PATH/LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    -mm "$AUDIO_MODEL_PATH/mmproj-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    -mv "$AUDIO_MODEL_PATH/vocoder-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    --tts-speaker-file "$AUDIO_MODEL_PATH/tokenizer-LFM2.5-Audio-1.5B-${AUDIO_QUANT}.gguf" \
+    -ngl 99 \
+    --host 0.0.0.0 \
+    --port 8001 \
+    2>&1 &
+
+AUDIO_PID=$!
+
+# Start FLUX.2 Klein image generation server
+echo ""
+echo "Starting FLUX.2 Klein image generation server..."
+echo "  Model: Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic"
+echo "  Port: 8002 (GPU accelerated, ~3-4 GB VRAM)"
+
+openclaw-image-server --port 8002 > /tmp/image-server.log 2>&1 &
+IMAGE_PID=$!
+
+# Start lightweight media proxy + UI
+echo ""
+echo "Starting OpenClaw media web proxy..."
+openclaw-web-proxy --port "$OPENCLAW_WEB_PROXY_PORT" --web-root "/opt/openclaw/web" > /tmp/openclaw-web-proxy.log 2>&1 &
+WEB_PROXY_PID=$!
 
 # Wait for llama-server to be ready
 echo "Waiting for llama-server to start..."
@@ -127,11 +294,23 @@ if [ $WAITED -ge $MAX_WAIT ]; then
     echo "Container will stay running for debugging."
 fi
 
-# Setup Clawdbot config
-mkdir -p "$CLAWDBOT_HOME"
+# Setup OpenClaw config
+mkdir -p "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" "$OPENCLAW_WORKSPACE"
+mkdir -p "$OPENCLAW_WORKSPACE/images" "$OPENCLAW_WORKSPACE/audio"
+chmod 700 "$OPENCLAW_STATE_DIR" "$OPENCLAW_STATE_DIR/agents" "$OPENCLAW_STATE_DIR/agents/main" \
+    "$OPENCLAW_STATE_DIR/agents/main/sessions" "$OPENCLAW_STATE_DIR/credentials" 2>/dev/null || true
 
-if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
-    echo "Creating Clawdbot config..."
+# Install tool_result hook plugins into workspace (if bundled)
+OPENCLAW_EXT_DIR="$OPENCLAW_WORKSPACE/.openclaw/extensions"
+if [ -d "/opt/openclaw/plugins/toolresult-images" ]; then
+    mkdir -p "$OPENCLAW_EXT_DIR"
+    if [ ! -d "$OPENCLAW_EXT_DIR/toolresult-images" ]; then
+        cp -r "/opt/openclaw/plugins/toolresult-images" "$OPENCLAW_EXT_DIR/"
+    fi
+fi
+
+if [ ! -f "$OPENCLAW_STATE_DIR/openclaw.json" ]; then
+    echo "Creating OpenClaw config..."
 
     if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true, \"botToken\": \"${TELEGRAM_BOT_TOKEN}\" }"
@@ -139,7 +318,7 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
         TELEGRAM_CONFIG="\"telegram\": { \"enabled\": true }"
     fi
 
-    cat > "$CLAWDBOT_HOME/clawdbot.json" << EOF
+    cat > "$OPENCLAW_STATE_DIR/openclaw.json" << EOF
 {
   "models": {
     "providers": {
@@ -162,27 +341,47 @@ if [ ! -f "$CLAWDBOT_HOME/clawdbot.json" ]; then
   "agents": {
     "defaults": {
       "model": { "primary": "local-llamacpp/$SERVED_MODEL_NAME" },
-      "contextTokens": 180000
+      "contextTokens": 135000,
+      "workspace": "$OPENCLAW_WORKSPACE"
     }
   },
   "channels": {
     ${TELEGRAM_CONFIG}
   },
+  "skills": {
+    "load": { "extraDirs": ["/opt/openclaw/skills"] },
+    "entries": {
+      "openai-image-gen": { "enabled": false },
+      "nano-banana-pro": { "enabled": false }
+    }
+  },
+  "plugins": {
+    "load": { "paths": ["$OPENCLAW_WORKSPACE/.openclaw/extensions"] },
+    "entries": { "toolresult-images": { "enabled": true } }
+  },
   "gateway": {
     "mode": "local",
     "bind": "lan",
-    "auth": { "token": "$CLAWDBOT_WEB_PASSWORD" },
-    "remote": { "token": "$CLAWDBOT_WEB_PASSWORD" }
+    "auth": { "mode": "token", "token": "$OPENCLAW_WEB_PASSWORD" },
+    "remote": { "token": "$OPENCLAW_WEB_PASSWORD" }
   },
   "logging": { "level": "info" }
 }
 EOF
-    chmod 600 "$CLAWDBOT_HOME/clawdbot.json"
+    chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json"
+fi
+
+IMAGE_BASE_URL_FILE="$OPENCLAW_WORKSPACE/image-base-url.txt"
+if [ -n "${OPENCLAW_IMAGE_PUBLIC_BASE_URL:-}" ] && [ ! -f "$IMAGE_BASE_URL_FILE" ]; then
+    echo "$OPENCLAW_IMAGE_PUBLIC_BASE_URL" > "$IMAGE_BASE_URL_FILE"
 fi
 
 # Auto-fix config
-echo "Running clawdbot doctor to validate/fix config..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME clawdbot doctor --fix || true
+echo "Running openclaw doctor to validate/fix config..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR "$BOT_CMD" doctor --fix || true
+chmod 600 "$OPENCLAW_STATE_DIR/openclaw.json" 2>/dev/null || true
+oc_sync_skills_disable "openai-image-gen,nano-banana-pro"
+oc_sync_gateway_auth "token"
 
 # Setup GitHub CLI if token provided
 if [ -n "$GITHUB_TOKEN" ]; then
@@ -202,28 +401,40 @@ fi
 export OPENAI_API_KEY="$LLAMA_API_KEY"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 
-# Start Clawdbot gateway (use token auth for URL parameter support)
+# Start OpenClaw gateway (use token auth for URL parameter support)
 echo ""
-echo "Starting Clawdbot gateway..."
-CLAWDBOT_STATE_DIR=$CLAWDBOT_HOME CLAWDBOT_GATEWAY_TOKEN="$CLAWDBOT_WEB_PASSWORD" clawdbot gateway --auth token --token "$CLAWDBOT_WEB_PASSWORD" &
+echo "Starting OpenClaw gateway..."
+OPENCLAW_STATE_DIR=$OPENCLAW_STATE_DIR OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_WEB_PASSWORD" \
+"$BOT_CMD" gateway --auth token --token "$OPENCLAW_WEB_PASSWORD" &
 GATEWAY_PID=$!
 
+MEDIA_PROXY_URL=""
+if [ -n "${RUNPOD_POD_ID:-}" ]; then
+    MEDIA_PROXY_URL="https://${RUNPOD_POD_ID}-${OPENCLAW_WEB_PROXY_PORT}.proxy.runpod.net"
+fi
+
 echo ""
-echo "================================================"
-echo "  Ready!"
-echo "  llama.cpp API: http://localhost:8000"
-echo "  Clawdbot Gateway: ws://localhost:18789"
-echo "  Web UI: https://<pod-id>-18789.proxy.runpod.net/?token=$CLAWDBOT_WEB_PASSWORD"
-echo "  Web UI Token: $CLAWDBOT_WEB_PASSWORD"
-echo "  Model: $SERVED_MODEL_NAME"
-echo "  Context: $MAX_MODEL_LEN tokens (200k!)"
-echo "  VRAM: ~28GB / 32GB"
-echo "================================================"
+oc_print_ready "llama.cpp API" "$SERVED_MODEL_NAME" "$MAX_MODEL_LEN tokens" "token" \
+    "VRAM: LLM ~24GB + Audio ~2GB + Image ~3-4GB = ~29-30GB / 32GB" \
+    "Media UI (local): http://localhost:${OPENCLAW_WEB_PROXY_PORT}" \
+    "${MEDIA_PROXY_URL:+Media UI (public): ${MEDIA_PROXY_URL}}"
+echo ""
+echo "  Audio Server (internal): http://localhost:8001 (not exposed)"
+echo "    - openclaw-tts \"Hello world\" --output /tmp/hello.wav"
+echo "    - openclaw-stt /path/to/audio.wav"
+echo ""
+echo "  Image Server (internal): http://localhost:8002 (not exposed)"
+echo "    - openclaw-image-gen --prompt \"A robot\" --output /tmp/robot.png"
+echo ""
+echo "  Media UI: http://localhost:${OPENCLAW_WEB_PROXY_PORT}"
 
 # Handle shutdown
 cleanup() {
     echo "Shutting down..."
     [ -n "$GATEWAY_PID" ] && kill $GATEWAY_PID 2>/dev/null
+    [ -n "$IMAGE_PID" ] && kill $IMAGE_PID 2>/dev/null
+    [ -n "$AUDIO_PID" ] && kill $AUDIO_PID 2>/dev/null
+    [ -n "$WEB_PROXY_PID" ] && kill $WEB_PROXY_PID 2>/dev/null
     kill $LLAMA_PID 2>/dev/null
     exit 0
 }

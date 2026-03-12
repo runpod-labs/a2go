@@ -1,0 +1,39 @@
+{
+  "id": "unsloth/nemotron3-nano-gguf",
+  "name": "Nemotron-3-Nano-30B-A3B GGUF Q4_K_XL",
+  "type": "llm",
+  "engine": "openclaw2go-llamacpp",
+  "bits": 4,
+  "repo": "unsloth/Nemotron-3-Nano-30B-A3B-GGUF",
+  "files": [
+    "Nemotron-3-Nano-30B-A3B-UD-Q4_K_XL.gguf"
+  ],
+  "downloadDir": "/workspace/models/Nemotron-3-Nano-GGUF",
+  "servedAs": "nemotron-3-nano",
+  "vram": {
+    "model": 21538,
+    "overhead": 459
+  },
+  "kvCacheMbPer1kTokens": 4,
+  "defaults": {
+    "contextLength": 150000,
+    "port": 8000
+  },
+  "startDefaults": {
+    "gpuLayers": "999",
+    "parallel": "1"
+  },
+  "extraStartArgs": [
+    "--prio",
+    "3"
+  ],
+  "provider": {
+    "name": "local-llamacpp",
+    "api": "openai-completions"
+  },
+  "tps": {
+    "rtx-5090": 289
+  },
+  "default": false,
+  "status": "stable"
+}
