@@ -2,15 +2,30 @@ name: Build and Push Docker Images
 
 on:
   push:
-    branches: [main, feat/site-improvements]
+    branches: [main]
     tags: ['*']
-  pull_request:
     paths:
-      - 'models/**'
       - 'Dockerfile'
       - 'Dockerfile.unified'
       - 'registry/**'
       - 'scripts/**'
+      - 'openclaw/**'
+      - 'web/**'
+      - 'plugins/**'
+      - 'config/**'
+      - 'models/**'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'Dockerfile.unified'
+      - 'registry/**'
+      - 'scripts/**'
+      - 'openclaw/**'
+      - 'web/**'
+      - 'plugins/**'
+      - 'config/**'
+      - 'models/**'
       - '.github/workflows/docker-build.yml'
   workflow_dispatch:
 
