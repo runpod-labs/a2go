@@ -34,5 +34,15 @@ site/node_modules/
 site/public/v1/
 dist/
 
+# Vite cache
+site/.vite/
+
+# Test artifacts
+test-results/
+
+# Stray CLI artifacts
+--annotate
+site/--annotate
+
 # Local clones / working dirs
 a2go-registry/
