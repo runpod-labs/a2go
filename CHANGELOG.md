@@ -1,5 +1,11 @@
 # openclaw2go
 
+## 0.3.0
+
+### Minor Changes
+
+- 292aca6: Docker images tagged latest + version are now only built on releases, PRs get branch-based tags for testing
+
 ## 0.2.1
 
 ### Patch Changes
