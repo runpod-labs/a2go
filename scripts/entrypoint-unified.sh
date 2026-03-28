@@ -831,6 +831,18 @@ EOF
             cp /opt/openclaw/config/workspace/hermes/SOUL.md "$HERMES_DIR/"
         fi
 
+        # Copy a2go skills into Hermes skills dir (SKILL.md format is compatible)
+        if [ -d "/opt/openclaw/skills" ]; then
+            mkdir -p "$HERMES_DIR/skills"
+            for skill_dir in /opt/openclaw/skills/*/; do
+                skill_name="$(basename "$skill_dir")"
+                if [ -f "$skill_dir/SKILL.md" ] && [ ! -d "$HERMES_DIR/skills/$skill_name" ]; then
+                    cp -r "$skill_dir" "$HERMES_DIR/skills/$skill_name"
+                    echo "  Installed skill: $skill_name"
+                fi
+            done
+        fi
+
         # Start Hermes gateway (API server on port 8642, foreground mode, backgrounded by us)
         echo ""
         echo "Starting Hermes gateway..."
