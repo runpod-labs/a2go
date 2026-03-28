@@ -172,10 +172,21 @@ if [ "$AGENT" = "openclaw" ] && ! command -v "$BOT_CMD" >/dev/null 2>&1; then
     echo "Container staying alive for debugging."
     sleep infinity
 fi
-if [ "$AGENT" = "hermes" ] && ! command -v "hermes" >/dev/null 2>&1; then
-    echo "ERROR: hermes command not found in PATH"
-    echo "Container staying alive for debugging."
-    sleep infinity
+# Resolve hermes binary (check PATH, then known install locations)
+HERMES_CMD=""
+if [ "$AGENT" = "hermes" ]; then
+    if command -v "hermes" >/dev/null 2>&1; then
+        HERMES_CMD="hermes"
+    elif [ -x "$HOME/.local/bin/hermes" ]; then
+        HERMES_CMD="$HOME/.local/bin/hermes"
+    elif [ -x "$HOME/.hermes/hermes-agent/venv/bin/hermes" ]; then
+        HERMES_CMD="$HOME/.hermes/hermes-agent/venv/bin/hermes"
+    else
+        echo "ERROR: hermes command not found in PATH or known locations"
+        echo "Container staying alive for debugging."
+        sleep infinity
+    fi
+    echo "Hermes binary: $HERMES_CMD"
 fi
 
 # ============================================================
@@ -817,7 +828,7 @@ EOF
         API_SERVER_PORT=8642 \
         API_SERVER_HOST=0.0.0.0 \
         API_SERVER_KEY="$OPENCLAW_WEB_PASSWORD" \
-        hermes gateway run &
+        "$HERMES_CMD" gateway run &
         GATEWAY_PID=$!
         ;;
 esac

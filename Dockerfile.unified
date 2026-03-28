@@ -99,6 +99,7 @@ RUN npm install -g --prefer-offline --omit=dev @anthropic-ai/claude-code opencla
 
 # ── Hermes Agent ──────────────────────────────────────────
 RUN curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash || true
+ENV PATH="/root/.local/bin:${PATH}"
 
 WORKDIR /
 
