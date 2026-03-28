@@ -17,13 +17,14 @@ type Service struct {
 }
 
 var (
-	LLM      = Service{"llm", 8000}
-	Audio    = Service{"audio", 8001}
-	Image    = Service{"image", 8002}
-	WebProxy = Service{"web-proxy", 8080}
-	Gateway  = Service{"gateway", 18789}
+	LLM            = Service{"llm", 8000}
+	Audio          = Service{"audio", 8001}
+	Image          = Service{"image", 8002}
+	WebProxy       = Service{"web-proxy", 8080}
+	Gateway        = Service{"gateway", 18789}
+	HermesGateway  = Service{"hermes-gateway", 18790}
 
-	All = []Service{LLM, Audio, Image, WebProxy, Gateway}
+	All = []Service{LLM, Audio, Image, WebProxy, Gateway, HermesGateway}
 )
 
 func venvEnv() []string {
@@ -117,4 +118,8 @@ func StartGateway(authToken string) (int, error) {
 		"OPENCLAW_STATE_DIR="+stateDir,
 		"OPENCLAW_GATEWAY_TOKEN="+authToken,
 	)
+}
+
+func StartHermesGateway(authToken string) (int, error) {
+	return startProcess(HermesGateway, "hermes", []string{"gateway"})
 }

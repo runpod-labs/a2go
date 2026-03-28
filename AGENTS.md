@@ -63,7 +63,7 @@ The site/configurator uses 3 global categories: `llm`, `image`, `audio`. Individ
 Model references use `org/repo:quant` (e.g. `mlx-community/Qwen3.5-4B-8bit:8bit`, `unsloth/GLM-4.7-Flash-GGUF:4bit`). The `:quant` suffix selects the quantization variant. Docker entrypoint parses this internally. MLX backend must strip the `:quant` suffix before passing to HuggingFace — use `config.ModelSlug()` to get the bare slug. HuggingFace repo IDs cannot contain colons.
 
 ### Ports
-Exposed on RunPod: 8000 (LLM), 8080 (web proxy), 18789 (OpenClaw gateway), 22 (SSH).
+Exposed on RunPod: 8000 (LLM), 8080 (web proxy), 18789 (OpenClaw gateway), 18790 (Hermes gateway), 22 (SSH).
 Internal only: 8001 (audio), 8002 (image), 8003 (vision), 8004 (embedding), 8005 (reranking), 8006 (TTS).
 
 ### Changesets (Release Management)

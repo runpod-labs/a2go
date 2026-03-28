@@ -1,0 +1,58 @@
+package hermes
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/runpod-labs/a2go/a2go/internal/paths"
+)
+
+// GenerateConfig writes ~/.hermes/config.yaml and ~/.hermes/.env
+// pointing at the local LLM server.
+func GenerateConfig(llmModelName string, contextWindow int, authToken string) error {
+	dir := paths.HermesState()
+
+	// Create required directories
+	for _, sub := range []string{"sessions", "memories", "skills", "cron", "logs"} {
+		if err := os.MkdirAll(filepath.Join(dir, sub), 0755); err != nil {
+			return fmt.Errorf("failed to create %s: %w", sub, err)
+		}
+	}
+
+	// Model ID (strip org prefix)
+	modelID := llmModelName
+	if idx := strings.LastIndex(modelID, "/"); idx >= 0 {
+		modelID = modelID[idx+1:]
+	}
+
+	// config.yaml
+	configYAML := fmt.Sprintf(`model:
+  provider: custom
+  default: %s
+  base_url: http://localhost:8000/v1
+  context_length: %d
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+terminal:
+  backend: local
+  persistent_shell: true
+approvals:
+  mode: "off"
+`, modelID, contextWindow)
+
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(configYAML), 0600); err != nil {
+		return fmt.Errorf("failed to write config.yaml: %w", err)
+	}
+
+	// .env
+	dotEnv := fmt.Sprintf("OPENAI_API_KEY=%s\nOPENAI_BASE_URL=http://localhost:8000/v1\n", authToken)
+
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte(dotEnv), 0600); err != nil {
+		return fmt.Errorf("failed to write .env: %w", err)
+	}
+
+	return nil
+}

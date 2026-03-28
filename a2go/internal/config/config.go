@@ -58,7 +58,21 @@ func (a AudioConfig) MarshalJSON() ([]byte, error) {
 	return json.Marshal(a.Model)
 }
 
+// ValidAgents lists the supported agent frameworks.
+var ValidAgents = []string{"openclaw", "hermes"}
+
+// ValidateAgent checks that agent is a supported framework name.
+func ValidateAgent(agent string) error {
+	for _, v := range ValidAgents {
+		if agent == v {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid agent %q — valid agents: %s", agent, strings.Join(ValidAgents, ", "))
+}
+
 type Config struct {
+	Agent         string         `json:"agent,omitempty"`
 	LLM           *ServiceConfig `json:"llm,omitempty"`
 	Image         *ServiceConfig `json:"image,omitempty"`
 	Audio         *AudioConfig   `json:"audio,omitempty"`
@@ -94,6 +108,11 @@ func Parse(raw string) (*Config, error) {
 	}
 	if cfg.LLM == nil || cfg.LLM.Model == "" {
 		return nil, fmt.Errorf("llm.model is required")
+	}
+	if cfg.Agent != "" {
+		if err := ValidateAgent(cfg.Agent); err != nil {
+			return nil, err
+		}
 	}
 	return &cfg, nil
 }

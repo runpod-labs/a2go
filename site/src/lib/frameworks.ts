@@ -20,7 +20,8 @@ export const FRAMEWORKS: AgentFramework[] = [
     id: 'hermes',
     name: 'Hermes',
     description: '40+ tools, deep memory, 200+ models via OpenRouter',
-    available: false,
+    available: true,
+    docsUrl: 'https://hermes-agent.nousresearch.com/docs',
   },
   {
     id: 'nanoclaw',

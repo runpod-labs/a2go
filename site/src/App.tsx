@@ -12,7 +12,7 @@ import { groupModels, buildCatalogEntries, getVariantForOs, type ModelGroup, typ
 import { parseUrlState, syncUrlState, clearUrlState, type ModelParam } from './lib/url-state'
 import ModelCatalog from './components/ModelCatalog'
 import ConfigPanel from './components/ConfigPanel'
-import { DEFAULT_FRAMEWORK } from './lib/frameworks'
+import { DEFAULT_FRAMEWORK, FRAMEWORKS, type AgentFramework } from './lib/frameworks'
 import { FrameworkPill } from './components/FrameworkSelector'
 
 function App() {
@@ -26,7 +26,7 @@ function App() {
   const [selectedGpu, setSelectedGpu] = useState<GpuInfo | null>(null)
   const [selectedVramGb, setSelectedVramGb] = useState<number | null>(null)
   const [contextOverride, setContextOverride] = useState<number | null>(null)
-  const framework = DEFAULT_FRAMEWORK
+  const [framework, setFramework] = useState<AgentFramework>(DEFAULT_FRAMEWORK)
 
   // Track whether URL state has been hydrated to avoid syncing before load
   const hydrated = useRef(false)
@@ -40,6 +40,10 @@ function App() {
         // Hydrate state from URL after catalog is available
         const url = parseUrlState()
         if (url.os) setOs(url.os)
+        if (url.fw) {
+          const match = FRAMEWORKS.find((f) => f.id === url.fw && f.available)
+          if (match) setFramework(match)
+        }
 
         const ids = new Set<string>()
         for (const type of ['llm', 'image', 'audio'] as const) {
@@ -132,9 +136,9 @@ function App() {
       gpu: selectedGpu?.id ?? null,
       vram: selectedVramGb,
       ctx: contextOverride,
-      fw: null,
+      fw: framework.id !== DEFAULT_FRAMEWORK.id ? framework.id : null,
     })
-  }, [os, selectedModels, selectedGpu, selectedVramGb, contextOverride])
+  }, [os, selectedModels, selectedGpu, selectedVramGb, contextOverride, framework])
 
   const toggleModel = useCallback(
     (model: CatalogModel) => {
@@ -255,7 +259,7 @@ function App() {
             agent2go
           </span>
         </a>
-        <FrameworkPill selected={framework} />
+        <FrameworkPill selected={framework} onSelect={setFramework} />
       </div>
 
       {/* On mobile: both panels render in a single scrollable column.
@@ -272,6 +276,7 @@ function App() {
         onClearAll={handleClearAll}
         hasSelections={hasSelections}
         framework={framework}
+        onFrameworkSelect={setFramework}
       />
       <ConfigPanel
         selectedModels={selectedModels}
