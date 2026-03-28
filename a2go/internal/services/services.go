@@ -22,7 +22,7 @@ var (
 	Image          = Service{"image", 8002}
 	WebProxy       = Service{"web-proxy", 8080}
 	Gateway        = Service{"gateway", 18789}
-	HermesGateway  = Service{"hermes-gateway", 18790}
+	HermesGateway  = Service{"hermes-gateway", 8642}
 
 	All = []Service{LLM, Audio, Image, WebProxy, Gateway, HermesGateway}
 )
@@ -120,6 +120,29 @@ func StartGateway(authToken string) (int, error) {
 	)
 }
 
+func resolveHermesBinary() string {
+	// Check PATH first
+	if p, err := exec.LookPath("hermes"); err == nil {
+		return p
+	}
+	// Fallback to known install locations
+	home := os.Getenv("HOME")
+	for _, candidate := range []string{
+		filepath.Join(home, ".local", "bin", "hermes"),
+		filepath.Join(home, ".hermes", "hermes-agent", "venv", "bin", "hermes"),
+	} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return "hermes" // let it fail with a clear error
+}
+
 func StartHermesGateway(authToken string) (int, error) {
-	return startProcess(HermesGateway, "hermes", []string{"gateway"})
+	return startProcess(HermesGateway, resolveHermesBinary(), []string{"gateway", "run"},
+		"API_SERVER_ENABLED=true",
+		"API_SERVER_PORT=8642",
+		"API_SERVER_HOST=0.0.0.0",
+		"API_SERVER_KEY="+authToken,
+	)
 }

@@ -21,10 +21,11 @@ func GenerateConfig(llmModelName string, contextWindow int, authToken string) er
 		}
 	}
 
-	// Model ID (strip org prefix)
+	// Model ID: strip :quant suffix but keep org/repo format
+	// (must match what mlx_lm.server reports via /v1/models)
 	modelID := llmModelName
-	if idx := strings.LastIndex(modelID, "/"); idx >= 0 {
-		modelID = modelID[idx+1:]
+	if idx := strings.LastIndex(modelID, ":"); idx > 0 {
+		modelID = modelID[:idx]
 	}
 
 	// config.yaml
@@ -39,8 +40,6 @@ memory:
 terminal:
   backend: local
   persistent_shell: true
-approvals:
-  mode: "off"
 `, modelID, contextWindow)
 
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(configYAML), 0600); err != nil {

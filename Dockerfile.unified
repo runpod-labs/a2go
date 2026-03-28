@@ -142,5 +142,5 @@ RUN chmod +x /opt/openclaw/entrypoint-unified.sh \
     /usr/local/bin/openclaw-stt \
     /usr/local/bin/web-proxy
 
-EXPOSE 8000 8080 18789 18790 22
+EXPOSE 8000 8080 18789 8642 22
 ENTRYPOINT ["/opt/openclaw/entrypoint-unified.sh"]

@@ -797,8 +797,6 @@ memory:
 terminal:
   backend: local
   persistent_shell: true
-approvals:
-  mode: "off"
 EOF
 
         # Generate .env for Hermes
@@ -812,10 +810,14 @@ EOF
             cp /opt/openclaw/config/workspace/hermes/SOUL.md "$HERMES_DIR/"
         fi
 
-        # Start Hermes gateway
+        # Start Hermes gateway (API server on port 8642, foreground mode, backgrounded by us)
         echo ""
         echo "Starting Hermes gateway..."
-        hermes gateway &
+        API_SERVER_ENABLED=true \
+        API_SERVER_PORT=8642 \
+        API_SERVER_HOST=0.0.0.0 \
+        API_SERVER_KEY="$OPENCLAW_WEB_PASSWORD" \
+        hermes gateway run &
         GATEWAY_PID=$!
         ;;
 esac
