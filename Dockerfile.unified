@@ -97,6 +97,10 @@ RUN python3 -m pip install --no-cache-dir huggingface_hub
 RUN npm install -g --prefer-offline --omit=dev @anthropic-ai/claude-code openclaw@latest && \
     npm cache clean --force
 
+# ── Hermes Agent ──────────────────────────────────────────
+RUN curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash || true
+ENV PATH="/root/.local/bin:${PATH}"
+
 WORKDIR /
 
 # ── Environment defaults ──────────────────────────────────
@@ -139,5 +143,5 @@ RUN chmod +x /opt/openclaw/entrypoint-unified.sh \
     /usr/local/bin/openclaw-stt \
     /usr/local/bin/web-proxy
 
-EXPOSE 8000 8080 18789 22
+EXPOSE 8000 8080 18789 8642 22
 ENTRYPOINT ["/opt/openclaw/entrypoint-unified.sh"]

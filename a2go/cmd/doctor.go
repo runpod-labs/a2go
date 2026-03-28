@@ -74,11 +74,11 @@ func runDoctorDocker(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("  Next: run your stack")
 	fmt.Println()
-	fmt.Println("    a2go run --llm unsloth/GLM-4.7-Flash-GGUF:4bit")
+	fmt.Println("    a2go run --agent openclaw --llm unsloth/GLM-4.7-Flash-GGUF:4bit")
 	fmt.Println()
 	fmt.Println("  With image generation:")
 	fmt.Println()
-	fmt.Println("    a2go run --llm unsloth/GLM-4.7-Flash-GGUF:4bit --image disty0/flux2-klein-sdnq")
+	fmt.Println("    a2go run --agent openclaw --llm unsloth/GLM-4.7-Flash-GGUF:4bit --image disty0/flux2-klein-sdnq")
 	fmt.Println()
 	return nil
 }
@@ -155,16 +155,32 @@ func runDoctorMlx(cmd *cobra.Command, args []string) error {
 	}
 	ui.Ok("openclaw installed")
 
+	// Step 7: Install Hermes
+	ui.Step(7, "Installing Hermes")
+	if _, err := exec.LookPath("hermes"); err != nil {
+		hermesInstall := exec.Command("bash", "-c", "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash")
+		hermesInstall.Stdout = os.Stdout
+		hermesInstall.Stderr = os.Stderr
+		if err := hermesInstall.Run(); err != nil {
+			fmt.Println("      WARNING: hermes install failed — hermes agent will not be available")
+			fmt.Printf("      %v\n", err)
+		} else {
+			ui.Ok("hermes installed")
+		}
+	} else {
+		ui.Ok("hermes already installed")
+	}
+
 	// Done
 	ui.Banner("Doctor Complete!")
 	fmt.Println()
 	fmt.Println("  Next: run your stack")
 	fmt.Println()
-	fmt.Println("    a2go run --llm mlx-community/Qwen3-30B-A3B-4bit")
+	fmt.Println("    a2go run --agent openclaw --llm mlx-community/Qwen3-30B-A3B-4bit")
 	fmt.Println()
 	fmt.Println("  With image generation:")
 	fmt.Println()
-	fmt.Println("    a2go run --llm mlx-community/Qwen3-30B-A3B-4bit --image mlx-community/FLUX.1-schnell-4bit-quantized")
+	fmt.Println("    a2go run --agent openclaw --llm mlx-community/Qwen3-30B-A3B-4bit --image mlx-community/FLUX.1-schnell-4bit-quantized")
 	fmt.Println()
 	return nil
 }

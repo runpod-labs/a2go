@@ -22,6 +22,7 @@ func Cache() string          { return filepath.Join(InstallDir, "cache") }
 func LastConfig() string     { return filepath.Join(InstallDir, "last-config.json") }
 func ContainerID() string    { return filepath.Join(InstallDir, "container-id") }
 func OpenClawState() string  { return filepath.Join(os.Getenv("HOME"), ".openclaw") }
+func HermesState() string    { return filepath.Join(os.Getenv("HOME"), ".hermes") }
 
 func EnsureAll() error {
 	dirs := []string{
