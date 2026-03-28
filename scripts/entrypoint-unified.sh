@@ -801,6 +801,7 @@ model:
   provider: custom
   default: $LLM_MODEL_NAME
   base_url: http://localhost:${LLM_PORT}/v1
+  api_key: $LLAMACPP_API_KEY
   context_length: $LLM_CONTEXT
 memory:
   memory_enabled: true

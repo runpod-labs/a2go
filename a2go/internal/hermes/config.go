@@ -33,6 +33,7 @@ func GenerateConfig(llmModelName string, contextWindow int, authToken string) er
   provider: custom
   default: %s
   base_url: http://localhost:8000/v1
+  api_key: %s
   context_length: %d
 memory:
   memory_enabled: true
@@ -40,7 +41,7 @@ memory:
 terminal:
   backend: local
   persistent_shell: true
-`, modelID, contextWindow)
+`, modelID, authToken, contextWindow)
 
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(configYAML), 0600); err != nil {
 		return fmt.Errorf("failed to write config.yaml: %w", err)
