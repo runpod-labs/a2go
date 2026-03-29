@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/runpod-labs/a2go/a2go/internal/paths"
 	"github.com/runpod-labs/a2go/a2go/internal/process"
@@ -17,13 +18,14 @@ type Service struct {
 }
 
 var (
-	LLM      = Service{"llm", 8000}
-	Audio    = Service{"audio", 8001}
-	Image    = Service{"image", 8002}
-	WebProxy = Service{"web-proxy", 8080}
-	Gateway  = Service{"gateway", 18789}
+	LLM            = Service{"llm", 8000}
+	Audio          = Service{"audio", 8001}
+	Image          = Service{"image", 8002}
+	WebProxy       = Service{"web-proxy", 8080}
+	Gateway        = Service{"gateway", 18789}
+	HermesGateway  = Service{"hermes-gateway", 8642}
 
-	All = []Service{LLM, Audio, Image, WebProxy, Gateway}
+	All = []Service{LLM, Audio, Image, WebProxy, Gateway, HermesGateway}
 )
 
 func venvEnv() []string {
@@ -116,5 +118,43 @@ func StartGateway(authToken string) (int, error) {
 	},
 		"OPENCLAW_STATE_DIR="+stateDir,
 		"OPENCLAW_GATEWAY_TOKEN="+authToken,
+	)
+}
+
+func resolveHermesBinary() string {
+	// Check PATH first
+	if p, err := exec.LookPath("hermes"); err == nil {
+		return p
+	}
+	// Fallback to known install locations
+	home := os.Getenv("HOME")
+	for _, candidate := range []string{
+		filepath.Join(home, ".local", "bin", "hermes"),
+		filepath.Join(home, ".hermes", "hermes-agent", "venv", "bin", "hermes"),
+	} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return "hermes" // let it fail with a clear error
+}
+
+func StartHermesGateway(authToken string) (int, error) {
+	// Hermes blocklists "changeme" and other placeholders in has_usable_secret().
+	// Use the same non-blocked key that hermes.GenerateConfig() writes.
+	apiKey := authToken
+	blocked := map[string]bool{
+		"changeme": true, "placeholder": true, "dummy": true, "example": true,
+	}
+	if blocked[strings.ToLower(apiKey)] {
+		apiKey = "a2go-local-" + apiKey
+	}
+	return startProcess(HermesGateway, resolveHermesBinary(), []string{"gateway", "run"},
+		"OPENAI_API_KEY="+apiKey,
+		"OPENAI_BASE_URL=http://localhost:8000/v1",
+		"API_SERVER_ENABLED=true",
+		"API_SERVER_PORT=8642",
+		"API_SERVER_HOST=0.0.0.0",
+		"API_SERVER_KEY="+authToken,
 	)
 }

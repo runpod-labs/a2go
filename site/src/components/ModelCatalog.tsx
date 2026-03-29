@@ -75,6 +75,7 @@ export default function ModelCatalog({
   onClearAll,
   hasSelections,
   framework,
+  onFrameworkSelect,
 }: {
   entries: CatalogEntry[]
   os: OsPlatform | null
@@ -87,6 +88,7 @@ export default function ModelCatalog({
   onClearAll: () => void
   hasSelections: boolean
   framework: AgentFramework
+  onFrameworkSelect: (fw: AgentFramework) => void
 }) {
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
@@ -254,7 +256,7 @@ export default function ModelCatalog({
             Agent
           </span>
         </SectionHeader>
-        <FrameworkSelector selected={framework} />
+        <FrameworkSelector selected={framework} onSelect={onFrameworkSelect} />
       </div>
 
       <CollapsibleSection title="Models" badge={modelsBadge} className="lg:flex-1 lg:min-h-0 flex flex-col">

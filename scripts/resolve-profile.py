@@ -408,6 +408,9 @@ def build_from_profile(profile, models, engines):
     return services, profile.get("vramTotal", 0)
 
 
+VALID_AGENTS = ("openclaw", "hermes")
+
+
 def main():
     raw_config = os.environ.get("A2GO_CONFIG", "").strip()
     if raw_config:
@@ -418,6 +421,24 @@ def main():
             sys.exit(1)
     else:
         config = {}
+
+    # Resolve agent
+    if config:
+        agent = config.get("agent")
+        if not agent:
+            print("ERROR: 'agent' field is required in A2GO_CONFIG. "
+                  f"Valid agents: {', '.join(VALID_AGENTS)}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Empty config (auto-detect mode) — fall back to openclaw
+        agent = "openclaw"
+
+    if agent not in VALID_AGENTS:
+        print(f"ERROR: invalid agent '{agent}'. "
+              f"Valid agents: {', '.join(VALID_AGENTS)}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Agent: {agent}", file=sys.stderr)
 
     # Load registry
     engines = load_json(REGISTRY_DIR / "engines.json")
@@ -489,6 +510,7 @@ def main():
     web_proxy = True
 
     output = {
+        "agent": agent,
         "profile": {
             **profile_info,
             "webProxy": web_proxy,

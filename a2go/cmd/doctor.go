@@ -74,11 +74,11 @@ func runDoctorDocker(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("  Next: run your stack")
 	fmt.Println()
-	fmt.Println("    a2go run --llm unsloth/GLM-4.7-Flash-GGUF:4bit")
+	fmt.Println("    a2go run --agent openclaw --llm unsloth/GLM-4.7-Flash-GGUF:4bit")
 	fmt.Println()
 	fmt.Println("  With image generation:")
 	fmt.Println()
-	fmt.Println("    a2go run --llm unsloth/GLM-4.7-Flash-GGUF:4bit --image disty0/flux2-klein-sdnq")
+	fmt.Println("    a2go run --agent openclaw --llm unsloth/GLM-4.7-Flash-GGUF:4bit --image disty0/flux2-klein-sdnq")
 	fmt.Println()
 	return nil
 }
@@ -124,7 +124,6 @@ func runDoctorMlx(cmd *cobra.Command, args []string) error {
 		local  string
 	}{
 		{"scripts/mflux-server", filepath.Join(paths.Bin(), "mflux-server")},
-		{"scripts/openclaw-image-gen", filepath.Join(paths.Bin(), "openclaw-image-gen")},
 		{"scripts/web-proxy", filepath.Join(paths.Bin(), "web-proxy")},
 	}
 	for _, s := range scripts {
@@ -134,16 +133,24 @@ func runDoctorMlx(cmd *cobra.Command, args []string) error {
 	}
 	ui.Ok("scripts installed to " + paths.Bin())
 
-	// Step 5: Download skill
-	ui.Step(5, "Installing image-gen skill")
-	skillPath := filepath.Join(paths.SkillImageGen(), "SKILL.md")
-	if err := download.FileWithReplace(
-		"openclaw/skills/image-gen/SKILL.md", skillPath,
-		"/workspace/openclaw/images/", "~/.a2go/images/",
-	); err != nil {
-		return fmt.Errorf("download skill: %w", err)
+	// Step 5: Download skills
+	ui.Step(5, "Installing skills")
+	skills := []struct {
+		remote   string
+		local    string
+		replFrom string
+		replTo   string
+	}{
+		{"config/workspace/skills/image-generate/SKILL.md", filepath.Join(paths.SkillImageGenerate(), "SKILL.md"), "/workspace/openclaw/images/", "~/.a2go/images/"},
+		{"config/workspace/skills/text-to-speech/SKILL.md", filepath.Join(paths.SkillTextToSpeech(), "SKILL.md"), "/workspace/openclaw/audio/", "~/.a2go/audio/"},
+		{"config/workspace/skills/speech-to-text/SKILL.md", filepath.Join(paths.SkillSpeechToText(), "SKILL.md"), "/workspace/openclaw/audio/", "~/.a2go/audio/"},
 	}
-	ui.Ok("image-gen skill installed")
+	for _, s := range skills {
+		if err := download.FileWithReplace(s.remote, s.local, s.replFrom, s.replTo); err != nil {
+			return fmt.Errorf("download skill %s: %w", s.remote, err)
+		}
+	}
+	ui.Ok("skills installed")
 
 	// Step 6: Install OpenClaw
 	ui.Step(6, "Installing OpenClaw")
@@ -155,16 +162,32 @@ func runDoctorMlx(cmd *cobra.Command, args []string) error {
 	}
 	ui.Ok("openclaw installed")
 
+	// Step 7: Install Hermes
+	ui.Step(7, "Installing Hermes")
+	if _, err := exec.LookPath("hermes"); err != nil {
+		hermesInstall := exec.Command("bash", "-c", "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash")
+		hermesInstall.Stdout = os.Stdout
+		hermesInstall.Stderr = os.Stderr
+		if err := hermesInstall.Run(); err != nil {
+			fmt.Println("      WARNING: hermes install failed — hermes agent will not be available")
+			fmt.Printf("      %v\n", err)
+		} else {
+			ui.Ok("hermes installed")
+		}
+	} else {
+		ui.Ok("hermes already installed")
+	}
+
 	// Done
 	ui.Banner("Doctor Complete!")
 	fmt.Println()
 	fmt.Println("  Next: run your stack")
 	fmt.Println()
-	fmt.Println("    a2go run --llm mlx-community/Qwen3-30B-A3B-4bit")
+	fmt.Println("    a2go run --agent openclaw --llm mlx-community/Qwen3-30B-A3B-4bit")
 	fmt.Println()
 	fmt.Println("  With image generation:")
 	fmt.Println()
-	fmt.Println("    a2go run --llm mlx-community/Qwen3-30B-A3B-4bit --image mlx-community/FLUX.1-schnell-4bit-quantized")
+	fmt.Println("    a2go run --agent openclaw --llm mlx-community/Qwen3-30B-A3B-4bit --image mlx-community/FLUX.1-schnell-4bit-quantized")
 	fmt.Println()
 	return nil
 }

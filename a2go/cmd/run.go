@@ -15,6 +15,7 @@ import (
 	"github.com/runpod-labs/a2go/a2go/internal/config"
 	"github.com/runpod-labs/a2go/a2go/internal/docker"
 	"github.com/runpod-labs/a2go/a2go/internal/health"
+	"github.com/runpod-labs/a2go/a2go/internal/hermes"
 	"github.com/runpod-labs/a2go/a2go/internal/openclaw"
 	"github.com/runpod-labs/a2go/a2go/internal/paths"
 	"github.com/runpod-labs/a2go/a2go/internal/platform"
@@ -25,6 +26,7 @@ import (
 )
 
 var (
+	flagAgent  string
 	flagLLM    string
 	flagImage  string
 	flagAudio  string
@@ -35,14 +37,14 @@ var (
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run all services",
-	Long: `Run LLM, audio, image servers and the OpenClaw gateway.
+	Long: `Run LLM, audio, image servers and an agent gateway.
 
 Using flags (recommended):
-  a2go run --llm unsloth/GLM-4.7-Flash-GGUF:4bit
-  a2go run --llm unsloth/GLM-4.7-Flash-GGUF:4bit --audio LiquidAI/LFM2.5-Audio-1.5B-GGUF:4bit
+  a2go run --agent openclaw --llm unsloth/GLM-4.7-Flash-GGUF:4bit
+  a2go run --agent hermes --llm unsloth/GLM-4.7-Flash-GGUF:4bit --audio LiquidAI/LFM2.5-Audio-1.5B-GGUF:4bit
 
 Using JSON (same format as Docker A2GO_CONFIG):
-  a2go run --config '{"llm":"unsloth/GLM-4.7-Flash-GGUF:4bit"}'
+  a2go run --config '{"agent":"openclaw","llm":"unsloth/GLM-4.7-Flash-GGUF:4bit"}'
 
 Or set A2GO_CONFIG environment variable.`,
 	Args: cobra.NoArgs,
@@ -50,17 +52,23 @@ Or set A2GO_CONFIG environment variable.`,
 }
 
 func init() {
+	runCmd.Flags().StringVar(&flagAgent, "agent", "", "Agent framework (required): openclaw, hermes")
+	runCmd.MarkFlagRequired("agent")
 	runCmd.Flags().StringVar(&flagLLM, "llm", "", "LLM model (e.g. unsloth/GLM-4.7-Flash-GGUF:4bit)")
 	runCmd.Flags().StringVar(&flagImage, "image", "", "Image model (e.g. disty0/flux2-klein-sdnq)")
 	runCmd.Flags().StringVar(&flagAudio, "audio", "", "Audio model (e.g. LiquidAI/LFM2.5-Audio-1.5B-GGUF:4bit, or 'off' to disable)")
-	runCmd.Flags().StringVar(&flagToken, "token", "changeme", "Auth token for OpenClaw gateway")
+	runCmd.Flags().StringVar(&flagToken, "token", "changeme", "Auth token for gateway")
 	runCmd.Flags().StringVar(&flagConfig, "config", "", "JSON config (same format as Docker A2GO_CONFIG)")
 }
 
 func resolveConfig() (*config.Config, error) {
 	// Priority: flags > --config > env var
 	if flagLLM != "" {
+		if err := config.ValidateAgent(flagAgent); err != nil {
+			return nil, err
+		}
 		cfg := &config.Config{
+			Agent:     flagAgent,
 			LLM:       &config.ServiceConfig{Model: flagLLM},
 			AuthToken: flagToken,
 		}
@@ -81,10 +89,27 @@ func resolveConfig() (*config.Config, error) {
 		raw = os.Getenv("A2GO_CONFIG")
 	}
 	if raw == "" {
-		return nil, fmt.Errorf("model required\n\n  a2go run --llm unsloth/GLM-4.7-Flash-GGUF:4bit\n  a2go run --llm <llm-model> --audio <audio-model>\n\n  or with JSON: a2go run --config '{\"llm\":\"unsloth/GLM-4.7-Flash-GGUF:4bit\"}'")
+		return nil, fmt.Errorf("model required\n\n  a2go run --agent openclaw --llm unsloth/GLM-4.7-Flash-GGUF:4bit\n  a2go run --agent hermes --llm <llm-model> --audio <audio-model>\n\n  or with JSON: a2go run --config '{\"agent\":\"openclaw\",\"llm\":\"unsloth/GLM-4.7-Flash-GGUF:4bit\"}'")
 	}
 
-	return config.Parse(raw)
+	cfg, err := config.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	// --agent flag overrides JSON agent field
+	if flagAgent != "" {
+		if err := config.ValidateAgent(flagAgent); err != nil {
+			return nil, err
+		}
+		cfg.Agent = flagAgent
+	}
+
+	if cfg.Agent == "" {
+		return nil, fmt.Errorf("agent is required — pass --agent openclaw or --agent hermes")
+	}
+
+	return cfg, nil
 }
 
 func execRun(cmd *cobra.Command, args []string) error {
@@ -118,14 +143,20 @@ func execRunDocker(cfg *config.Config) error {
 		docker.RemoveContainer(containerName)
 	}
 
-	// Check ports free
+	// Check ports free — gateway port depends on agent
+	gwPort := services.Gateway.Port
+	gwName := "OpenClaw Gateway"
+	if cfg.Agent == "hermes" {
+		gwPort = services.HermesGateway.Port
+		gwName = "Hermes Gateway"
+	}
 	portChecks := []struct {
 		port int
 		name string
 	}{
 		{8000, "LLM"},
 		{8080, "Web Proxy"},
-		{18789, "Gateway"},
+		{gwPort, gwName},
 	}
 	for _, pc := range portChecks {
 		if process.PortListening(pc.port) {
@@ -140,7 +171,7 @@ func execRunDocker(cfg *config.Config) error {
 	configJSON := buildDockerConfigJSON(cfg)
 
 	// Banner
-	ui.Banner("agent2go — Starting (Docker)")
+	ui.Banner(fmt.Sprintf("agent2go — Starting (Docker, %s)", cfg.Agent))
 	fmt.Printf("  LLM:   %s\n", cfg.LLM.Model)
 	if cfg.Image != nil && cfg.Image.Model != "" {
 		fmt.Printf("  Image: %s\n", cfg.Image.Model)
@@ -167,7 +198,7 @@ func execRunDocker(cfg *config.Config) error {
 		Ports: []string{
 			"8000:8000",
 			"8080:8080",
-			"18789:18789",
+			fmt.Sprintf("%d:%d", gwPort, gwPort),
 		},
 		Volumes: []string{
 			dataVolume,
@@ -212,11 +243,11 @@ func execRunDocker(cfg *config.Config) error {
 	}
 
 	// Ready banner
-	ui.Banner("agent2go — Ready!")
+	ui.Banner(fmt.Sprintf("agent2go — Ready! (%s)", cfg.Agent))
 	fmt.Println()
 	fmt.Printf("  LLM:     http://localhost:8000  (%s)\n", modelName)
 	fmt.Println("  Web:     http://localhost:8080")
-	fmt.Println("  Gateway: http://localhost:18789")
+	fmt.Printf("  Gateway: http://localhost:%d  (%s)\n", gwPort, cfg.Agent)
 	fmt.Println()
 	fmt.Println("  Logs: docker logs -f a2go")
 	fmt.Println()
@@ -228,6 +259,7 @@ func execRunDocker(cfg *config.Config) error {
 
 func buildDockerConfigJSON(cfg *config.Config) string {
 	m := map[string]interface{}{}
+	m["agent"] = cfg.Agent
 	if cfg.LLM != nil {
 		m["llm"] = cfg.LLM.Model
 	}
@@ -264,14 +296,18 @@ func execRunMlx(cfg *config.Config) error {
 		return fmt.Errorf("already running (LLM pid %d)\n\n  a2go status    check services\n  a2go stop      stop first", pid)
 	}
 
-	// Check ports
+	// Check ports — gateway port depends on agent
+	mlxGwSvc := services.Gateway
+	if cfg.Agent == "hermes" {
+		mlxGwSvc = services.HermesGateway
+	}
 	portChecks := []struct {
 		port int
 		name string
 	}{
 		{services.LLM.Port, "LLM"},
 		{services.WebProxy.Port, "Web Proxy"},
-		{services.Gateway.Port, "Gateway"},
+		{mlxGwSvc.Port, mlxGwSvc.Name},
 	}
 	if cfg.Image != nil && cfg.Image.Model != "" {
 		portChecks = append(portChecks, struct {
@@ -289,7 +325,7 @@ func execRunMlx(cfg *config.Config) error {
 	config.Save(cfg)
 
 	// Banner
-	ui.Banner("agent2go — Starting")
+	ui.Banner(fmt.Sprintf("agent2go — Starting (%s)", cfg.Agent))
 	fmt.Printf("  LLM:   %s\n", cfg.LLM.Model)
 	if cfg.Image != nil && cfg.Image.Model != "" {
 		fmt.Printf("  Image: %s\n", cfg.Image.Model)
@@ -364,20 +400,35 @@ func execRunMlx(cfg *config.Config) error {
 	}
 	pids = append(pids, wpPid)
 
-	// Generate openclaw.json
-	ui.Info("generating openclaw config...")
-	hasImage := cfg.Image != nil && cfg.Image.Model != ""
-	if err := openclaw.GenerateConfig(cfg.LLM.Model, cfg.GetContextLength(), cfg.GetAuthToken(), hasImage); err != nil {
-		return fmt.Errorf("failed to generate openclaw.json: %w", err)
-	}
-	ui.Ok(paths.OpenClawState() + "/openclaw.json")
+	// Agent-specific config generation and gateway startup
+	switch cfg.Agent {
+	case "openclaw":
+		ui.Info("generating openclaw config...")
+		hasImage := cfg.Image != nil && cfg.Image.Model != ""
+		if err := openclaw.GenerateConfig(cfg.LLM.Model, cfg.GetContextLength(), cfg.GetAuthToken(), hasImage); err != nil {
+			return fmt.Errorf("failed to generate openclaw.json: %w", err)
+		}
+		ui.Ok(paths.OpenClawState() + "/openclaw.json")
 
-	// Start gateway
-	gwPid, err := services.StartGateway(cfg.GetAuthToken())
-	if err != nil {
-		return err
+		gwPid, err := services.StartGateway(cfg.GetAuthToken())
+		if err != nil {
+			return err
+		}
+		pids = append(pids, gwPid)
+
+	case "hermes":
+		ui.Info("generating hermes config...")
+		if err := hermes.GenerateConfig(cfg.LLM.Model, cfg.GetContextLength(), cfg.GetAuthToken()); err != nil {
+			return fmt.Errorf("failed to generate hermes config: %w", err)
+		}
+		ui.Ok(paths.HermesState() + "/config.yaml")
+
+		gwPid, err := services.StartHermesGateway(cfg.GetAuthToken())
+		if err != nil {
+			return err
+		}
+		pids = append(pids, gwPid)
 	}
-	pids = append(pids, gwPid)
 
 	// Model name for display
 	modelName := cfg.LLM.Model
@@ -386,10 +437,10 @@ func execRunMlx(cfg *config.Config) error {
 	}
 
 	// Ready banner
-	ui.Banner("agent2go — Ready!")
+	ui.Banner(fmt.Sprintf("agent2go — Ready! (%s)", cfg.Agent))
 	fmt.Println()
 	fmt.Printf("  API:     http://localhost:8080  (%s)\n", modelName)
-	fmt.Println("  Gateway: http://localhost:18789")
+	fmt.Printf("  Gateway: http://localhost:%d  (%s)\n", mlxGwSvc.Port, cfg.Agent)
 	fmt.Println()
 	fmt.Printf("  Logs: %s/\n", paths.Logs())
 	fmt.Println()
