@@ -1,5 +1,11 @@
 # openclaw2go
 
+## 0.6.2
+
+### Patch Changes
+
+- 6214173: fix: port conflict detection for hermes gateway and audio pre-flight
+
 ## 0.6.1
 
 ### Patch Changes
