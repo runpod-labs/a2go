@@ -1,5 +1,11 @@
 # openclaw2go
 
+## 0.6.1
+
+### Patch Changes
+
+- df5fe3d: chore: test synchronized release pipeline
+
 ## 0.6.0
 
 ### Minor Changes
