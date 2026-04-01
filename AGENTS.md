@@ -6,13 +6,7 @@ This document exists for non-obvious, error-prone shortcomings in the codebase, 
 ---
 
 ## VRAM & KV Cache
-- **MLX KV rate = GGUF rate × 1.88** (rounded). MLX uses fp16 KV cache (no quantization), measured at ~1.88x the llama.cpp q8_0 rate. Always set MLX configs separately — do NOT copy the GGUF value.
 - `vram.overhead` in model config must include compute graph buffers (~1.5-3GB for large models).
-- Minimum 16k context — OpenClaw requires at least 16k tokens. All model configs MUST set `defaults.contextLength` >= 16384.
-
-## Qwen3.5 Override-KV Keys
-- MoE variants (35B-A3B, 122B-A10B, 397B-A17B): `qwen35moe.context_length`
-- Dense 27B: `qwen35.context_length` (NOT qwen35moe!)
 
 ## Build Gotchas
 - `GGML_NATIVE=OFF` is required — CI runner CPU differs from target GPUs.
@@ -30,9 +24,6 @@ This document exists for non-obvious, error-prone shortcomings in the codebase, 
 
 ## Nemotron-3-Super
 - Multi-file GGUF: Q2_K_XL = 3 splits, Q8_0 = 4 splits. The entrypoint passes only the first split to `-m`; llama.cpp auto-discovers the rest.
-
-## External Registry
-- Engines and GPUs are **never externalized** — `engines.json` maps to physical binaries, `gpus/` is safety-critical.
 
 ## Changesets
 - Without a changeset file, merging to `main` will NOT produce a release — the workflow detects the existing version tag and skips.
