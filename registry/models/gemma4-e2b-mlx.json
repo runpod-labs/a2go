@@ -12,7 +12,7 @@
     "model": 5900,
     "overhead": 0
   },
-  "kvCacheMbPer1kTokens": 15,
+  "kvCacheMbPer1kTokens": 19,
   "defaults": {
     "contextLength": 131072
   },

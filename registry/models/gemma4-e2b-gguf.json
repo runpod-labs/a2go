@@ -16,10 +16,10 @@
   "downloadDir": "/workspace/models/gemma-4-E2B-it-GGUF",
   "servedAs": "gemma-4-e2b",
   "vram": {
-    "model": 5000,
-    "overhead": 1000
+    "model": 5300,
+    "overhead": 500
   },
-  "kvCacheMbPer1kTokens": 8,
+  "kvCacheMbPer1kTokens": 10,
   "defaults": {
     "contextLength": 131072,
     "port": 8000
@@ -45,6 +45,12 @@
     "name": "local-llamacpp",
     "api": "openai-completions"
   },
+  "tps": {
+    "rtx-5090": 203
+  },
   "default": false,
-  "status": "experimental"
+  "status": "experimental",
+  "verifiedOn": [
+    "rtx-5090"
+  ]
 }

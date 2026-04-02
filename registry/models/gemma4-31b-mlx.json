@@ -12,9 +12,9 @@
     "model": 17000,
     "overhead": 0
   },
-  "kvCacheMbPer1kTokens": 75,
+  "kvCacheMbPer1kTokens": 147,
   "defaults": {
-    "contextLength": 262144
+    "contextLength": 32768
   },
   "provider": {
     "name": "local-mlx",

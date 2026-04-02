@@ -70,6 +70,12 @@ The CI builds images tagged as `runpod/a2go:{branch-name}` (slashes/underscores 
 
 Use the `/runpodctl` skill to deploy a Runpod GPU pod with the branch-tagged image. Test on **every supported GPU where the model fits** — at minimum RTX 4090, RTX 5090, and RTX 3090.
 
+**CRITICAL: NEVER delete or stop a pod to "fix" something.** Pods take a long time to provision. Always fix issues on the running pod:
+- If the baked-in engine doesn't support the model architecture, **build the engine from source on the pod** (clone `ggml-org/llama.cpp` or the a2go fork, build with CUDA, run the freshly built binary).
+- If model configs aren't in the baked-in registry, inject them via the external registry at `/workspace/.openclaw/registry/models/` (filenames use `--` instead of `/` in the model ID).
+- If the entrypoint started the wrong model, don't kill `llama-server` (the container dies when PID 1's child exits). Instead, run test servers on a different port (e.g., 8100) or patch the entrypoint's tail to `sleep infinity` after `wait $LLAMA_PID` returns.
+- To free VRAM from the default model, patch the entrypoint first: `sed -i 's/wait $LLAMA_PID/wait $LLAMA_PID; sleep infinity/' /opt/openclaw/entrypoint-unified.sh` — then kill `llama-server`. The container will stay alive.
+
 ### 5a: Test through the LLM API (port 8000)
 
 1. **Basic chat completion** — simple factual question:
