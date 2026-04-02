@@ -1,4 +1,4 @@
-# Dockerfile.unified — Unified agent2go image
+# Dockerfile.unified - Unified agent2go image
 #
 # Uses pre-built llama.cpp binaries from the engines image (no compilation).
 # Build the engines image first: see engines/Dockerfile and engines-build.yml.
