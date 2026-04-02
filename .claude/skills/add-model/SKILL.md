@@ -1,6 +1,6 @@
 ---
 name: add-model
-description: Add a new model to the a2go registry — both GGUF (Linux/Windows) and MLX (macOS) variants, with full testing on RunPod.
+description: Add a new model to the a2go registry — both GGUF (Linux/Windows) and MLX (macOS) variants, with full testing on Runpod.
 ---
 
 # Add Model to a2go Registry
@@ -66,9 +66,9 @@ git push origin {branch-name}
 
 The CI builds images tagged as `runpod/a2go:{branch-name}` (slashes/underscores become hyphens, lowercased).
 
-## Step 5: Test on RunPod
+## Step 5: Test on Runpod
 
-Deploy a RunPod GPU pod with the branch-tagged image. Test on **every supported GPU where the model fits** — at minimum RTX 4090, RTX 5090, and RTX 3090.
+Use the `/runpodctl` skill to deploy a Runpod GPU pod with the branch-tagged image. Test on **every supported GPU where the model fits** — at minimum RTX 4090, RTX 5090, and RTX 3090.
 
 ### 5a: Test through the LLM API (port 8000)
 
@@ -117,7 +117,17 @@ Hermes is the agent framework that sits on top of the LLM. It must work correctl
      -d '{"model": "{served-as}", "messages": [{"role": "user", "content": "What is the weather in Berlin?"}, {"role": "assistant", "content": null, "tool_calls": [{"id": "call_1", "type": "function", "function": {"name": "get_weather", "arguments": "{\"location\": \"Berlin\"}"}}]}, {"role": "tool", "tool_call_id": "call_1", "content": "{\"temp\": 18, \"condition\": \"cloudy\"}"}], "max_tokens": 256}'
    ```
 
-### 5c: Test through OpenClaw gateway (port 18789)
+### 5c: Test the agent web UI with `/agent-browser`
+
+Use the `/agent-browser` skill to test the agent's web UI end-to-end:
+
+1. **Open the agent UI** — navigate to the pod's proxy URL on port 8080
+2. **Device pairing** — approve the device when prompted. Use `/agent-browser` to click through the pairing flow in the browser.
+3. **Send a chat message** — verify the agent responds correctly through the web UI
+4. **Test tool calling in the UI** — ask the agent to perform a task that requires tools and verify it works visually
+5. **Test image generation** (if image service is running) — ask the agent to generate an image and verify it renders in the UI
+
+### 5d: Test through OpenClaw gateway (port 18789)
 
 1. **Device pairing:**
    ```bash
@@ -127,7 +137,7 @@ Hermes is the agent framework that sits on top of the LLM. It must work correctl
 
 2. **Full flow** — verify profile resolution, model download, server start, and gateway connectivity all work end-to-end.
 
-### 5d: Record measurements
+### 5e: Record measurements
 
 For each GPU tested:
 
