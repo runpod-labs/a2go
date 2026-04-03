@@ -37,16 +37,6 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: self-host
-    attributes:
-      label: have you self-hosted this agent before?
-      options:
-        - "yes"
-        - "no"
-    validations:
-      required: true
-
   - type: textarea
     id: notes
     attributes:
