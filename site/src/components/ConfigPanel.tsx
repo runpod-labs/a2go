@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect } from 'react'
 import SectionHeader from './SectionHeader'
 import CollapsibleSection from './CollapsibleSection'
-import GpuSelector from './VramLegend'
+import GpuSelector, { DeviceCountStepper } from './VramLegend'
 import VramGauge, { type VramSegment } from './VramSelector'
 import SelectedModels from './SelectedModels'
 import DeployCard from './DeployOutput'
 import SecurityGuide from './SecurityGuide'
-import type { CatalogModel, GpuInfo, GpuCount, OsPlatform } from '../lib/catalog'
+import type { CatalogModel, GpuInfo, DeviceCount, OsPlatform } from '../lib/catalog'
 import { VRAM_PRESETS } from '../lib/catalog'
-import { getVariantForOs, type ModelGroup, type CatalogEntry } from '../lib/group-models'
+import { getVariantForOs, type ModelGroup, type CatalogEntry, type FamilyEntry } from '../lib/group-models'
 import type { AgentFramework } from '../lib/frameworks'
 import { Link, TriangleAlert } from 'lucide-react'
 
@@ -42,13 +42,15 @@ export default function ConfigPanel({
   selectedVramGb,
   selectedGpu,
   gpus,
-  gpuCount,
+  deviceCount,
+  onDeviceCountChange,
   onGpuSelect,
   onVramPreset,
   onToggleModel,
   onClearAll,
   modelIdToGroup,
   modelIdToEntry,
+  modelIdToFamilyEntry,
   os,
   hasSelections,
   contextOverride,
@@ -60,13 +62,15 @@ export default function ConfigPanel({
   selectedVramGb: number | null
   selectedGpu: GpuInfo | null
   gpus: GpuInfo[]
-  gpuCount: GpuCount
+  deviceCount: DeviceCount
+  onDeviceCountChange: (count: DeviceCount) => void
   onGpuSelect: (gpu: GpuInfo) => void
   onVramPreset: (gb: number) => void
   onToggleModel: (model: CatalogModel) => void
   onClearAll: () => void
   modelIdToGroup: Map<string, ModelGroup>
   modelIdToEntry?: Map<string, CatalogEntry>
+  modelIdToFamilyEntry?: Map<string, FamilyEntry>
   os: OsPlatform | null
   hasSelections: boolean
   contextOverride: number | null
@@ -144,14 +148,19 @@ export default function ConfigPanel({
                   <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
                     Hardware
                   </span>
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <span className="font-mono text-[9px] font-medium uppercase tracking-widest text-foreground/40">
+                      count
+                    </span>
+                    <DeviceCountStepper count={deviceCount} onChange={onDeviceCountChange} />
+                  </span>
                 </SectionHeader>
                 <div className="px-3 py-2.5">
                   <GpuSelector
                     gpus={gpus}
                     selectedGpu={selectedGpu}
                     onSelect={onGpuSelect}
-                    totalVramNeeded={displayVramGb * 1024}
-                    selectedVramGb={selectedVramGb}
+                    deviceCount={deviceCount}
                   />
                 </div>
               </div>
@@ -166,10 +175,10 @@ export default function ConfigPanel({
                 <div className="p-5">
                   <VramGauge
                     usedGb={displayVramGb}
-                    selectedGb={selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * gpuCount) / 1024 : suggestedGb)}
+                    selectedGb={selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : suggestedGb)}
                     presets={VRAM_PRESETS}
                     onSelectPreset={onVramPreset}
-                    maxGb={selectedGpu ? (selectedGpu.vramMb * gpuCount) / 1024 : null}
+                    maxGb={selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : null}
                     segments={vramSegments}
                   />
                 </div>
@@ -206,10 +215,10 @@ export default function ConfigPanel({
         <div className="lg:hidden p-5">
           <VramGauge
             usedGb={displayVramGb}
-            selectedGb={selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * gpuCount) / 1024 : suggestedGb)}
+            selectedGb={selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : suggestedGb)}
             presets={VRAM_PRESETS}
             onSelectPreset={onVramPreset}
-            maxGb={selectedGpu ? (selectedGpu.vramMb * gpuCount) / 1024 : null}
+            maxGb={selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : null}
             segments={vramSegments}
           />
         </div>
@@ -218,13 +227,17 @@ export default function ConfigPanel({
       {/* Hardware — collapsible on mobile only (desktop is rendered above inside the grid) */}
       <div className="lg:hidden">
         <CollapsibleSection title="Hardware" badge={hardwareBadge}>
+          <div className="flex items-center gap-1 border-b border-foreground/[0.04] px-3 py-1.5">
+            <span className="font-mono text-[8px] uppercase tracking-widest text-foreground/25">
+              count
+            </span>
+            <DeviceCountStepper count={deviceCount} onChange={onDeviceCountChange} />
+          </div>
           <div className="px-3 py-2.5">
             <GpuSelector
               gpus={gpus}
               selectedGpu={selectedGpu}
               onSelect={onGpuSelect}
-              totalVramNeeded={displayVramGb * 1024}
-              selectedVramGb={selectedVramGb}
             />
           </div>
         </CollapsibleSection>
@@ -267,6 +280,7 @@ export default function ConfigPanel({
           onToggle={onToggleModel}
           modelIdToGroup={modelIdToGroup}
           modelIdToEntry={modelIdToEntry}
+          modelIdToFamilyEntry={modelIdToFamilyEntry}
           gpus={gpus}
           os={os}
           contextOverride={contextOverride}

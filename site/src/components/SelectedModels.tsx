@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { formatContext, formatVram, type CatalogModel, type GpuInfo, type OsPlatform } from '../lib/catalog'
-import type { ModelGroup, ModelVariant, CatalogEntry, SubVariant } from '../lib/group-models'
+import type { ModelGroup, ModelVariant, CatalogEntry, SubVariant, FamilyEntry } from '../lib/group-models'
 import { getVariantForOs, findSiblingsWithOs } from '../lib/group-models'
 import { PlatformIcon } from './PlatformSelector'
 import { X, ExternalLink, HelpCircle, Copy, Check } from 'lucide-react'
@@ -316,6 +316,7 @@ function groupAvailableForOs(group: ModelGroup, os: OsPlatform | null): boolean 
 function FilledSlotCard({
   model,
   entry,
+  familyEntry,
   group,
   visibleVariants,
   activeTabIndex,
@@ -332,6 +333,7 @@ function FilledSlotCard({
 }: {
   model: CatalogModel
   entry: CatalogEntry | undefined
+  familyEntry: FamilyEntry | undefined
   group: ModelGroup | undefined
   visibleVariants: ModelVariant[]
   activeTabIndex: number
@@ -346,7 +348,7 @@ function FilledSlotCard({
   onContextChange: (ctx: number | null) => void
   swapModelVariant?: (oldModel: CatalogModel, newModel: CatalogModel) => void
 }) {
-  const displayName = entry?.displayName ?? group?.displayName ?? model.name
+  const displayName = (familyEntry?.isMultiSize ? familyEntry.displayName : null) ?? entry?.displayName ?? group?.displayName ?? model.name
 
   const [nameCopied, setNameCopied] = useState(false)
 
@@ -463,7 +465,34 @@ function FilledSlotCard({
   const hasMultipleSubVariants = (entry?.subVariants.length ?? 0) > 1
 
   const availableQuantCount = quantGroups.filter(qg => groupAvailableForOs(qg, activeOs)).length
-  const showConfigZone = hasMultipleSubVariants || availableQuantCount >= 1
+
+  // ── SIZE selector (family-level) ──
+  const isMultiSize = familyEntry?.isMultiSize ?? false
+  const activeSizeIdx = useMemo(() => {
+    if (!familyEntry || !entry) return 0
+    return familyEntry.entries.indexOf(entry)
+  }, [familyEntry, entry])
+
+  const handleSizeChange = useCallback((newSizeIdx: number) => {
+    if (!familyEntry || !swapModelVariant) return
+    const newEntry = familyEntry.entries[newSizeIdx]
+    if (!newEntry) return
+
+    // Pick the first sub-variant, smallest quant, best OS variant
+    const sv = newEntry.subVariants[0]
+    if (!sv) return
+
+    let bestGroup = sv.groups.find((g) =>
+      g.variants.some((gv) => !activeOs || gv.os.includes(activeOs))
+    )
+    if (!bestGroup) bestGroup = sv.groups[0]
+    if (!bestGroup) return
+
+    const variant = getVariantForOs(bestGroup, activeOs)
+    swapModelVariant(model, variant.model)
+  }, [familyEntry, model, activeOs, swapModelVariant])
+
+  const showConfigZone = isMultiSize || hasMultipleSubVariants || availableQuantCount >= 1
 
   return (
     <div
@@ -578,6 +607,38 @@ function FilledSlotCard({
           {/* ── SPECS TABLE (config + info in one table) ── */}
 
           <div className="flex flex-col overflow-hidden">
+            {/* Size row (family-level) */}
+            {isMultiSize && familyEntry && showConfigZone && (
+              <>
+                <div className="flex items-stretch">
+                  <span className="flex w-16 lg:w-20 shrink-0 items-center justify-end px-2 lg:px-3 py-1 lg:py-1.5 font-mono text-[9px] lg:text-[10px] uppercase tracking-widest text-foreground/40">
+                    size
+                  </span>
+                  <span className="w-px shrink-0 bg-foreground/[0.08]" />
+                  <div className="flex flex-1 flex-wrap items-center gap-1 px-2 lg:px-3 py-1 lg:py-1.5">
+                    {familyEntry.sizeLabels.map((label, i) => {
+                      const isActive = i === activeSizeIdx
+                      return (
+                        <button
+                          key={familyEntry.entries[i].catalogKey}
+                          onClick={() => handleSizeChange(i)}
+                          className={cn(
+                            "h-5 px-1.5 font-mono text-[8px] lg:text-[9px] uppercase tracking-wider transition-all",
+                            isActive
+                              ? "border border-foreground/30 bg-foreground/10 text-foreground/90"
+                              : "border border-foreground/[0.08] bg-foreground/[0.04] text-foreground/50 hover:text-foreground/70 hover:border-foreground/15"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="h-px bg-foreground/[0.06]" />
+              </>
+            )}
+
             {/* Quant row */}
             {availableQuantCount >= 1 && showConfigZone && (
               <>
@@ -684,6 +745,7 @@ export default function SelectedModels({
   onToggle,
   modelIdToGroup,
   modelIdToEntry,
+  modelIdToFamilyEntry,
   gpus,
   os,
   contextOverride,
@@ -695,6 +757,7 @@ export default function SelectedModels({
   onToggle: (model: CatalogModel) => void
   modelIdToGroup: Map<string, ModelGroup>
   modelIdToEntry?: Map<string, CatalogEntry>
+  modelIdToFamilyEntry?: Map<string, FamilyEntry>
   gpus: GpuInfo[]
   os: OsPlatform | null
   contextOverride: number | null
@@ -739,6 +802,7 @@ export default function SelectedModels({
 
         const group = modelIdToGroup.get(m.id)
         const entry = modelIdToEntry?.get(m.id)
+        const familyEntry = modelIdToFamilyEntry?.get(m.id)
 
         // Collect all unique platform variants across the ENTIRE entry (not just current group)
         // so platform tabs remain visible even when the current quant is platform-exclusive.
@@ -805,6 +869,7 @@ export default function SelectedModels({
             <FilledSlotCard
               model={m}
               entry={entry}
+              familyEntry={familyEntry}
               group={group}
               visibleVariants={filtered}
               activeTabIndex={activeIdx}

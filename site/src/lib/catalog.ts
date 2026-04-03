@@ -46,18 +46,8 @@ const MAC_GPUS: GpuInfo[] = [
 ]
 
 export const VRAM_PRESETS = [8, 16, 24, 32, 48, 80, 128, 141, 192, 256, 288, 384, 512]
-export const GPU_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8] as const
-export type GpuCount = (typeof GPU_COUNTS)[number]
-
-/** Minimum GPU count needed to fit the given VRAM (in MB) on a single GPU's VRAM.
- *  Mac/Apple Silicon does not support multi-GPU scaling — always returns 1. */
-export function getMinGpuCount(totalVramMb: number, gpu: { vramMb: number; os: OsPlatform[] }): GpuCount {
-  if (gpu.vramMb <= 0) return 1
-  const isMac = gpu.os.includes('mac')
-  if (isMac) return 1
-  const needed = Math.ceil(totalVramMb / gpu.vramMb)
-  return Math.max(1, Math.min(needed, 8)) as GpuCount
-}
+export const DEVICE_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8] as const
+export type DeviceCount = (typeof DEVICE_COUNTS)[number]
 
 // deterministic pastel color per model id
 const MODEL_PASTELS: Record<string, string> = {}
@@ -80,6 +70,10 @@ export function getModelColor(modelId: string): { bg: string; border: string; te
 
 export function formatVram(mb: number): string {
   const gb = mb / 1024
+  if (gb >= 1000) {
+    const tb = gb / 1024
+    return `${tb % 1 === 0 ? tb.toFixed(0) : tb.toFixed(1)} tb`
+  }
   return `${gb % 1 === 0 ? gb.toFixed(0) : gb.toFixed(1)} gb`
 }
 

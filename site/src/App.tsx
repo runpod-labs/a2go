@@ -3,12 +3,12 @@ import {
   fetchCatalog,
   getTotalVram,
   getGpusForOs,
-  getMinGpuCount,
   type CatalogModel,
   type GpuInfo,
+  type DeviceCount,
   type OsPlatform,
 } from './lib/catalog'
-import { groupModels, buildCatalogEntries, getVariantForOs, type ModelGroup, type CatalogEntry } from './lib/group-models'
+import { groupModels, buildCatalogEntries, buildFamilyEntries, getVariantForOs, type ModelGroup, type CatalogEntry, type FamilyEntry } from './lib/group-models'
 import { parseUrlState, syncUrlState, clearUrlState, type ModelParam } from './lib/url-state'
 import ModelCatalog from './components/ModelCatalog'
 import ConfigPanel from './components/ConfigPanel'
@@ -24,6 +24,7 @@ function App() {
   const [os, setOs] = useState<OsPlatform | null>(null)
   const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set())
   const [selectedGpu, setSelectedGpu] = useState<GpuInfo | null>(null)
+  const [deviceCount, setDeviceCount] = useState<DeviceCount>(1)
   const [selectedVramGb, setSelectedVramGb] = useState<number | null>(null)
   const [contextOverride, setContextOverride] = useState<number | null>(null)
   const [framework, setFramework] = useState<AgentFramework>(DEFAULT_FRAMEWORK)
@@ -58,10 +59,11 @@ function App() {
         }
         if (ids.size > 0) setSelectedModelIds(ids)
 
-        if (url.gpu) {
-          const match = gpus.find((g) => g.id === url.gpu)
+        if (url.device) {
+          const match = gpus.find((g) => g.id === url.device)
           if (match) setSelectedGpu(match)
         }
+        if (url.deviceCount != null) setDeviceCount(url.deviceCount as DeviceCount)
         if (url.vram != null) setSelectedVramGb(url.vram)
         if (url.ctx != null) setContextOverride(url.ctx)
 
@@ -77,6 +79,8 @@ function App() {
   const allGroups = useMemo(() => groupModels(allModels), [allModels])
 
   const allEntries = useMemo(() => buildCatalogEntries(allGroups), [allGroups])
+
+  const allFamilyEntries = useMemo(() => buildFamilyEntries(allEntries), [allEntries])
 
   const modelIdToGroup = useMemo(() => {
     const map = new Map<string, ModelGroup>()
@@ -97,6 +101,16 @@ function App() {
     return map
   }, [allEntries])
 
+  const modelIdToFamilyEntry = useMemo(() => {
+    const map = new Map<string, FamilyEntry>()
+    for (const fe of allFamilyEntries)
+      for (const entry of fe.entries)
+        for (const group of entry.groups)
+          for (const v of group.variants)
+            map.set(v.model.id, fe)
+    return map
+  }, [allFamilyEntries])
+
   const filteredGpus = useMemo(() => getGpusForOs(os, allGpus), [os, allGpus])
 
   const selectedModels = useMemo(() => {
@@ -115,9 +129,6 @@ function App() {
 
   const totalVramMb = useMemo(() => getTotalVram(selectedModels, contextOverride), [selectedModels, contextOverride])
 
-  // GPU count is fully derived — auto-calculated from selected GPU + total VRAM
-  const gpuCount = selectedGpu ? getMinGpuCount(totalVramMb, selectedGpu) : 1
-
   // Sync state to URL whenever selections change (after initial hydration)
   useEffect(() => {
     if (!hydrated.current) return
@@ -133,12 +144,13 @@ function App() {
       llm: toModelParam(llm),
       image: toModelParam(image),
       audio: toModelParam(audio),
-      gpu: selectedGpu?.id ?? null,
+      device: selectedGpu?.id ?? null,
+      deviceCount: deviceCount > 1 ? deviceCount : null,
       vram: selectedVramGb,
       ctx: contextOverride,
       agent: framework.id,
     })
-  }, [os, selectedModels, selectedGpu, selectedVramGb, contextOverride, framework])
+  }, [os, selectedModels, selectedGpu, deviceCount, selectedVramGb, contextOverride, framework])
 
   const toggleModel = useCallback(
     (model: CatalogModel) => {
@@ -172,13 +184,24 @@ function App() {
   }, [])
 
   const handleGpuSelect = useCallback((gpu: GpuInfo) => {
-    setSelectedGpu((prev) => (prev?.id === gpu.id ? null : gpu))
+    setSelectedGpu((prev) => {
+      if (prev?.id === gpu.id) {
+        setDeviceCount(1) // reset count when deselecting
+        return null
+      }
+      return gpu
+    })
     setSelectedVramGb(null)
+  }, [])
+
+  const handleDeviceCountChange = useCallback((count: DeviceCount) => {
+    setDeviceCount(count)
   }, [])
 
   const handleVramPreset = useCallback((gb: number) => {
     setSelectedVramGb((prev) => (prev === gb ? null : gb))
     setSelectedGpu(null)
+    setDeviceCount(1)
   }, [])
 
   const handleOsChange = useCallback((newOs: OsPlatform) => {
@@ -206,16 +229,17 @@ function App() {
     setSelectedModelIds(new Set())
     setOs(null)
     setSelectedGpu(null)
+    setDeviceCount(1)
     setSelectedVramGb(null)
     setContextOverride(null)
     clearUrlState()
   }, [])
 
-  const effectiveVramGb = selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * gpuCount) / 1024 : 0)
+  const effectiveVramGb = selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : 0)
   const effectiveVramMb = effectiveVramGb * 1024
   const remainingVramMb = effectiveVramMb > 0 ? effectiveVramMb - totalVramMb : 0
 
-  const hasSelections = selectedModels.length > 0 || os !== null || selectedGpu !== null || selectedVramGb !== null
+  const hasSelections = selectedModels.length > 0 || os !== null || selectedGpu !== null || deviceCount > 1 || selectedVramGb !== null
 
   if (error) {
     return (
@@ -265,7 +289,7 @@ function App() {
       {/* On mobile: both panels render in a single scrollable column.
           On desktop (lg+): side-by-side layout as before. */}
       <ModelCatalog
-        entries={allEntries}
+        familyEntries={allFamilyEntries}
         os={os}
         onOsChange={handleOsChange}
         selectedModelIds={selectedModelIds}
@@ -283,13 +307,15 @@ function App() {
         selectedVramGb={selectedVramGb}
         selectedGpu={selectedGpu}
         gpus={filteredGpus}
-        gpuCount={gpuCount}
+        deviceCount={deviceCount}
+        onDeviceCountChange={handleDeviceCountChange}
         onGpuSelect={handleGpuSelect}
         onVramPreset={handleVramPreset}
         onToggleModel={toggleModel}
         onClearAll={handleClearAll}
         modelIdToGroup={modelIdToGroup}
         modelIdToEntry={modelIdToEntry}
+        modelIdToFamilyEntry={modelIdToFamilyEntry}
         os={os}
         hasSelections={hasSelections}
         contextOverride={contextOverride}
