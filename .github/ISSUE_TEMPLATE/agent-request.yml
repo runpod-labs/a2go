@@ -1,0 +1,44 @@
+name: agent request
+description: suggest an agent to add to a2go
+title: "[agent] "
+labels: ["agent-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## agent request
+
+        which agent should we add next? tell us about it.
+
+  - type: input
+    id: agent-name
+    attributes:
+      label: agent name
+      description: "name of the agent."
+      placeholder: "e.g. SWE-agent, Bolt, Aider, ..."
+    validations:
+      required: true
+
+  - type: input
+    id: agent-url
+    attributes:
+      label: project url
+      description: "link to the agent's repository or website."
+      placeholder: "https://github.com/..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: why this agent?
+      description: "what makes this agent useful? what's your use case?"
+      placeholder: "I'd like this agent because..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: additional context
+      description: "anything else we should know (hardware requirements, setup quirks, etc.)."
