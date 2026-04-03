@@ -203,7 +203,7 @@ function buildCloudConfig(
     image: 'runpod/a2go:latest',
     envVars: [
       { key: 'A2GO_CONFIG', value: configJSON },
-      { key: 'OPENCLAW_WEB_PASSWORD', value: 'changeme' },
+      { key: 'A2GO_AUTH_TOKEN', value: 'changeme' },
       { key: 'LLAMACPP_API_KEY', value: 'changeme' },
     ],
     ports: [
