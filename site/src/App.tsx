@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   fetchCatalog,
   getTotalVram,
-  getGpusForOs,
+  getDevicesForOs,
   type CatalogModel,
-  type GpuInfo,
+  type DeviceInfo,
   type DeviceCount,
   type OsPlatform,
 } from './lib/catalog'
@@ -17,13 +17,13 @@ import { FrameworkPill } from './components/FrameworkSelector'
 
 function App() {
   const [allModels, setAllModels] = useState<CatalogModel[]>([])
-  const [allGpus, setAllGpus] = useState<GpuInfo[]>([])
+  const [allDevices, setAllDevices] = useState<DeviceInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [os, setOs] = useState<OsPlatform | null>(null)
   const [selectedModelIds, setSelectedModelIds] = useState<Set<string>>(new Set())
-  const [selectedGpu, setSelectedGpu] = useState<GpuInfo | null>(null)
+  const [selectedDevice, setSelectedDevice] = useState<DeviceInfo | null>(null)
   const [deviceCount, setDeviceCount] = useState<DeviceCount>(1)
   const [selectedVramGb, setSelectedVramGb] = useState<number | null>(null)
   const [contextOverride, setContextOverride] = useState<number | null>(null)
@@ -34,9 +34,9 @@ function App() {
 
   useEffect(() => {
     fetchCatalog()
-      .then(({ models, gpus }) => {
+      .then(({ models, devices }) => {
         setAllModels(models)
-        setAllGpus(gpus)
+        setAllDevices(devices)
 
         // Hydrate state from URL after catalog is available
         const url = parseUrlState()
@@ -60,8 +60,8 @@ function App() {
         if (ids.size > 0) setSelectedModelIds(ids)
 
         if (url.device) {
-          const match = gpus.find((g) => g.id === url.device)
-          if (match) setSelectedGpu(match)
+          const match = devices.find((g) => g.id === url.device)
+          if (match) setSelectedDevice(match)
         }
         if (url.deviceCount != null) setDeviceCount(url.deviceCount as DeviceCount)
         if (url.vram != null) setSelectedVramGb(url.vram)
@@ -111,7 +111,7 @@ function App() {
     return map
   }, [allFamilyEntries])
 
-  const filteredGpus = useMemo(() => getGpusForOs(os, allGpus), [os, allGpus])
+  const filteredDevices = useMemo(() => getDevicesForOs(os, allDevices), [os, allDevices])
 
   const selectedModels = useMemo(() => {
     const byId = new Map<string, CatalogModel[]>()
@@ -144,13 +144,13 @@ function App() {
       llm: toModelParam(llm),
       image: toModelParam(image),
       audio: toModelParam(audio),
-      device: selectedGpu?.id ?? null,
+      device: selectedDevice?.id ?? null,
       deviceCount: deviceCount > 1 ? deviceCount : null,
       vram: selectedVramGb,
       ctx: contextOverride,
       agent: framework.id,
     })
-  }, [os, selectedModels, selectedGpu, deviceCount, selectedVramGb, contextOverride, framework])
+  }, [os, selectedModels, selectedDevice, deviceCount, selectedVramGb, contextOverride, framework])
 
   const toggleModel = useCallback(
     (model: CatalogModel) => {
@@ -183,13 +183,13 @@ function App() {
     })
   }, [])
 
-  const handleGpuSelect = useCallback((gpu: GpuInfo) => {
-    setSelectedGpu((prev) => {
-      if (prev?.id === gpu.id) {
+  const handleDeviceSelect = useCallback((device: DeviceInfo) => {
+    setSelectedDevice((prev) => {
+      if (prev?.id === device.id) {
         setDeviceCount(1) // reset count when deselecting
         return null
       }
-      return gpu
+      return device
     })
     setSelectedVramGb(null)
   }, [])
@@ -200,7 +200,7 @@ function App() {
 
   const handleVramPreset = useCallback((gb: number) => {
     setSelectedVramGb((prev) => (prev === gb ? null : gb))
-    setSelectedGpu(null)
+    setSelectedDevice(null)
     setDeviceCount(1)
   }, [])
 
@@ -221,25 +221,25 @@ function App() {
       return next
     })
 
-    setSelectedGpu(null)
+    setSelectedDevice(null)
     setSelectedVramGb(null)
   }, [os, modelIdToGroup])
 
   const handleClearAll = useCallback(() => {
     setSelectedModelIds(new Set())
     setOs(null)
-    setSelectedGpu(null)
+    setSelectedDevice(null)
     setDeviceCount(1)
     setSelectedVramGb(null)
     setContextOverride(null)
     clearUrlState()
   }, [])
 
-  const effectiveVramGb = selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : 0)
+  const effectiveVramGb = selectedVramGb ?? (selectedDevice ? (selectedDevice.vramMb * deviceCount) / 1024 : 0)
   const effectiveVramMb = effectiveVramGb * 1024
   const remainingVramMb = effectiveVramMb > 0 ? effectiveVramMb - totalVramMb : 0
 
-  const hasSelections = selectedModels.length > 0 || os !== null || selectedGpu !== null || deviceCount > 1 || selectedVramGb !== null
+  const hasSelections = selectedModels.length > 0 || os !== null || selectedDevice !== null || deviceCount > 1 || selectedVramGb !== null
 
   if (error) {
     return (
@@ -305,11 +305,11 @@ function App() {
       <ConfigPanel
         selectedModels={selectedModels}
         selectedVramGb={selectedVramGb}
-        selectedGpu={selectedGpu}
-        gpus={filteredGpus}
+        selectedDevice={selectedDevice}
+        devices={filteredDevices}
         deviceCount={deviceCount}
         onDeviceCountChange={handleDeviceCountChange}
-        onGpuSelect={handleGpuSelect}
+        onDeviceSelect={handleDeviceSelect}
         onVramPreset={handleVramPreset}
         onToggleModel={toggleModel}
         onClearAll={handleClearAll}

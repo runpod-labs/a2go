@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
 import SectionHeader from './SectionHeader'
 import CollapsibleSection from './CollapsibleSection'
-import GpuSelector, { DeviceCountStepper } from './VramLegend'
+import DeviceSelector, { DeviceCountStepper } from './VramLegend'
 import VramGauge, { type VramSegment } from './VramSelector'
 import SelectedModels from './SelectedModels'
 import DeployCard from './DeployOutput'
 import SecurityGuide from './SecurityGuide'
-import type { CatalogModel, GpuInfo, DeviceCount, OsPlatform } from '../lib/catalog'
+import type { CatalogModel, DeviceInfo, DeviceCount, OsPlatform } from '../lib/catalog'
 import { VRAM_PRESETS } from '../lib/catalog'
 import { getVariantForOs, type ModelGroup, type CatalogEntry, type FamilyEntry } from '../lib/group-models'
 import type { AgentFramework } from '../lib/frameworks'
@@ -40,11 +40,11 @@ function CopyLinkButton() {
 export default function ConfigPanel({
   selectedModels,
   selectedVramGb,
-  selectedGpu,
-  gpus,
+  selectedDevice,
+  devices,
   deviceCount,
   onDeviceCountChange,
-  onGpuSelect,
+  onDeviceSelect,
   onVramPreset,
   onToggleModel,
   onClearAll,
@@ -60,11 +60,11 @@ export default function ConfigPanel({
 }: {
   selectedModels: CatalogModel[]
   selectedVramGb: number | null
-  selectedGpu: GpuInfo | null
-  gpus: GpuInfo[]
+  selectedDevice: DeviceInfo | null
+  devices: DeviceInfo[]
   deviceCount: DeviceCount
   onDeviceCountChange: (count: DeviceCount) => void
-  onGpuSelect: (gpu: GpuInfo) => void
+  onDeviceSelect: (device: DeviceInfo) => void
   onVramPreset: (gb: number) => void
   onToggleModel: (model: CatalogModel) => void
   onClearAll: () => void
@@ -117,10 +117,10 @@ export default function ConfigPanel({
 
   // When models are selected but no GPU/VRAM preset chosen, suggest the smallest fitting preset
   const suggestedGb = useMemo(() => {
-    if (selectedVramGb != null || selectedGpu != null) return null
+    if (selectedVramGb != null || selectedDevice != null) return null
     if (displayVramGb <= 0) return null
     return VRAM_PRESETS.find((p) => p >= displayVramGb) ?? null
-  }, [selectedVramGb, selectedGpu, displayVramGb])
+  }, [selectedVramGb, selectedDevice, displayVramGb])
 
   const memoryBadge = displayVramGb > 0 ? (
     <span className="font-mono text-[9px] tabular-nums text-foreground/40">
@@ -128,9 +128,9 @@ export default function ConfigPanel({
     </span>
   ) : undefined
 
-  const hardwareBadge = selectedGpu ? (
+  const hardwareBadge = selectedDevice ? (
     <span className="font-mono text-[9px] text-foreground/40">
-      {selectedGpu.name}
+      {selectedDevice.name}
     </span>
   ) : undefined
 
@@ -156,10 +156,10 @@ export default function ConfigPanel({
                   </span>
                 </SectionHeader>
                 <div className="px-3 py-2.5">
-                  <GpuSelector
-                    gpus={gpus}
-                    selectedGpu={selectedGpu}
-                    onSelect={onGpuSelect}
+                  <DeviceSelector
+                    devices={devices}
+                    selectedDevice={selectedDevice}
+                    onSelect={onDeviceSelect}
                     deviceCount={deviceCount}
                   />
                 </div>
@@ -175,10 +175,10 @@ export default function ConfigPanel({
                 <div className="p-5">
                   <VramGauge
                     usedGb={displayVramGb}
-                    selectedGb={selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : suggestedGb)}
+                    selectedGb={selectedVramGb ?? (selectedDevice ? (selectedDevice.vramMb * deviceCount) / 1024 : suggestedGb)}
                     presets={VRAM_PRESETS}
                     onSelectPreset={onVramPreset}
-                    maxGb={selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : null}
+                    maxGb={selectedDevice ? (selectedDevice.vramMb * deviceCount) / 1024 : null}
                     segments={vramSegments}
                   />
                 </div>
@@ -215,10 +215,10 @@ export default function ConfigPanel({
         <div className="lg:hidden p-5">
           <VramGauge
             usedGb={displayVramGb}
-            selectedGb={selectedVramGb ?? (selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : suggestedGb)}
+            selectedGb={selectedVramGb ?? (selectedDevice ? (selectedDevice.vramMb * deviceCount) / 1024 : suggestedGb)}
             presets={VRAM_PRESETS}
             onSelectPreset={onVramPreset}
-            maxGb={selectedGpu ? (selectedGpu.vramMb * deviceCount) / 1024 : null}
+            maxGb={selectedDevice ? (selectedDevice.vramMb * deviceCount) / 1024 : null}
             segments={vramSegments}
           />
         </div>
@@ -234,10 +234,10 @@ export default function ConfigPanel({
             <DeviceCountStepper count={deviceCount} onChange={onDeviceCountChange} />
           </div>
           <div className="px-3 py-2.5">
-            <GpuSelector
-              gpus={gpus}
-              selectedGpu={selectedGpu}
-              onSelect={onGpuSelect}
+            <DeviceSelector
+              devices={devices}
+              selectedDevice={selectedDevice}
+              onSelect={onDeviceSelect}
             />
           </div>
         </CollapsibleSection>
@@ -281,7 +281,7 @@ export default function ConfigPanel({
           modelIdToGroup={modelIdToGroup}
           modelIdToEntry={modelIdToEntry}
           modelIdToFamilyEntry={modelIdToFamilyEntry}
-          gpus={gpus}
+          devices={devices}
           os={os}
           contextOverride={contextOverride}
           onContextChange={onContextChange}

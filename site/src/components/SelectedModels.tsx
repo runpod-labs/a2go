@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { formatContext, formatVram, type CatalogModel, type GpuInfo, type OsPlatform } from '../lib/catalog'
+import { formatContext, formatVram, type CatalogModel, type DeviceInfo, type OsPlatform } from '../lib/catalog'
 import type { ModelGroup, ModelVariant, CatalogEntry, SubVariant, FamilyEntry } from '../lib/group-models'
 import { getVariantForOs, findSiblingsWithOs } from '../lib/group-models'
 import { PlatformIcon } from './PlatformSelector'
@@ -58,7 +58,7 @@ function InfoBlockLink({ label, url, text }: { label: string; url: string; text:
 const REPO_URL = 'https://github.com/runpod-labs/a2go'
 
 /** TPS info row — shows value when available, or a "help us measure" CTA */
-function InfoBlockTps({ tpsValue, gpuName }: { tpsValue: number | null; gpuName: string | null }) {
+function InfoBlockTps({ tpsValue, deviceName }: { tpsValue: number | null; deviceName: string | null }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -80,7 +80,7 @@ function InfoBlockTps({ tpsValue, gpuName }: { tpsValue: number | null; gpuName:
       <div className="relative flex flex-1 items-center px-2 lg:px-3 py-1 lg:py-1.5">
         {tpsValue != null ? (
           <span className="font-mono text-[11px] lg:text-[13px] tabular-nums text-foreground/80">
-            {tpsValue} tps · {gpuName}
+            {tpsValue} tps · {deviceName}
           </span>
         ) : (
           <>
@@ -322,7 +322,7 @@ function FilledSlotCard({
   activeTabIndex,
   onTabSelect,
   accentColor,
-  gpus,
+  devices,
   onRemove,
   macUnavailable,
   macSiblings,
@@ -339,7 +339,7 @@ function FilledSlotCard({
   activeTabIndex: number
   onTabSelect: (os: OsPlatform) => void
   accentColor: string
-  gpus: GpuInfo[]
+  devices: DeviceInfo[]
   onRemove: () => void
   macUnavailable: boolean
   macSiblings: ModelGroup[]
@@ -433,7 +433,7 @@ function FilledSlotCard({
 
   const tpsEntries = v.tps ? Object.entries(v.tps) : []
   const tpsEntry = tpsEntries.length > 0 ? tpsEntries[0] : null
-  const tpsGpuName = tpsEntry ? (gpus.find((g) => g.id === tpsEntry[0])?.name ?? tpsEntry[0]) : null
+  const tpsDeviceName = tpsEntry ? (devices.find((g) => g.id === tpsEntry[0])?.name ?? tpsEntry[0]) : null
 
   const singleTab = platformTabs.length <= 1
 
@@ -695,7 +695,7 @@ function FilledSlotCard({
 
             {model.type === 'llm' && (
               <>
-                <InfoBlockTps tpsValue={tpsEntry ? tpsEntry[1] : null} gpuName={tpsGpuName} />
+                <InfoBlockTps tpsValue={tpsEntry ? tpsEntry[1] : null} deviceName={tpsDeviceName} />
                 <div className="h-px bg-foreground/[0.06]" />
               </>
             )}
@@ -746,7 +746,7 @@ export default function SelectedModels({
   modelIdToGroup,
   modelIdToEntry,
   modelIdToFamilyEntry,
-  gpus,
+  devices,
   os,
   contextOverride,
   onContextChange,
@@ -758,7 +758,7 @@ export default function SelectedModels({
   modelIdToGroup: Map<string, ModelGroup>
   modelIdToEntry?: Map<string, CatalogEntry>
   modelIdToFamilyEntry?: Map<string, FamilyEntry>
-  gpus: GpuInfo[]
+  devices: DeviceInfo[]
   os: OsPlatform | null
   contextOverride: number | null
   onContextChange: (ctx: number | null) => void
@@ -895,7 +895,7 @@ export default function SelectedModels({
                 }
               }}
               accentColor={slot.color}
-              gpus={gpus}
+              devices={devices}
               onRemove={() => onToggle(m)}
               macUnavailable={macUnavailable}
               macSiblings={macSiblings}

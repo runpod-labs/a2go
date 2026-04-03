@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { cn } from '../lib/utils'
-import type { GpuInfo, DeviceCount } from '../lib/catalog'
+import type { DeviceInfo, DeviceCount } from '../lib/catalog'
 import { formatVram, DEVICE_COUNTS } from '../lib/catalog'
 
 /** Always format as GB (no TB conversion) — used as invisible spacer for stable width */
@@ -9,14 +9,14 @@ function formatVramGbOnly(mb: number): string {
   return `${gb % 1 === 0 ? gb.toFixed(0) : gb.toFixed(1)} gb`
 }
 
-function GpuButton({
-  gpu,
+function DeviceButton({
+  device,
   isSelected,
   effectiveVramMb,
   maxVramMb,
   onSelect,
 }: {
-  gpu: GpuInfo
+  device: DeviceInfo
   isSelected: boolean
   effectiveVramMb: number
   maxVramMb: number
@@ -32,7 +32,7 @@ function GpuButton({
           : "bg-foreground/[0.03] text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground",
       )}
     >
-      <span className="font-semibold uppercase tracking-wide">{gpu.name}</span>
+      <span className="font-semibold uppercase tracking-wide">{device.name}</span>
       {/* Invisible spacer reserves width for widest possible value; real value overlays it */}
       <span className="relative ml-1 text-[9px] tabular-nums">
         <span className="invisible whitespace-nowrap">{formatVramGbOnly(maxVramMb)}</span>
@@ -86,59 +86,59 @@ export function DeviceCountStepper({
   )
 }
 
-export default function GpuSelector({
-  gpus,
-  selectedGpu,
+export default function DeviceSelector({
+  devices,
+  selectedDevice,
   onSelect,
   deviceCount,
 }: {
-  gpus: GpuInfo[]
-  selectedGpu: GpuInfo | null
-  onSelect: (gpu: GpuInfo) => void
+  devices: DeviceInfo[]
+  selectedDevice: DeviceInfo | null
+  onSelect: (device: DeviceInfo) => void
   deviceCount: DeviceCount
 }) {
   const maxCount = DEVICE_COUNTS[DEVICE_COUNTS.length - 1]
-  const { nvidiaGpus, macGpus } = useMemo(() => {
-    const nvidia = gpus.filter((g) => !g.os.includes('mac')).sort((a, b) => a.vramMb - b.vramMb)
-    const mac = gpus.filter((g) => g.os.includes('mac')).sort((a, b) => a.vramMb - b.vramMb)
-    return { nvidiaGpus: nvidia, macGpus: mac }
-  }, [gpus])
+  const { nvidiaDevices, macDevices } = useMemo(() => {
+    const nvidia = devices.filter((g) => !g.os.includes('mac')).sort((a, b) => a.vramMb - b.vramMb)
+    const mac = devices.filter((g) => g.os.includes('mac')).sort((a, b) => a.vramMb - b.vramMb)
+    return { nvidiaDevices: nvidia, macDevices: mac }
+  }, [devices])
 
   return (
     <div className="flex flex-col gap-2.5">
-      {nvidiaGpus.length > 0 && (
+      {nvidiaDevices.length > 0 && (
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-foreground/30">
             NVIDIA
           </span>
           <div className="flex flex-wrap gap-1">
-            {nvidiaGpus.map((gpu) => (
-              <GpuButton
-                key={gpu.id}
-                gpu={gpu}
-                isSelected={selectedGpu?.id === gpu.id}
-                effectiveVramMb={gpu.vramMb * deviceCount}
-                maxVramMb={gpu.vramMb * maxCount}
-                onSelect={() => onSelect(gpu)}
+            {nvidiaDevices.map((device) => (
+              <DeviceButton
+                key={device.id}
+                device={device}
+                isSelected={selectedDevice?.id === device.id}
+                effectiveVramMb={device.vramMb * deviceCount}
+                maxVramMb={device.vramMb * maxCount}
+                onSelect={() => onSelect(device)}
               />
             ))}
           </div>
         </div>
       )}
-      {macGpus.length > 0 && (
+      {macDevices.length > 0 && (
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-foreground/30">
             Apple Silicon
           </span>
           <div className="flex flex-wrap gap-1">
-            {macGpus.map((gpu) => (
-              <GpuButton
-                key={gpu.id}
-                gpu={gpu}
-                isSelected={selectedGpu?.id === gpu.id}
-                effectiveVramMb={gpu.vramMb * deviceCount}
-                maxVramMb={gpu.vramMb * maxCount}
-                onSelect={() => onSelect(gpu)}
+            {macDevices.map((device) => (
+              <DeviceButton
+                key={device.id}
+                device={device}
+                isSelected={selectedDevice?.id === device.id}
+                effectiveVramMb={device.vramMb * deviceCount}
+                maxVramMb={device.vramMb * maxCount}
+                onSelect={() => onSelect(device)}
               />
             ))}
           </div>
