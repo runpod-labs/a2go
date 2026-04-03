@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { formatContext, formatVram, type CatalogModel, type DeviceInfo, type OsPlatform } from '../lib/catalog'
 import type { ModelGroup, ModelVariant, CatalogEntry, SubVariant, FamilyEntry } from '../lib/group-models'
-import { getVariantForOs, findSiblingsWithOs } from '../lib/group-models'
+import { getVariantForOs, findSiblingsWithOs, extractParamSize } from '../lib/group-models'
 import { PlatformIcon } from './PlatformSelector'
 import { X, ExternalLink, HelpCircle, Copy, Check } from 'lucide-react'
 import { cn } from '../lib/utils'
@@ -348,7 +348,8 @@ function FilledSlotCard({
   onContextChange: (ctx: number | null) => void
   swapModelVariant?: (oldModel: CatalogModel, newModel: CatalogModel) => void
 }) {
-  const displayName = (familyEntry?.isMultiSize ? familyEntry.displayName : null) ?? entry?.displayName ?? group?.displayName ?? model.name
+  const displayName = familyEntry?.displayName ?? entry?.displayName ?? group?.displayName ?? model.name
+  const paramSize = model.type !== 'llm' ? extractParamSize(entry?.displayName ?? group?.displayName ?? model.name) : null
 
   const [nameCopied, setNameCopied] = useState(false)
 
@@ -633,6 +634,24 @@ function FilledSlotCard({
                         </button>
                       )
                     })}
+                  </div>
+                </div>
+                <div className="h-px bg-foreground/[0.06]" />
+              </>
+            )}
+
+            {/* Parameter size row (image/audio — single-size models) */}
+            {paramSize && !isMultiSize && (
+              <>
+                <div className="flex items-stretch">
+                  <span className="flex w-16 lg:w-20 shrink-0 items-center justify-end px-2 lg:px-3 py-1 lg:py-1.5 font-mono text-[9px] lg:text-[10px] uppercase tracking-widest text-foreground/40">
+                    size
+                  </span>
+                  <span className="w-px shrink-0 bg-foreground/[0.08]" />
+                  <div className="flex flex-1 items-center gap-1 px-2 lg:px-3 py-1 lg:py-1.5">
+                    <span className="h-5 px-1.5 font-mono text-[8px] lg:text-[9px] uppercase tracking-wider border border-foreground/30 bg-foreground/10 text-foreground/90 flex items-center">
+                      {paramSize}
+                    </span>
                   </div>
                 </div>
                 <div className="h-px bg-foreground/[0.06]" />
