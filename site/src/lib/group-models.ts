@@ -35,6 +35,12 @@ function getDisplayName(name: string): string {
     .trim()
 }
 
+/** Extract parameter count (e.g. "4B", "1.5B") from a display name */
+export function extractParamSize(displayName: string): string | null {
+  const match = displayName.match(/(\d+\.?\d*)b\b/i)
+  return match ? `${match[1]}B` : null
+}
+
 export function groupModels(models: CatalogModel[]): ModelGroup[] {
   const map = new Map<string, ModelGroup>()
 
@@ -376,8 +382,15 @@ export function buildFamilyEntries(allEntries: CatalogEntry[]): FamilyEntry[] {
         return label || e.catalogKey
       })
     } else {
-      displayName = entries[0].displayName
-      sizeLabels = ['']
+      const rawName = entries[0].displayName
+      const size = extractParamSize(rawName)
+      if (size && entries[0].type !== 'llm') {
+        displayName = rawName.replace(/[\s-]+\d+\.?\d*b\b/i, '').trim()
+        sizeLabels = [size]
+      } else {
+        displayName = rawName
+        sizeLabels = ['']
+      }
     }
 
     // Aggregate stats across all entries

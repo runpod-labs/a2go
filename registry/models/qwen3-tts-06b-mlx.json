@@ -1,7 +1,7 @@
 {
   "id": "mlx-community/qwen3-tts-06b-mlx",
   "group": "qwen3-tts-06b-mlx",
-  "family": "qwen3-tts-06b",
+  "family": "qwen3-tts",
   "catalogKey": "qwen3-tts-06b",
   "name": "Qwen3-TTS 0.6B MLX 4-bit",
   "type": "audio",
