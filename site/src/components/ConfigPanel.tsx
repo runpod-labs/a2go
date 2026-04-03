@@ -238,6 +238,7 @@ export default function ConfigPanel({
               devices={devices}
               selectedDevice={selectedDevice}
               onSelect={onDeviceSelect}
+              deviceCount={deviceCount}
             />
           </div>
         </CollapsibleSection>
