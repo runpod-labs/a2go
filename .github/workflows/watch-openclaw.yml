@@ -72,6 +72,6 @@ jobs:
         run: |
           echo "New OpenClaw version detected: ${{ steps.npm.outputs.version }}"
           echo "${{ steps.npm.outputs.version }}" > .openclaw-version
-          gh workflow run docker-build.yml --ref main
+          gh workflow run docker-build.yml --ref main -f openclaw_version=${{ steps.npm.outputs.version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

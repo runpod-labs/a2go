@@ -35,3 +35,4 @@ This document exists for non-obvious, error-prone shortcomings in the codebase, 
 ## CI/CD
 - `workflow_dispatch` only works from default branch — feature branch workflows can't be manually triggered until merged to main.
 - Fork CI tag convention: `{upstream-tag}-openclaw.{patch}`.
+- **Testing workflow changes on a branch**: New/modified workflows won't trigger via `workflow_dispatch` or `pull_request` until they exist on main. To test on a feature branch: (1) add a temporary `push` trigger filtered to your branch (`push: branches: [your-branch]`), (2) if the workflow triggers other workflows via `gh workflow run ... -f`, use dry-run echo instead (the `-f` inputs won't exist on main yet), (3) rebase onto current main so `dev-build.yml` and other base-branch workflows are present, (4) push to trigger, (5) revert the temp triggers before merging.
