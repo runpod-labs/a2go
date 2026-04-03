@@ -30,6 +30,10 @@ jobs:
         if: steps.cache.outputs.cache-hit == 'true'
         run: echo "Hermes Agent ${{ steps.release.outputs.version }} already built, skipping."
 
+      - name: Checkout repository
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+
       - name: Trigger unified image rebuild
         if: steps.cache.outputs.cache-hit != 'true'
         env:
