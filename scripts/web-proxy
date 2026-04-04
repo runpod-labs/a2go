@@ -509,7 +509,8 @@ const server = http.createServer(async (req, res) => {
       }
       const probeDef = SERVICE_PORTS[role];
       if (!probeDef) continue;
-      const probePort = info.port || probeDef.port;
+      // In unified mode, media roles use the media server port regardless of profile port
+      const probePort = unifiedMedia && probeDef.port === mediaPort ? mediaPort : (info.port || probeDef.port);
       probes[role] = probe(`http://localhost:${probePort}${probeDef.path}`);
     }
 
