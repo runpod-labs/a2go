@@ -410,45 +410,16 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
             # Write audio engine metadata so CLI tools can auto-detect the API
             echo "{\"engine\":\"$engine_id\",\"type\":\"$ENGINE_TYPE\",\"port\":$port,\"model\":\"$MODEL_SERVED_AS\"}" > /tmp/oc_audio_engine
 
-            if [ "$ENGINE_TYPE" = "python-venv" ]; then
-                # ── Python-based audio → accumulate for unified media server ──
-                echo "Registering Audio plugin for unified media server..."
-                echo "  Engine: $engine_id"
-                echo "  Model dir: $MODEL_DOWNLOAD_DIR"
-                MEDIA_PLUGINS_JSON="$(echo "$MEDIA_PLUGINS_JSON" | python3 -c "
+            # ── Audio → accumulate for unified media server ──
+            echo "Registering Audio plugin for unified media server..."
+            echo "  Engine: $engine_id"
+            echo "  Model dir: $MODEL_DOWNLOAD_DIR"
+            MEDIA_PLUGINS_JSON="$(echo "$MEDIA_PLUGINS_JSON" | python3 -c "
 import sys, json
 plugins = json.load(sys.stdin)
 plugins.append({'engine': '$engine_id', 'role': 'audio', 'model_dir': '$MODEL_DOWNLOAD_DIR'})
 json.dump(plugins, sys.stdout)
 ")"
-            else
-                # ── Native audio TTS/STT via llama-liquid-audio-server ──
-                FIRST_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f1)"
-                SECOND_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f2)"
-                THIRD_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f3)"
-                FOURTH_FILE="$(echo "$MODEL_FILES" | cut -d'|' -f4)"
-
-                # Use audio-specific binary from engine if available
-                AUDIO_BINARY="${ENGINE_BINARY_AUDIO:-$ENGINE_BINARY}"
-
-                echo "Starting Audio server (TTS/STT)..."
-                echo "  Binary: $AUDIO_BINARY"
-                echo "  Model: $MODEL_DOWNLOAD_DIR/$FIRST_FILE"
-                echo "  Port: $port (GPU accelerated)"
-
-                env LD_LIBRARY_PATH="$ENGINE_LIB_PATH" \
-                    "$AUDIO_BINARY" \
-                    -m "$MODEL_DOWNLOAD_DIR/$FIRST_FILE" \
-                    -mm "$MODEL_DOWNLOAD_DIR/$SECOND_FILE" \
-                    -mv "$MODEL_DOWNLOAD_DIR/$THIRD_FILE" \
-                    --tts-speaker-file "$MODEL_DOWNLOAD_DIR/$FOURTH_FILE" \
-                    -ngl 99 \
-                    --host 0.0.0.0 \
-                    --port "$port" \
-                    2>&1 &
-
-                echo "$!" > /tmp/oc_audio_pid
-            fi
             ;;
 
         image)
