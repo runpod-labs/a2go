@@ -216,7 +216,7 @@ LLM_CONTEXT=""
 
 # Accumulate media plugins for the unified a2go-media-server
 MEDIA_PLUGINS_JSON="[]"
-MEDIA_SERVER_PORT=8001
+MEDIA_SERVER_PORT="${A2GO_WEB_PROXY_PORT:-8080}"
 
 # ============================================================
 # Download models and start services from resolved profile
@@ -581,15 +581,12 @@ MEDIA_PID=""
 MEDIA_PLUGIN_COUNT="$(echo "$MEDIA_PLUGINS_JSON" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")"
 if [ "$MEDIA_PLUGIN_COUNT" -gt 0 ]; then
     echo ""
-    echo "Starting unified media server with $MEDIA_PLUGIN_COUNT plugin(s) on port $MEDIA_SERVER_PORT..."
+    echo "Starting unified server with $MEDIA_PLUGIN_COUNT plugin(s) on port $MEDIA_SERVER_PORT..."
 
     # Write media server config
     echo "{\"plugins\": $MEDIA_PLUGINS_JSON}" > /tmp/a2go_media_config.json
 
-    # Write metadata for web-proxy detection
-    echo "{\"unified\":true,\"port\":$MEDIA_SERVER_PORT,\"plugins\":$MEDIA_PLUGIN_COUNT}" > /tmp/a2go_media_engine
-
-    # Activate PyTorch venv and start the media server
+    # Activate PyTorch venv and start the unified server
     if [ -d "/opt/engines/pytorch/venv" ]; then
         source /opt/engines/pytorch/venv/bin/activate
     fi
@@ -598,6 +595,7 @@ if [ "$MEDIA_PLUGIN_COUNT" -gt 0 ]; then
     MEDIA_PYTHON="${VIRTUAL_ENV:-/opt/engines/pytorch/venv}/bin/python3"
     "$MEDIA_PYTHON" /usr/local/bin/a2go-media-server \
         --config /tmp/a2go_media_config.json --port "$MEDIA_SERVER_PORT" \
+        --web-root "/opt/a2go/web" --llm-url "http://localhost:$LLM_PORT" \
         > /tmp/media-server.log 2>&1 &
     MEDIA_PID=$!
     echo "$MEDIA_PID" > /tmp/a2go_media_pid
@@ -620,14 +618,7 @@ EMBEDDING_PID="$(cat /tmp/oc_embedding_pid 2>/dev/null || echo "")"
 RERANKING_PID="$(cat /tmp/oc_reranking_pid 2>/dev/null || echo "")"
 TTS_PID="$(cat /tmp/oc_tts_pid 2>/dev/null || echo "")"
 
-# Start web proxy if enabled
-WEB_PROXY_PID=""
-if [ "$WEB_PROXY_ENABLED" = "true" ]; then
-    echo ""
-    echo "Starting OpenClaw media web proxy..."
-    web-proxy --port "$A2GO_WEB_PROXY_PORT" --web-root "/opt/a2go/web" > /tmp/web-proxy.log 2>&1 &
-    WEB_PROXY_PID=$!
-fi
+# Web proxy functionality is now built into the unified media server
 
 # ============================================================
 # Wait for LLM health check
@@ -854,7 +845,7 @@ esac
 # ============================================================
 MEDIA_PROXY_URL=""
 if [ -n "${RUNPOD_POD_ID:-}" ]; then
-    MEDIA_PROXY_URL="https://${RUNPOD_POD_ID}-${A2GO_WEB_PROXY_PORT}.proxy.runpod.net"
+    MEDIA_PROXY_URL="https://${RUNPOD_POD_ID}-${MEDIA_SERVER_PORT}.proxy.runpod.net"
 fi
 
 # Build VRAM summary from resolved profile
@@ -875,7 +866,7 @@ echo ""
 oc_print_ready "LLM API" "$LLM_MODEL_NAME" "$LLM_CONTEXT tokens" "token" \
     "$VRAM_SUMMARY" \
     "Profile: $PROFILE_NAME ($PROFILE_ID)" \
-    "Media UI (local): http://localhost:${A2GO_WEB_PROXY_PORT}" \
+    "Media UI (local): http://localhost:${MEDIA_SERVER_PORT}" \
     "${MEDIA_PROXY_URL:+Media UI (public): ${MEDIA_PROXY_URL}}"
 
 # Print service details
@@ -915,10 +906,8 @@ if [ "$LLM_HAS_VISION" = "true" ]; then
     echo "  Vision (via LLM): Multimodal model with image understanding on port $LLM_PORT"
 fi
 
-if [ "$WEB_PROXY_ENABLED" = "true" ]; then
-    echo ""
-    echo "  Media UI: http://localhost:${A2GO_WEB_PROXY_PORT}"
-fi
+echo ""
+echo "  Media UI: http://localhost:${MEDIA_SERVER_PORT}"
 
 # ============================================================
 # Handle shutdown
@@ -932,7 +921,6 @@ cleanup() {
     [ -n "$EMBEDDING_PID" ] && kill $EMBEDDING_PID 2>/dev/null
     [ -n "$RERANKING_PID" ] && kill $RERANKING_PID 2>/dev/null
     [ -n "$TTS_PID" ] && kill $TTS_PID 2>/dev/null
-    [ -n "$WEB_PROXY_PID" ] && kill $WEB_PROXY_PID 2>/dev/null
     [ -n "$LLAMA_PID" ] && kill $LLAMA_PID 2>/dev/null
     exit 0
 }
