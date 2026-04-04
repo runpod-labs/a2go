@@ -254,7 +254,6 @@ while IFS='|' read -r idx role model_id engine_id port model_json engine_json ov
     ENGINE_VENV="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('venvPath',''))")"
     ENGINE_TYPE="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('type',''))")"
     ENGINE_BINARY_TTS="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('binaryTts',''))")"
-    ENGINE_BINARY_AUDIO="$(echo "$engine_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('binaryAudio',''))")"
 
     # Get overrides
     CONTEXT_LENGTH="$(echo "$overrides_json" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('contextLength',''))")"
@@ -615,7 +614,6 @@ LLM_MODEL_NAME="$(cat /tmp/oc_llm_model_name 2>/dev/null || echo "glm-4.7-flash"
 LLM_CONTEXT="$(cat /tmp/oc_llm_context 2>/dev/null || echo "150000")"
 LLM_PROVIDER_NAME="$(cat /tmp/oc_llm_provider 2>/dev/null || echo "local-llamacpp")"
 LLM_HAS_VISION="$(cat /tmp/oc_llm_vision 2>/dev/null || echo "false")"
-AUDIO_PID="$(cat /tmp/oc_audio_pid 2>/dev/null || echo "")"
 IMAGE_PID="$(cat /tmp/oc_image_pid 2>/dev/null || echo "")"
 VISION_PID="$(cat /tmp/oc_vision_pid 2>/dev/null || echo "")"
 EMBEDDING_PID="$(cat /tmp/oc_embedding_pid 2>/dev/null || echo "")"
@@ -886,12 +884,6 @@ if [ -n "$MEDIA_PID" ]; then
     echo "  Media Server (unified): http://localhost:${MEDIA_SERVER_PORT}"
     echo "    - a2go tool image-generate --prompt \"A robot\" --output /tmp/robot.png"
     echo "    - a2go tool text-to-speech \"Hello world\" --output /tmp/hello.wav"
-fi
-
-if [ -n "$AUDIO_PID" ]; then
-    echo ""
-    echo "  Audio Server (native, internal): http://localhost:8001"
-    echo "    - a2go tool text-to-speech \"Hello world\" --output /tmp/hello.wav"
     echo "    - a2go tool speech-to-text /path/to/audio.wav"
 fi
 
@@ -936,7 +928,6 @@ cleanup() {
     [ -n "$GATEWAY_PID" ] && kill $GATEWAY_PID 2>/dev/null
     [ -n "$MEDIA_PID" ] && kill $MEDIA_PID 2>/dev/null
     [ -n "$IMAGE_PID" ] && kill $IMAGE_PID 2>/dev/null
-    [ -n "$AUDIO_PID" ] && kill $AUDIO_PID 2>/dev/null
     [ -n "$VISION_PID" ] && kill $VISION_PID 2>/dev/null
     [ -n "$EMBEDDING_PID" ] && kill $EMBEDDING_PID 2>/dev/null
     [ -n "$RERANKING_PID" ] && kill $RERANKING_PID 2>/dev/null
