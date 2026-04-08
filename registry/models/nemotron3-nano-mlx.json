@@ -4,7 +4,6 @@
   "family": "nemotron3",
   "catalogKey": "nemotron3-nano",
   "name": "Nemotron-3-Nano-30B MLX 4-bit",
-  "size": "30B",
   "type": "llm",
   "engine": "mlx-lm",
   "bits": 4,
