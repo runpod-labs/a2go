@@ -131,19 +131,30 @@ def build_app(config: dict, port: int, llm_url: str, web_root: str) -> FastAPI:
         return Response(content=r.content, media_type="audio/wav")
 
     # ── CLI adapter: STT ──
+    # Accepts both multipart file uploads (OpenAI convention: curl -F file=@audio.wav)
+    # and JSON with base64-encoded audio ({"audioBase64": "...", "format": "wav"}).
     @app.post("/api/audio/stt")
     async def cli_stt(request: Request):
-        data = await request.json()
-        raw = data.get("audioBase64") or data.get("audio") or ""
-        fmt = data.get("format", "wav")
-        if not raw:
-            return JSONResponse(status_code=400, content={"error": "audioBase64 required"})
+        content_type = request.headers.get("content-type", "")
 
-        # Strip data URI prefix if present
-        if raw.startswith("data:"):
-            _, raw = raw.split(",", 1)
-
-        audio_bytes = base64.b64decode(raw)
+        if "multipart/form-data" in content_type:
+            form = await request.form()
+            upload = form.get("file")
+            if not upload:
+                return JSONResponse(status_code=400, content={"error": "file field required"})
+            audio_bytes = await upload.read()
+            filename = getattr(upload, "filename", "audio.wav")
+            fmt = filename.rsplit(".", 1)[-1] if "." in filename else "wav"
+        else:
+            data = await request.json()
+            raw = data.get("audioBase64") or data.get("audio") or ""
+            fmt = data.get("format", "wav")
+            if not raw:
+                return JSONResponse(status_code=400, content={"error": "audioBase64 or file upload required"})
+            # Strip data URI prefix if present
+            if raw.startswith("data:"):
+                _, raw = raw.split(",", 1)
+            audio_bytes = base64.b64decode(raw)
 
         # Forward as multipart to /v1/audio/transcriptions on this server
         async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=300) as c:
