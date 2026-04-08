@@ -377,12 +377,13 @@ func execRunMlx(cfg *config.Config) error {
 	}
 
 	// Start Image (optional)
+	var imagePid int
 	if cfg.Image != nil && cfg.Image.Model != "" {
-		pid, err := services.StartImage(config.ModelSlug(cfg.Image.Model))
+		imagePid, err = services.StartImage(config.ModelSlug(cfg.Image.Model))
 		if err != nil {
 			return err
 		}
-		pids = append(pids, pid)
+		pids = append(pids, imagePid)
 	}
 
 	// Wait for LLM health
@@ -396,6 +397,18 @@ func execRunMlx(cfg *config.Config) error {
 		return fmt.Errorf("LLM server failed to start")
 	}
 	ui.Ok("LLM server ready")
+
+	// Wait for Image health (if started)
+	if imagePid > 0 {
+		ui.Info("waiting for image server...")
+		imgAlive := func() bool { return process.IsAlive(imagePid) }
+		if err := health.WaitForReady(fmt.Sprintf("http://localhost:%d/health", services.Image.Port), imgAlive, 120*time.Second); err != nil {
+			ui.Fail(fmt.Sprintf("image server: %v", err))
+			fmt.Printf("      Check logs: %s/image.log\n", paths.Logs())
+		} else {
+			ui.Ok("image server ready")
+		}
+	}
 
 	// Start web proxy
 	wpPid, err := services.StartWebProxy(paths.Audio(), audioModel)
