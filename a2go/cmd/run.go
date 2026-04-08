@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/runpod-labs/a2go/a2go/internal/catalog"
 	"github.com/runpod-labs/a2go/a2go/internal/config"
 	"github.com/runpod-labs/a2go/a2go/internal/docker"
 	"github.com/runpod-labs/a2go/a2go/internal/health"
@@ -55,7 +56,7 @@ func init() {
 	runCmd.Flags().StringVar(&flagAgent, "agent", "", "Agent framework (required): openclaw, hermes")
 	runCmd.MarkFlagRequired("agent")
 	runCmd.Flags().StringVar(&flagLLM, "llm", "", "LLM model (e.g. unsloth/GLM-4.7-Flash-GGUF:4bit)")
-	runCmd.Flags().StringVar(&flagImage, "image", "", "Image model (e.g. disty0/flux2-klein-sdnq)")
+	runCmd.Flags().StringVar(&flagImage, "image", "", "Image model (e.g. Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic)")
 	runCmd.Flags().StringVar(&flagAudio, "audio", "", "Audio model (e.g. LiquidAI/LFM2.5-Audio-1.5B-GGUF:4bit, or 'off' to disable)")
 	runCmd.Flags().StringVar(&flagToken, "token", "changeme", "Auth token for gateway")
 	runCmd.Flags().StringVar(&flagConfig, "config", "", "JSON config (same format as Docker A2GO_CONFIG)")
@@ -130,6 +131,11 @@ func execRunDocker(cfg *config.Config) error {
 	// Check Docker image exists
 	if !docker.ImageExists(dockerImage) {
 		return fmt.Errorf("docker image not found: %s. run: a2go doctor", dockerImage)
+	}
+
+	// Validate model names against catalog (fast-fail instead of 600s timeout)
+	if err := validateModels(cfg); err != nil {
+		return err
 	}
 
 	// Check no container already running
@@ -251,6 +257,54 @@ func execRunDocker(cfg *config.Config) error {
 	fmt.Println("  a2go status    check services")
 	fmt.Println("  a2go stop      stop all")
 	fmt.Println()
+	return nil
+}
+
+// validateModels checks that all configured models exist in the catalog.
+// This lets us fast-fail before starting a Docker container instead of waiting
+// through a 600s health-check timeout for an invalid model.
+func validateModels(cfg *config.Config) error {
+	data, err := catalog.Fetch(catalogURL, 10*time.Second)
+	if err != nil {
+		// Can't fetch catalog — skip validation rather than blocking
+		return nil
+	}
+	var cat struct {
+		Models []struct {
+			Repo string `json:"repo"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(data, &cat); err != nil {
+		return nil
+	}
+	repos := make(map[string]bool, len(cat.Models))
+	for _, m := range cat.Models {
+		repos[strings.ToLower(m.Repo)] = true
+	}
+
+	check := func(label, model string) error {
+		slug := config.ModelSlug(model) // strip :Nbit suffix
+		if repos[strings.ToLower(slug)] {
+			return nil
+		}
+		return fmt.Errorf("unknown %s model: %s\n  Run 'a2go models --type %s' to see available models", label, model, label)
+	}
+
+	if cfg.LLM != nil {
+		if err := check("llm", cfg.LLM.Model); err != nil {
+			return err
+		}
+	}
+	if cfg.Image != nil && cfg.Image.Model != "" {
+		if err := check("image", cfg.Image.Model); err != nil {
+			return err
+		}
+	}
+	if cfg.Audio != nil && cfg.Audio.Model != "" {
+		if err := check("audio", cfg.Audio.Model); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -377,12 +431,13 @@ func execRunMlx(cfg *config.Config) error {
 	}
 
 	// Start Image (optional)
+	var imagePid int
 	if cfg.Image != nil && cfg.Image.Model != "" {
-		pid, err := services.StartImage(config.ModelSlug(cfg.Image.Model))
+		imagePid, err = services.StartImage(config.ModelSlug(cfg.Image.Model))
 		if err != nil {
 			return err
 		}
-		pids = append(pids, pid)
+		pids = append(pids, imagePid)
 	}
 
 	// Wait for LLM health
@@ -396,6 +451,19 @@ func execRunMlx(cfg *config.Config) error {
 		return fmt.Errorf("LLM server failed to start")
 	}
 	ui.Ok("LLM server ready")
+
+	// Wait for Image health (if started)
+	if imagePid > 0 {
+		ui.Info("waiting for image server...")
+		imgAlive := func() bool { return process.IsAlive(imagePid) }
+		if err := health.WaitForReady(fmt.Sprintf("http://localhost:%d/health", services.Image.Port), imgAlive, 120*time.Second); err != nil {
+			ui.Fail(fmt.Sprintf("image server: %v", err))
+			fmt.Printf("      Check logs: %s/image.log\n", paths.Logs())
+			cleanup()
+			return fmt.Errorf("image server failed to start")
+		}
+		ui.Ok("image server ready")
+	}
 
 	// Start web proxy
 	wpPid, err := services.StartWebProxy(paths.Audio(), audioModel)

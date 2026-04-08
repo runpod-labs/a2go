@@ -16,6 +16,36 @@ import os
 import sys
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from pathlib import Path
+
+
+def _patch_transformers_local_path():
+    """Work around transformers >= 5.x rejecting local paths as repo IDs.
+
+    transformers 5.x validates every path_or_repo_id against HuggingFace repo ID
+    rules, even when it's a local filesystem path.  This breaks mflux's tokenizer
+    loading which passes local cache paths to from_pretrained().
+
+    The fix: wrap cached_files() so that a real local directory is turned into a
+    pathlib.Path *before* the validator sees it.  transformers already has a
+    fast-path for Path objects that skips the repo-ID check.
+    """
+    try:
+        import transformers.utils.hub as _hub
+
+        _original = _hub.cached_files
+
+        def _patched(path_or_repo_id, *a, **kw):
+            if isinstance(path_or_repo_id, str) and os.path.isdir(path_or_repo_id):
+                path_or_repo_id = Path(path_or_repo_id)
+            return _original(path_or_repo_id, *a, **kw)
+
+        _hub.cached_files = _patched
+    except Exception:
+        pass  # older transformers — patch not needed
+
+
+_patch_transformers_local_path()
 
 # Global model reference
 flux = None
