@@ -405,9 +405,10 @@ func execRunMlx(cfg *config.Config) error {
 		if err := health.WaitForReady(fmt.Sprintf("http://localhost:%d/health", services.Image.Port), imgAlive, 120*time.Second); err != nil {
 			ui.Fail(fmt.Sprintf("image server: %v", err))
 			fmt.Printf("      Check logs: %s/image.log\n", paths.Logs())
-		} else {
-			ui.Ok("image server ready")
+			cleanup()
+			return fmt.Errorf("image server failed to start")
 		}
+		ui.Ok("image server ready")
 	}
 
 	// Start web proxy
