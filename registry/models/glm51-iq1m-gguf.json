@@ -19,10 +19,10 @@
   "downloadDir": "/workspace/models/GLM-5.1-GGUF",
   "servedAs": "glm-5.1-iq1m",
   "vram": {
-    "model": 191000,
-    "overhead": 2000
+    "model": 194000,
+    "overhead": 1500
   },
-  "kvCacheMbPer1kTokens": 10,
+  "kvCacheMbPer1kTokens": 46,
   "defaults": {
     "contextLength": 202752,
     "port": 8000
@@ -60,7 +60,10 @@
     "-fa",
     "on"
   ],
-  "tps": {},
+  "tps": {
+    "3x-a100-sxm-80gb": 22
+  },
+  "verifiedOn": ["3x-a100-sxm-80gb"],
   "default": false,
   "status": "experimental"
 }
