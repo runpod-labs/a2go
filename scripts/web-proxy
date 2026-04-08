@@ -83,7 +83,12 @@ function getConfigPayload() {
   };
 
   if (!resolvedProfile) {
-    base.services = {};
+    // Mac native mode: no resolved profile, build minimal service map from known ports
+    base.services = {
+      llm: { configured: true, port: 8000 },
+      audio: { configured: true, port: 8001 },
+      image: { configured: true, port: 8002 },
+    };
     return base;
   }
 
