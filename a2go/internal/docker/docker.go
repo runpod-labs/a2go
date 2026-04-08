@@ -1,9 +1,11 @@
 package docker
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -54,15 +56,72 @@ func ImageExists(image string) bool {
 }
 
 // PullImage pulls a Docker image, streaming progress to stdout.
-// Returns a descriptive error including stderr output for diagnosis.
+// If the pull fails due to a credential store error (common on Windows via SSH
+// where Docker Desktop's credsStore requires a desktop session), it temporarily
+// removes the credsStore setting, retries the pull, then restores the config.
 func PullImage(image string) error {
 	cmd := exec.Command("docker", "pull", image)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
+		// Check if this is a credential store error — retry without credsStore
+		errMsg := err.Error()
+		if isCredStoreError(errMsg) || isCredStoreError(captureStderr("docker", "pull", image)) {
+			if retryErr := pullWithoutCredStore(image); retryErr == nil {
+				return nil
+			}
+		}
 		return fmt.Errorf("docker pull %s failed: %w", image, err)
 	}
 	return nil
+}
+
+func isCredStoreError(output string) bool {
+	return strings.Contains(output, "error getting credentials") ||
+		strings.Contains(output, "logon session does not exist")
+}
+
+func captureStderr(name string, args ...string) string {
+	out, _ := exec.Command(name, args...).CombinedOutput()
+	return string(out)
+}
+
+// pullWithoutCredStore temporarily removes credsStore from Docker config,
+// pulls the image, then restores the original config.
+func pullWithoutCredStore(image string) error {
+	home, _ := os.UserHomeDir()
+	configPath := filepath.Join(home, ".docker", "config.json")
+
+	original, err := os.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+
+	// Parse, remove credsStore, write back
+	var cfg map[string]json.RawMessage
+	if err := json.Unmarshal(original, &cfg); err != nil {
+		return err
+	}
+	if _, ok := cfg["credsStore"]; !ok {
+		return fmt.Errorf("no credsStore to remove")
+	}
+	delete(cfg, "credsStore")
+	modified, err := json.MarshalIndent(cfg, "", "\t")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(configPath, modified, 0644); err != nil {
+		return err
+	}
+
+	// Always restore original config
+	defer os.WriteFile(configPath, original, 0644)
+
+	fmt.Println("      retrying pull without credential store...")
+	cmd := exec.Command("docker", "pull", image)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // RunContainer starts a detached container and returns the container ID.
