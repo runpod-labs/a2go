@@ -61,9 +61,10 @@
     "on"
   ],
   "tps": {
-    "3x-a100-sxm-80gb": 22
+    "3x-a100-sxm-80gb": 22,
+    "3x-h100-sxm-80gb": 35
   },
-  "verifiedOn": ["3x-a100-sxm-80gb"],
+  "verifiedOn": ["3x-a100-sxm-80gb", "3x-h100-sxm-80gb"],
   "default": false,
   "status": "experimental"
 }
