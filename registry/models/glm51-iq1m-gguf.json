@@ -3,7 +3,7 @@
   "group": "glm51-1bit",
   "family": "glm51",
   "catalogKey": "glm51",
-  "name": "GLM-5.1-754B IQ1_M (1-bit, 191GB)",
+  "name": "GLM-5.1 754B IQ1_M (1-bit, 191GB)",
   "type": "llm",
   "engine": "a2go-llamacpp",
   "bits": 1,

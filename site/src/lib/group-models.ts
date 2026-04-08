@@ -384,7 +384,7 @@ export function buildFamilyEntries(allEntries: CatalogEntry[]): FamilyEntry[] {
     } else {
       const rawName = entries[0].displayName
       const size = extractParamSize(rawName)
-      if (size && entries[0].type !== 'llm') {
+      if (size) {
         displayName = rawName.replace(/[\s-]+\d+\.?\d*b\b/i, '').trim()
         sizeLabels = [size]
       } else {
