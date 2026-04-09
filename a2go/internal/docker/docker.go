@@ -86,8 +86,9 @@ func captureStderr(name string, args ...string) string {
 	return string(out)
 }
 
-// pullWithoutCredStore temporarily removes credsStore from Docker config,
-// pulls the image, then restores the original config.
+// pullWithoutCredStore creates a temporary Docker config directory without
+// the credsStore setting and uses DOCKER_CONFIG to point Docker at it for
+// just this one pull. The user's actual ~/.docker/config.json is never modified.
 func pullWithoutCredStore(image string) error {
 	home, _ := os.UserHomeDir()
 	configPath := filepath.Join(home, ".docker", "config.json")
@@ -97,7 +98,8 @@ func pullWithoutCredStore(image string) error {
 		return err
 	}
 
-	// Parse, remove credsStore, write back
+	// Parse and remove credsStore + currentContext (context metadata lives
+	// in the real config dir and Docker fails if it can't find it)
 	var cfg map[string]json.RawMessage
 	if err := json.Unmarshal(original, &cfg); err != nil {
 		return err
@@ -106,19 +108,26 @@ func pullWithoutCredStore(image string) error {
 		return fmt.Errorf("no credsStore to remove")
 	}
 	delete(cfg, "credsStore")
+	delete(cfg, "currentContext")
 	modified, err := json.MarshalIndent(cfg, "", "\t")
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(configPath, modified, 0644); err != nil {
+
+	// Write to a temp directory instead of modifying the user's config
+	tmpDir, err := os.MkdirTemp("", "a2go-docker-pull-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	if err := os.WriteFile(filepath.Join(tmpDir, "config.json"), modified, 0644); err != nil {
 		return err
 	}
 
-	// Always restore original config
-	defer os.WriteFile(configPath, original, 0644)
-
 	fmt.Println("      retrying pull without credential store...")
 	cmd := exec.Command("docker", "pull", image)
+	cmd.Env = append(os.Environ(), "DOCKER_CONFIG="+tmpDir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
