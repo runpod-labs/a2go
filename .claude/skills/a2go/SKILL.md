@@ -52,10 +52,12 @@ docker run -d --gpus all --name a2go \
 
 ## Ports
 
-- **8642** — Hermes Gateway (when using `--agent hermes`)
-- **18789** — OpenClaw Gateway (when using `--agent openclaw`)
+- **8000** — LLM API (direct model access, use for testing chat completions)
 - **8080** — Web proxy / media server (TTS, STT, image gen, web UI)
-- **8000** — LLM API (direct model access + llama.cpp chat UI)
+- **8642** — Hermes Gateway (platform pairing for Telegram/Discord/WhatsApp, not for direct API calls)
+- **18789** — OpenClaw Gateway (platform pairing, not for direct API calls)
+
+For direct LLM testing use port **8000** (`/v1/chat/completions`). For TTS/STT use port **8080** (`/v1/audio/speech`, `/v1/audio/transcriptions`). The gateway ports (8642/18789) are for messaging platform integrations.
 
 ## Models
 
