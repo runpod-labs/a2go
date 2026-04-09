@@ -79,7 +79,7 @@ func resolveConfig() (*config.Config, error) {
 		if flagAudio == "off" {
 			f := false
 			cfg.Audio = &config.AudioConfig{Enabled: &f}
-		} else if flagAudio != "" {
+		} else if flagAudio != "" && flagAudio != "on" {
 			cfg.Audio = &config.AudioConfig{Model: flagAudio}
 		}
 		return cfg, nil
@@ -422,8 +422,8 @@ func execRunMlx(cfg *config.Config) error {
 	}
 	pids = append(pids, llmPid)
 
-	// Start Audio (optional)
-	if cfg.AudioEnabled() && venv.PythonCanImport("mlx_audio") && !process.PortListening(services.Audio.Port) {
+	// Start Audio (optional — requires explicit model on Mac since mlx-audio needs one)
+	if cfg.AudioEnabled() && audioModel != "" && venv.PythonCanImport("mlx_audio") && !process.PortListening(services.Audio.Port) {
 		pid, err := services.StartAudio(audioModel)
 		if err == nil {
 			pids = append(pids, pid)

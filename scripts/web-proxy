@@ -497,17 +497,49 @@ const server = http.createServer(async (req, res) => {
       return sendText(res, 405, "Method not allowed");
     }
     try {
-      const body = await readJson(req);
-      const raw =
-        (typeof body.audioBase64 === "string" && body.audioBase64) ||
-        (typeof body.audio === "string" && body.audio) ||
-        "";
-      const format = typeof body.format === "string" ? body.format : "wav";
-      if (!raw) {
-        return sendJson(res, 400, { error: "audioBase64 required" });
+      const contentType = req.headers["content-type"] || "";
+      let audioBase64, format;
+
+      if (contentType.includes("multipart/form-data")) {
+        // Handle file upload (curl -F file=@audio.wav)
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const body = Buffer.concat(chunks);
+        const boundary = contentType.split("boundary=")[1];
+        if (!boundary) return sendJson(res, 400, { error: "missing boundary" });
+        // Extract file data between boundaries
+        const bodyStr = body.toString("latin1");
+        const parts = bodyStr.split("--" + boundary);
+        let fileData = null;
+        let fileName = "audio.wav";
+        for (const part of parts) {
+          if (part.includes("filename=")) {
+            const nameMatch = /filename="([^"]+)"/.exec(part);
+            if (nameMatch) fileName = nameMatch[1];
+            const dataStart = part.indexOf("\r\n\r\n") + 4;
+            const dataEnd = part.lastIndexOf("\r\n");
+            fileData = Buffer.from(part.slice(dataStart, dataEnd), "latin1");
+            break;
+          }
+        }
+        if (!fileData) return sendJson(res, 400, { error: "file field required" });
+        audioBase64 = fileData.toString("base64");
+        format = fileName.split(".").pop() || "wav";
+      } else {
+        // Handle JSON with base64-encoded audio
+        const body = await readJson(req);
+        const raw =
+          (typeof body.audioBase64 === "string" && body.audioBase64) ||
+          (typeof body.audio === "string" && body.audio) ||
+          "";
+        format = typeof body.format === "string" ? body.format : "wav";
+        if (!raw) {
+          return sendJson(res, 400, { error: "audioBase64 or file upload required" });
+        }
+        const match = /^data:[^;]+;base64,(.*)$/.exec(raw);
+        audioBase64 = match ? match[1] : raw;
       }
-      const match = /^data:[^;]+;base64,(.*)$/.exec(raw);
-      const audioBase64 = match ? match[1] : raw;
+
       const text = await handleStt(audioBase64, format);
       return sendJson(res, 200, { text });
     } catch (err) {
