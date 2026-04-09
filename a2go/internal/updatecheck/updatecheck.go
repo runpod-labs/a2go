@@ -4,7 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/runpod-labs/a2go/a2go/internal/paths"
@@ -15,8 +19,24 @@ import (
 const checkInterval = 24 * time.Hour
 
 type checkState struct {
-	LastCheck     int64  `json:"lastCheck"`
+	LastCheck      int64       `json:"lastCheck"`
+	CLI            *cliState   `json:"cli,omitempty"`
+	Hermes         *hermState  `json:"hermes,omitempty"`
+	PythonPackages []pipState  `json:"pythonPackages,omitempty"`
+}
+
+type cliState struct {
 	LatestVersion string `json:"latestVersion"`
+}
+
+type hermState struct {
+	CommitsBehind int `json:"commitsBehind"`
+}
+
+type pipState struct {
+	Name      string `json:"name"`
+	Installed string `json:"installed"`
+	Latest    string `json:"latest"`
 }
 
 func statePath() string { return filepath.Join(paths.Cache(), "update-check.json") }
@@ -39,9 +59,9 @@ func saveState(s *checkState) {
 	os.WriteFile(statePath(), data, 0644)
 }
 
-// Run performs a non-blocking update check and prints a hint if updates are available.
-// It caches the result for 24 hours so it doesn't hit GitHub on every run.
-// Set A2GO_NO_UPDATE_CHECK=1 or pass --no-update-check to skip.
+// Run performs a non-blocking update check and prints hints if updates are available.
+// Checks a2go CLI, hermes agent, and Python packages (mlx-lm, mlx-audio, mflux).
+// Results are cached for 24 hours. Set A2GO_NO_UPDATE_CHECK=1 to skip.
 func Run(currentVersion string) {
 	if os.Getenv("A2GO_NO_UPDATE_CHECK") == "1" {
 		return
@@ -51,45 +71,148 @@ func Run(currentVersion string) {
 
 	// Use cached result if fresh
 	if state != nil && time.Since(time.Unix(state.LastCheck, 0)) < checkInterval {
-		if state.LatestVersion != "" && selfupdate.IsNewer(currentVersion, state.LatestVersion) {
-			printHint(currentVersion, state.LatestVersion)
-		}
+		printHints(currentVersion, state)
 		return
 	}
 
-	// Fetch in the foreground but with a short timeout — this check should be fast.
-	// We do a simple goroutine with a channel to avoid blocking startup for more than 2s.
-	type result struct {
-		version string
-		err     error
-	}
-	ch := make(chan result, 1)
+	// Run all checks in parallel with a combined 3s timeout
+	newState := &checkState{LastCheck: time.Now().Unix()}
+	done := make(chan struct{})
+
 	go func() {
-		v, err := selfupdate.FetchLatestVersion()
-		ch <- result{v, err}
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+
+		wg.Add(3)
+
+		// CLI version check
+		go func() {
+			defer wg.Done()
+			if v, err := selfupdate.FetchLatestVersion(); err == nil {
+				mu.Lock()
+				newState.CLI = &cliState{LatestVersion: v}
+				mu.Unlock()
+			}
+		}()
+
+		// Hermes check
+		go func() {
+			defer wg.Done()
+			if behind := checkHermesBehind(); behind > 0 {
+				mu.Lock()
+				newState.Hermes = &hermState{CommitsBehind: behind}
+				mu.Unlock()
+			}
+		}()
+
+		// Python packages check
+		go func() {
+			defer wg.Done()
+			if pkgs := checkPipOutdated(); len(pkgs) > 0 {
+				mu.Lock()
+				newState.PythonPackages = pkgs
+				mu.Unlock()
+			}
+		}()
+
+		wg.Wait()
+		close(done)
 	}()
 
 	select {
-	case r := <-ch:
-		if r.err != nil {
-			// Network issue — save state so we don't retry for 24h
-			saveState(&checkState{LastCheck: time.Now().Unix()})
-			return
-		}
-		saveState(&checkState{
-			LastCheck:     time.Now().Unix(),
-			LatestVersion: r.version,
-		})
-		if selfupdate.IsNewer(currentVersion, r.version) {
-			printHint(currentVersion, r.version)
-		}
-	case <-time.After(2 * time.Second):
+	case <-done:
+		saveState(newState)
+		printHints(currentVersion, newState)
+	case <-time.After(3 * time.Second):
 		// Don't block startup — skip this time
 		return
 	}
 }
 
-func printHint(current, latest string) {
+// checkHermesBehind returns the number of commits hermes is behind origin/main.
+// Returns 0 if hermes is not a git install or if the check fails.
+func checkHermesBehind() int {
+	hermesRepo := filepath.Join(os.Getenv("HOME"), ".hermes", "hermes-agent")
+	if _, err := os.Stat(filepath.Join(hermesRepo, ".git")); err != nil {
+		return 0
+	}
+
+	// Fetch latest (quiet, ignore errors)
+	fetch := exec.Command("git", "-C", hermesRepo, "fetch", "origin", "main", "--quiet")
+	if err := fetch.Run(); err != nil {
+		return 0
+	}
+
+	out, err := exec.Command("git", "-C", hermesRepo, "rev-list", "HEAD..origin/main", "--count").Output()
+	if err != nil {
+		return 0
+	}
+
+	count, _ := strconv.Atoi(strings.TrimSpace(string(out)))
+	return count
+}
+
+// checkPipOutdated checks if key Python packages have newer versions available.
+var trackedPackages = []string{"mlx-lm", "mlx-audio", "mflux"}
+
+func checkPipOutdated() []pipState {
+	pip := paths.VenvPip()
+	if _, err := os.Stat(pip); err != nil {
+		return nil
+	}
+
+	out, err := exec.Command(pip, "list", "--outdated", "--format=json").Output()
+	if err != nil {
+		return nil
+	}
+
+	var allPkgs []struct {
+		Name      string `json:"name"`
+		Version   string `json:"version"`
+		Latest    string `json:"latest_version"`
+	}
+	if err := json.Unmarshal(out, &allPkgs); err != nil {
+		return nil
+	}
+
+	tracked := make(map[string]bool, len(trackedPackages))
+	for _, p := range trackedPackages {
+		tracked[strings.ToLower(p)] = true
+	}
+
+	var outdated []pipState
+	for _, p := range allPkgs {
+		if tracked[strings.ToLower(p.Name)] {
+			outdated = append(outdated, pipState{
+				Name:      p.Name,
+				Installed: p.Version,
+				Latest:    p.Latest,
+			})
+		}
+	}
+	return outdated
+}
+
+func printHints(currentVersion string, state *checkState) {
+	var lines []string
+
+	if state.CLI != nil && state.CLI.LatestVersion != "" && selfupdate.IsNewer(currentVersion, state.CLI.LatestVersion) {
+		lines = append(lines, fmt.Sprintf("    a2go:    %s -> %s    (a2go update)", currentVersion, state.CLI.LatestVersion))
+	}
+	if state.Hermes != nil && state.Hermes.CommitsBehind > 0 {
+		lines = append(lines, fmt.Sprintf("    hermes:  %d commits behind    (a2go doctor)", state.Hermes.CommitsBehind))
+	}
+	for _, p := range state.PythonPackages {
+		lines = append(lines, fmt.Sprintf("    %s:  %s -> %s    (a2go doctor)", p.Name, p.Installed, p.Latest))
+	}
+
+	if len(lines) == 0 {
+		return
+	}
+
 	fmt.Println()
-	ui.Info(fmt.Sprintf("Update available: %s -> %s    (a2go update)", current, latest))
+	ui.Info("Updates available:")
+	for _, line := range lines {
+		fmt.Println(line)
+	}
 }

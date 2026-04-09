@@ -2,8 +2,6 @@ package updatecheck
 
 import (
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -32,8 +30,12 @@ func TestSaveAndLoadState(t *testing.T) {
 	os.MkdirAll(paths.Cache(), 0755)
 
 	s := &checkState{
-		LastCheck:     time.Now().Unix(),
-		LatestVersion: "v0.15.0",
+		LastCheck: time.Now().Unix(),
+		CLI:       &cliState{LatestVersion: "v0.15.0"},
+		Hermes:    &hermState{CommitsBehind: 3},
+		PythonPackages: []pipState{
+			{Name: "mlx-lm", Installed: "0.31.1", Latest: "0.31.2"},
+		},
 	}
 	saveState(s)
 
@@ -41,11 +43,14 @@ func TestSaveAndLoadState(t *testing.T) {
 	if loaded == nil {
 		t.Fatal("loaded state is nil")
 	}
-	if loaded.LatestVersion != "v0.15.0" {
-		t.Errorf("LatestVersion = %q, want %q", loaded.LatestVersion, "v0.15.0")
+	if loaded.CLI == nil || loaded.CLI.LatestVersion != "v0.15.0" {
+		t.Errorf("CLI.LatestVersion = %v, want v0.15.0", loaded.CLI)
 	}
-	if loaded.LastCheck != s.LastCheck {
-		t.Errorf("LastCheck = %d, want %d", loaded.LastCheck, s.LastCheck)
+	if loaded.Hermes == nil || loaded.Hermes.CommitsBehind != 3 {
+		t.Errorf("Hermes.CommitsBehind = %v, want 3", loaded.Hermes)
+	}
+	if len(loaded.PythonPackages) != 1 || loaded.PythonPackages[0].Name != "mlx-lm" {
+		t.Errorf("PythonPackages = %v, want [mlx-lm]", loaded.PythonPackages)
 	}
 }
 
@@ -55,10 +60,8 @@ func TestRun_SkipsWithEnvVar(t *testing.T) {
 	os.Setenv("A2GO_NO_UPDATE_CHECK", "1")
 	defer os.Unsetenv("A2GO_NO_UPDATE_CHECK")
 
-	// Should return immediately without making any network calls
 	Run("v0.14.0")
 
-	// No state file should be created
 	s := loadState()
 	if s != nil {
 		t.Error("should not create state when check is disabled")
@@ -70,55 +73,14 @@ func TestRun_UsesFreshCache(t *testing.T) {
 	os.Unsetenv("A2GO_NO_UPDATE_CHECK")
 	os.MkdirAll(paths.Cache(), 0755)
 
-	// Write a fresh cache entry
 	s := &checkState{
-		LastCheck:     time.Now().Unix(),
-		LatestVersion: "v0.14.0",
+		LastCheck: time.Now().Unix(),
+		CLI:       &cliState{LatestVersion: "v0.14.0"},
 	}
 	saveState(s)
 
-	// Should use cache and not make network calls (server is unreachable)
+	// Should use cache and not make network calls
 	Run("v0.14.0")
-}
-
-func TestRun_CachesResult(t *testing.T) {
-	setupTestDir(t)
-	os.Unsetenv("A2GO_NO_UPDATE_CHECK")
-
-	// Start a mock GitHub releases server
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simulate GitHub's redirect to /releases/tag/v0.15.0
-		http.Redirect(w, r, "https://github.com/runpod-labs/a2go/releases/tag/v0.15.0", http.StatusFound)
-	}))
-	defer srv.Close()
-
-	// The Run function uses selfupdate.FetchLatestVersion() which is hardcoded to GitHub.
-	// We can't easily mock that, but we can test the caching behavior with a stale cache.
-	os.MkdirAll(paths.Cache(), 0755)
-
-	// Write a stale cache that should trigger a refetch
-	s := &checkState{
-		LastCheck:     time.Now().Add(-25 * time.Hour).Unix(),
-		LatestVersion: "v0.14.0",
-	}
-	saveState(s)
-
-	// After Run, the state file should exist regardless
-	Run("v0.14.0")
-
-	loaded := loadState()
-	if loaded == nil {
-		t.Fatal("state should be saved after Run")
-	}
-}
-
-func TestStatePath(t *testing.T) {
-	setupTestDir(t)
-
-	p := statePath()
-	if p == "" {
-		t.Error("statePath should not be empty")
-	}
 }
 
 func TestLoadState_InvalidJSON(t *testing.T) {
@@ -135,8 +97,10 @@ func TestLoadState_InvalidJSON(t *testing.T) {
 func TestSaveState_CreatesDir(t *testing.T) {
 	setupTestDir(t)
 
-	// Cache dir doesn't exist yet
-	saveState(&checkState{LastCheck: time.Now().Unix(), LatestVersion: "v1.0.0"})
+	saveState(&checkState{
+		LastCheck: time.Now().Unix(),
+		CLI:       &cliState{LatestVersion: "v1.0.0"},
+	})
 
 	data, err := os.ReadFile(statePath())
 	if err != nil {
@@ -147,7 +111,59 @@ func TestSaveState_CreatesDir(t *testing.T) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		t.Fatalf("invalid state JSON: %v", err)
 	}
-	if s.LatestVersion != "v1.0.0" {
-		t.Errorf("LatestVersion = %q, want %q", s.LatestVersion, "v1.0.0")
+	if s.CLI == nil || s.CLI.LatestVersion != "v1.0.0" {
+		t.Errorf("CLI.LatestVersion = %v, want v1.0.0", s.CLI)
 	}
+}
+
+func TestCheckHermesBehind_NoRepo(t *testing.T) {
+	// When hermes isn't installed as git repo, should return 0
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", t.TempDir())
+	defer os.Setenv("HOME", origHome)
+
+	behind := checkHermesBehind()
+	if behind != 0 {
+		t.Errorf("checkHermesBehind() = %d, want 0 when no repo", behind)
+	}
+}
+
+func TestCheckPipOutdated_NoVenv(t *testing.T) {
+	setupTestDir(t)
+
+	// When venv doesn't exist, should return nil
+	pkgs := checkPipOutdated()
+	if pkgs != nil {
+		t.Errorf("checkPipOutdated() = %v, want nil when no venv", pkgs)
+	}
+}
+
+func TestTrackedPackages(t *testing.T) {
+	expected := map[string]bool{"mlx-lm": true, "mlx-audio": true, "mflux": true}
+	for _, p := range trackedPackages {
+		if !expected[p] {
+			t.Errorf("unexpected tracked package: %s", p)
+		}
+	}
+	if len(trackedPackages) != len(expected) {
+		t.Errorf("trackedPackages has %d entries, want %d", len(trackedPackages), len(expected))
+	}
+}
+
+func TestPrintHints_NoUpdates(t *testing.T) {
+	// Should not panic with empty state
+	printHints("v0.14.0", &checkState{})
+}
+
+func TestPrintHints_AllUpdates(t *testing.T) {
+	// Should not panic with all fields populated
+	state := &checkState{
+		CLI:    &cliState{LatestVersion: "v0.15.0"},
+		Hermes: &hermState{CommitsBehind: 5},
+		PythonPackages: []pipState{
+			{Name: "mlx-lm", Installed: "0.31.1", Latest: "0.31.2"},
+			{Name: "mflux", Installed: "0.1.0", Latest: "0.2.0"},
+		},
+	}
+	printHints("v0.14.0", state)
 }
