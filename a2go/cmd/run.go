@@ -361,9 +361,6 @@ func buildDockerConfigJSON(cfg *config.Config) string {
 	if cfg.ContextLength != nil {
 		m["contextLength"] = *cfg.ContextLength
 	}
-	if cfg.MaxOutputTokens != nil {
-		m["maxOutputTokens"] = *cfg.MaxOutputTokens
-	}
 	data, _ := json.Marshal(m)
 	return string(data)
 }
