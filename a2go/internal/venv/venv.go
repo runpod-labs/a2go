@@ -11,7 +11,7 @@ import (
 	"github.com/runpod-labs/a2go/a2go/internal/ui"
 )
 
-const MinPythonMinor = 10
+const MinPythonMinor = 11
 
 func Exists() bool {
 	_, err := os.Stat(paths.VenvPython())
