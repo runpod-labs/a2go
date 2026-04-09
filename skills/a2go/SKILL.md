@@ -23,7 +23,7 @@ irm https://a2go.run/install.ps1 | iex
 
 ```bash
 a2go doctor                                              # One-time setup (checks Docker, GPU, pulls image)
-a2go start --llm bartowski/Qwen3-30B-A3B-GGUF:4bit      # Start with a model
+a2go run --agent hermes --llm unsloth/GLM-4.7-Flash-GGUF:4bit  # Start with a model
 a2go status                                              # Check running services
 a2go stop                                                # Stop all
 ```
@@ -31,12 +31,14 @@ a2go stop                                                # Stop all
 ## Commands
 
 ```bash
-a2go start --llm <repo>:<bits>bit [--image <repo>] [--audio <repo>] [--context <tokens>]
+a2go run --agent <agent> --llm <repo>:<bits>bit [--image <repo>] [--audio <repo>:<bits>bit]
 a2go doctor                                              # Prereq check + image pull
 a2go status                                              # Service health
 a2go stop                                                # Stop containers
-a2go logs                                                # Tail container logs
+docker logs -f a2go                                      # Tail container logs (Docker)
 ```
+
+Agents: `hermes` (recommended) or `openclaw`.
 
 ## Cloud / Docker (no CLI needed)
 
@@ -50,9 +52,12 @@ docker run -d --gpus all --name a2go \
 
 ## Ports
 
-- **18789** — OpenClaw (required)
-- **8080** — Image serving (required for generated images)
-- **8000** — LLM API (optional — direct model access + llama.cpp chat UI)
+- **8000** — LLM API (direct model access, use for testing chat completions)
+- **8080** — Web proxy / media server (TTS, STT, image gen, web UI)
+- **8642** — Hermes Gateway (platform pairing for Telegram/Discord/WhatsApp, not for direct API calls)
+- **18789** — OpenClaw Gateway (platform pairing, not for direct API calls)
+
+For direct LLM testing use port **8000** (`/v1/chat/completions`). For TTS/STT use port **8080** (`/v1/audio/speech`, `/v1/audio/transcriptions`). The gateway ports (8642/18789) are for messaging platform integrations.
 
 ## Models
 
@@ -68,5 +73,5 @@ Output: `type | os | vram | context | repo:bits | name` — use `repo:bits` as t
 
 ## Notes
 
-- **Mac/Apple Silicon:** `a2go start` runs natively via MLX (no Docker). Only MLX-compatible models work.
+- **Mac/Apple Silicon:** `a2go run` runs natively via MLX (no Docker). Only MLX-compatible models work.
 - **Browse models visually:** https://a2go.run
