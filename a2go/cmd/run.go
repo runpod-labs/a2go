@@ -541,7 +541,7 @@ func execRunMlx(cfg *config.Config) error {
 
 	case "hermes":
 		ui.Info("generating hermes config...")
-		if err := hermes.GenerateConfig(cfg.LLM.Model, cfg.GetContextLength(), cfg.GetMaxOutputTokens(), cfg.GetAuthToken()); err != nil {
+		if err := hermes.GenerateConfig(cfg.LLM.Model, cfg.GetContextLength(), cfg.GetAuthToken()); err != nil {
 			return fmt.Errorf("failed to generate hermes config: %w", err)
 		}
 		ui.Ok(paths.HermesState() + "/config.yaml")

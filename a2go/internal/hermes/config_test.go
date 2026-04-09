@@ -25,7 +25,7 @@ func setupTestDirs(t *testing.T) {
 func TestGenerateConfig_WritesConfigYAML(t *testing.T) {
 	setupTestDirs(t)
 
-	err := GenerateConfig("mlx-community/gemma-4-e2b-it-8bit:8bit", 131072, 32768, "mytoken")
+	err := GenerateConfig("mlx-community/gemma-4-e2b-it-8bit:8bit", 131072, "mytoken")
 	if err != nil {
 		t.Fatalf("GenerateConfig: %v", err)
 	}
@@ -49,16 +49,17 @@ func TestGenerateConfig_WritesConfigYAML(t *testing.T) {
 		t.Error("config.yaml should contain context_length: 131072")
 	}
 
-	// Should have max_tokens
-	if !strings.Contains(content, "max_tokens: 32768") {
-		t.Error("config.yaml should contain max_tokens: 32768")
+	// Should NOT have max_tokens — hermes defaults to unlimited for custom providers,
+	// the actual cap is set via --max-tokens on the mlx_lm server command
+	if strings.Contains(content, "max_tokens") {
+		t.Error("config.yaml should not contain max_tokens — hermes defaults to unlimited")
 	}
 }
 
 func TestGenerateConfig_WritesDotEnv(t *testing.T) {
 	setupTestDirs(t)
 
-	err := GenerateConfig("test/model", 32768, 8192, "mytoken")
+	err := GenerateConfig("test/model", 32768, "mytoken")
 	if err != nil {
 		t.Fatalf("GenerateConfig: %v", err)
 	}
@@ -80,7 +81,7 @@ func TestGenerateConfig_WritesDotEnv(t *testing.T) {
 func TestGenerateConfig_BlockedToken(t *testing.T) {
 	setupTestDirs(t)
 
-	err := GenerateConfig("test/model", 32768, 8192, "changeme")
+	err := GenerateConfig("test/model", 32768, "changeme")
 	if err != nil {
 		t.Fatalf("GenerateConfig: %v", err)
 	}
@@ -100,7 +101,7 @@ func TestGenerateConfig_BlockedToken(t *testing.T) {
 func TestGenerateConfig_CreatesDirectories(t *testing.T) {
 	setupTestDirs(t)
 
-	err := GenerateConfig("test/model", 32768, 8192, "token")
+	err := GenerateConfig("test/model", 32768, "token")
 	if err != nil {
 		t.Fatalf("GenerateConfig: %v", err)
 	}

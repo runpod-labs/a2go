@@ -60,7 +60,7 @@ func SyncSkills() error {
 
 // GenerateConfig writes ~/.hermes/config.yaml and ~/.hermes/.env
 // pointing at the local LLM server.
-func GenerateConfig(llmModelName string, contextWindow int, maxOutputTokens int, authToken string) error {
+func GenerateConfig(llmModelName string, contextWindow int, authToken string) error {
 	dir := paths.HermesState()
 
 	// Create required directories
@@ -91,14 +91,13 @@ func GenerateConfig(llmModelName string, contextWindow int, maxOutputTokens int,
   base_url: http://localhost:8000/v1
   api_key: %s
   context_length: %d
-  max_tokens: %d
 memory:
   memory_enabled: true
   user_profile_enabled: true
 terminal:
   backend: local
   persistent_shell: true
-`, modelID, apiKey, contextWindow, maxOutputTokens)
+`, modelID, apiKey, contextWindow)
 
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(configYAML), 0600); err != nil {
 		return fmt.Errorf("failed to write config.yaml: %w", err)
