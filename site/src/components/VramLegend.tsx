@@ -12,6 +12,7 @@ function formatVramGbOnly(mb: number): string {
 function DeviceButton({
   device,
   isSelected,
+  isDeactivated,
   disabled,
   effectiveVramMb,
   maxVramMb,
@@ -19,6 +20,7 @@ function DeviceButton({
 }: {
   device: DeviceInfo
   isSelected: boolean
+  isDeactivated: boolean
   disabled: boolean
   effectiveVramMb: number
   maxVramMb: number
@@ -33,6 +35,7 @@ function DeviceButton({
         isSelected
           ? "bg-foreground/10 text-foreground"
           : "bg-foreground/[0.03] text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground",
+        isDeactivated && !disabled && "opacity-30",
         disabled && !isSelected && "opacity-20 pointer-events-none"
       )}
     >
@@ -120,11 +123,13 @@ export default function DeviceSelector({
           <div className="flex flex-wrap gap-1">
             {nvidiaDevices.map((device) => {
               const cantFit = totalVramMb > 0 && device.vramMb * deviceCount < totalVramMb
+              const isSelected = selectedDevice?.id === device.id
               return (
                 <DeviceButton
                   key={device.id}
                   device={device}
-                  isSelected={selectedDevice?.id === device.id}
+                  isSelected={isSelected}
+                  isDeactivated={selectedDevice != null && !isSelected}
                   disabled={cantFit}
                   effectiveVramMb={device.vramMb * deviceCount}
                   maxVramMb={device.vramMb * maxCount}
@@ -143,11 +148,13 @@ export default function DeviceSelector({
           <div className="flex flex-wrap gap-1">
             {macDevices.map((device) => {
               const cantFit = totalVramMb > 0 && device.vramMb * deviceCount < totalVramMb
+              const isSelected = selectedDevice?.id === device.id
               return (
                 <DeviceButton
                   key={device.id}
                   device={device}
-                  isSelected={selectedDevice?.id === device.id}
+                  isSelected={isSelected}
+                  isDeactivated={selectedDevice != null && !isSelected}
                   disabled={cantFit}
                   effectiveVramMb={device.vramMb * deviceCount}
                   maxVramMb={device.vramMb * maxCount}
