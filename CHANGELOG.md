@@ -1,5 +1,14 @@
 # openclaw2go
 
+## 0.13.6
+
+### Patch Changes
+
+- d69ed5b: fix: update a2go skill with correct cli commands
+
+  Skill now uses `a2go run` (not `start`), includes required `--agent` flag,
+  and removes non-existent `--context` and `a2go logs` commands.
+
 ## 0.13.5
 
 ### Patch Changes
