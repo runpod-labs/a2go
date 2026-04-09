@@ -76,6 +76,32 @@ if file "$TMP" | grep -q "text"; then
     exit 1
 fi
 
+# Verify SHA256 checksum
+CHECKSUM_URL="${URL}.sha256"
+TMP_SHA="$(mktemp)"
+if curl -sSL -o "$TMP_SHA" "$CHECKSUM_URL" 2>/dev/null && [ -s "$TMP_SHA" ]; then
+    EXPECTED="$(awk '{print $1}' "$TMP_SHA")"
+    if command -v sha256sum >/dev/null 2>&1; then
+        ACTUAL="$(sha256sum "$TMP" | awk '{print $1}')"
+    elif command -v shasum >/dev/null 2>&1; then
+        ACTUAL="$(shasum -a 256 "$TMP" | awk '{print $1}')"
+    else
+        echo "WARNING: No SHA256 tool found, skipping checksum verification."
+        ACTUAL="$EXPECTED"
+    fi
+    if [ "$EXPECTED" != "$ACTUAL" ]; then
+        echo "ERROR: Checksum verification failed!"
+        echo "  Expected: $EXPECTED"
+        echo "  Got:      $ACTUAL"
+        rm -f "$TMP" "$TMP_SHA"
+        exit 1
+    fi
+    echo "  Checksum verified."
+else
+    echo "  WARNING: Checksum file not available, skipping verification."
+fi
+rm -f "$TMP_SHA"
+
 chmod +x "$TMP"
 mv "$TMP" "$INSTALL_DIR/$BINARY_NAME"
 

@@ -95,10 +95,15 @@ jobs:
             -ldflags "-s -w -X github.com/runpod-labs/a2go/a2go/cmd.Version=v0.0.0-dev.${{ needs.detect-changes.outputs.sanitized_branch }}" \
             -o "../${{ matrix.asset }}" .
 
+      - name: Generate checksum
+        run: sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+
       - uses: actions/upload-artifact@v4
         with:
           name: cli-${{ matrix.asset }}
-          path: ${{ matrix.asset }}
+          path: |
+            ${{ matrix.asset }}
+            ${{ matrix.asset }}.sha256
 
   publish-dev-release:
     needs: [detect-changes, build-cli]

@@ -100,12 +100,16 @@ jobs:
             -ldflags "-s -w -X github.com/runpod-labs/a2go/a2go/cmd.Version=v${{ needs.release.outputs.version }}" \
             -o "../${{ matrix.asset }}" .
 
+      - name: Generate checksum
+        run: sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "v${{ needs.release.outputs.version }}" \
             "${{ matrix.asset }}" \
+            "${{ matrix.asset }}.sha256" \
             --clobber
 
   build-docker:

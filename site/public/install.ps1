@@ -55,13 +55,33 @@ if (-not (Test-Path $InstallDir)) {
 $DestPath = Join-Path $InstallDir "${Binary}.exe"
 
 # Download
+$TempFile = Join-Path $env:TEMP "a2go_download.exe"
 try {
-    Invoke-WebRequest -Uri $Url -OutFile $DestPath -UseBasicParsing
+    Invoke-WebRequest -Uri $Url -OutFile $TempFile -UseBasicParsing
 } catch {
     Write-Host "Download failed: $_"
     exit 1
 }
 
+# Verify SHA256 checksum
+$ChecksumUrl = "$Url.sha256"
+try {
+    $ChecksumContent = (Invoke-WebRequest -Uri $ChecksumUrl -UseBasicParsing).Content
+    $Expected = ($ChecksumContent -split '\s')[0].Trim().ToLower()
+    $Actual = (Get-FileHash -Path $TempFile -Algorithm SHA256).Hash.ToLower()
+    if ($Expected -ne $Actual) {
+        Write-Host "ERROR: Checksum verification failed!"
+        Write-Host "  Expected: $Expected"
+        Write-Host "  Got:      $Actual"
+        Remove-Item -Force $TempFile
+        exit 1
+    }
+    Write-Host "  Checksum verified."
+} catch {
+    Write-Host "  WARNING: Checksum file not available, skipping verification."
+}
+
+Move-Item -Force $TempFile $DestPath
 Write-Host "Installed to $DestPath"
 
 # Add to PATH if not already there
