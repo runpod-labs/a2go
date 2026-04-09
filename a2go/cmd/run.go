@@ -224,12 +224,17 @@ func execRunDocker(cfg *config.Config) error {
 		// Show container logs so agents and users can diagnose without running another command
 		fmt.Println()
 		fmt.Println("      --- container logs (last 30 lines) ---")
-		if logs := docker.ContainerLogs(containerName, 30); logs != "" {
+		logs := docker.ContainerLogs(containerName, 30)
+		if logs != "" {
 			fmt.Println(logs)
 		} else {
 			fmt.Println("      (no logs available)")
 		}
 		fmt.Println("      --- end logs ---")
+		// Scan logs for known error patterns and suggest fixes
+		if logs != "" {
+			suggestFixesFromContent(logs)
+		}
 		fmt.Println()
 		// Clean up the failed container so the next start doesn't say "already running"
 		docker.StopContainer(containerName)
@@ -564,14 +569,18 @@ func showLogTail(path string, n int) {
 	fmt.Println("      --- end logs ---")
 }
 
-// suggestFixes scans a log file for known error patterns and prints
-// actionable suggestions so the user knows what to do next.
+// suggestFixes reads a log file and delegates to suggestFixesFromContent.
 func suggestFixes(logPath string) {
 	data, err := os.ReadFile(logPath)
 	if err != nil {
 		return
 	}
-	content := string(data)
+	suggestFixesFromContent(string(data))
+}
+
+// suggestFixesFromContent scans log output for known error patterns and prints
+// actionable suggestions so the user knows what to do next.
+func suggestFixesFromContent(content string) {
 
 	type hint struct {
 		pattern    string
@@ -595,12 +604,20 @@ func suggestFixes(logPath string) {
 			"The installed mlx-lm version doesn't support this model architecture.\n      Fix: run 'a2go doctor' to upgrade to the latest version.",
 		},
 		{
+			"unknown model",
+			"The Docker image doesn't recognize this model.\n      Fix: run 'a2go doctor' to pull the latest image.",
+		},
+		{
 			"out of memory",
-			"Not enough unified memory for this model + KV cache.\n      Fix: try a smaller quantization (e.g. 4bit) or a smaller model.",
+			"Not enough memory for this model + KV cache.\n      Fix: try a smaller quantization (e.g. 4bit) or a smaller model.",
 		},
 		{
 			"MemoryError",
-			"Not enough unified memory for this model + KV cache.\n      Fix: try a smaller quantization (e.g. 4bit) or a smaller model.",
+			"Not enough memory for this model + KV cache.\n      Fix: try a smaller quantization (e.g. 4bit) or a smaller model.",
+		},
+		{
+			"CUDA out of memory",
+			"Not enough GPU VRAM for this model.\n      Fix: try a smaller quantization (e.g. 4bit) or a smaller model.",
 		},
 	}
 
