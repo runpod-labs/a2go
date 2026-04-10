@@ -1,6 +1,6 @@
 Use open weight models (LLM, image, audio) with open source agents on GPU pods. a2go bundles local LLM inference, image generation, and audio services into a single Docker image — everything agents like [Hermes](https://github.com/hermes-agent/hermes) and [OpenClaw](https://openclaw.ai) need to operate autonomously.
 
-## Quick Start A: Just Deploy
+## Quick Start A: Auto-Detect
 
 ### 1. Deploy
 
