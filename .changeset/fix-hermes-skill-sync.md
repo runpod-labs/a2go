@@ -1,10 +1,12 @@
 ---
-"a2go": patch
+"a2go": minor
 ---
 
-fix: copy skills into hermes directory instead of symlinking
+feat: fully own and refresh managed agent skills
 
-Hermes skill discovery uses `os.walk()` without `followlinks=True`, so symlinked
-skill directories are invisible to the prompt builder. Skills were installed but
-never shown to the AI. Replace symlinks with file copies so skills are discoverable.
-Also handles migration from existing symlink-based installs.
+a2go now owns the canonical agent skill set it ships. Instead of loading runtime
+skills from the mutable local `~/.a2go/skills` directory, the CLI bundles the a2go
+skills and regenerates managed skill directories for Hermes and OpenClaw on run.
+
+This also fixes Hermes skill discovery by replacing the old symlink-based flow and
+ensures stale managed skill entries are removed during refresh.
