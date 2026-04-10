@@ -40,14 +40,6 @@ Each agent supports additional environment variables for integrations like Teleg
 
 Only one gateway port is active depending on which agent you selected in `A2GO_CONFIG`.
 
-## GPU Compatibility
-
-Works with any NVIDIA GPU. The image auto-detects VRAM and adjusts context length, model layers, and batch size accordingly. Tested on RTX 3090, RTX 4090, RTX 5090, H100, H200, and DGX Spark (GB10).
-
-## Volume
-
-Minimum 30 GB network volume (50 GB+ recommended for multiple models). Models are cached in `/workspace/models/` and persist across pod restarts.
-
 ## Security
 
 For security and trust information, see [trust.openclaw.ai](https://trust.openclaw.ai).
