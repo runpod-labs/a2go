@@ -8,6 +8,26 @@ import { TriangleAlert } from 'lucide-react'
 import { FaCloud } from 'react-icons/fa'
 import { Bot } from 'lucide-react'
 
+/* ── Cloud provider templates ─────────────────────────────────────── */
+
+interface CloudProvider {
+  id: string
+  name: string
+  logo: string          // path under public/logos/
+  color: string         // brand color
+  templateUrl: string   // deploy link
+}
+
+const CLOUD_PROVIDERS: CloudProvider[] = [
+  {
+    id: 'runpod',
+    name: 'Runpod',
+    logo: 'logos/runpod.svg',
+    color: '#5D29F0',
+    templateUrl: 'https://console.runpod.io/hub/template/a2go?id=4hgezzzadd',
+  },
+]
+
 type DeployTab = 'agent' | 'linux' | 'windows' | 'mac' | 'cloud'
 
 const LINUX_REQUIREMENTS: { label: string; href?: string }[] = [
@@ -237,7 +257,38 @@ function CloudConfigRow({ label, children }: { label: string; children: React.Re
   )
 }
 
-function CloudSteps({ config }: { config: CloudConfig }) {
+function CloudProviderButton({ provider }: { provider: CloudProvider }) {
+  return (
+    <a
+      href={provider.templateUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center rounded px-3 py-1.5 transition-all hover:brightness-110"
+      style={{ backgroundColor: provider.color }}
+    >
+      <img
+        src={`${import.meta.env.BASE_URL}${provider.logo}`}
+        alt={provider.name}
+        height={20}
+        className="h-5 w-auto"
+      />
+    </a>
+  )
+}
+
+function CloudTemplates() {
+  return (
+    <CloudConfigRow label="templates">
+      <div className="flex flex-wrap gap-2">
+        {CLOUD_PROVIDERS.map((provider) => (
+          <CloudProviderButton key={provider.id} provider={provider} />
+        ))}
+      </div>
+    </CloudConfigRow>
+  )
+}
+
+function CloudManualSteps({ config }: { config: CloudConfig }) {
   return (
     <>
       <CloudConfigRow label="image">
@@ -262,7 +313,29 @@ function CloudSteps({ config }: { config: CloudConfig }) {
           ))}
         </div>
       </CloudConfigRow>
+    </>
+  )
+}
 
+function CloudSteps({ config }: { config: CloudConfig }) {
+  return (
+    <>
+      {/* Templates — one-click deploy */}
+      <CloudTemplates />
+
+      {/* Divider with manual label */}
+      <CloudConfigRow label="">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-foreground/[0.06]" />
+          <span className="font-mono text-[8px] font-semibold uppercase tracking-widest text-foreground/20">
+            or configure manually
+          </span>
+          <div className="h-px flex-1 bg-foreground/[0.06]" />
+        </div>
+      </CloudConfigRow>
+
+      {/* Manual config — for providers without templates */}
+      <CloudManualSteps config={config} />
     </>
   )
 }
@@ -599,7 +672,7 @@ export default function DeployCard({
   return (
     <div className="flex flex-col">
       {/* Tab bar */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 border-b border-foreground/[0.06]">
         {visibleTabs.map(({ id, label, os: tabOs, icon }) => (
           <button
             key={id}
@@ -634,13 +707,13 @@ export default function DeployCard({
         )}
 
         {hasModels && activeTab === 'agent' && (
-          <div className="flex flex-1 min-h-0 flex-col p-3 gap-5">
+          <div className="flex flex-1 min-h-0 flex-col px-3 pt-5 pb-3 gap-5">
             <AgentSkillSteps models={selectedModels} frameworkName={framework.name} modelIdToGroup={modelIdToGroup} />
           </div>
         )}
 
         {hasModels && activeTab === 'linux' && (
-          <div className="flex flex-1 min-h-0 flex-col p-3 gap-5">
+          <div className="flex flex-1 min-h-0 flex-col px-3 pt-5 pb-3 gap-5">
             <CliSteps
               cli={linuxCli}
               requirements={LINUX_REQUIREMENTS}
@@ -650,7 +723,7 @@ export default function DeployCard({
         )}
 
         {hasModels && activeTab === 'windows' && (
-          <div className="flex flex-1 min-h-0 flex-col p-3 gap-5">
+          <div className="flex flex-1 min-h-0 flex-col px-3 pt-5 pb-3 gap-5">
             <CliSteps
               cli={windowsCli}
               requirements={WINDOWS_REQUIREMENTS}
@@ -660,7 +733,7 @@ export default function DeployCard({
         )}
 
         {hasModels && activeTab === 'mac' && (
-          <div className="flex flex-1 min-h-0 flex-col p-3 gap-5">
+          <div className="flex flex-1 min-h-0 flex-col px-3 pt-5 pb-3 gap-5">
             {macCli.install ? (
               <>
                 {macCli.missing.length > 0 && (
@@ -764,7 +837,7 @@ export default function DeployCard({
         )}
 
         {hasModels && activeTab === 'cloud' && (
-          <div className="flex flex-1 min-h-0 flex-col p-3 gap-5">
+          <div className="flex flex-1 min-h-0 flex-col px-3 pt-5 pb-3 gap-5">
             <CloudSteps config={cloudConfig} />
           </div>
         )}
