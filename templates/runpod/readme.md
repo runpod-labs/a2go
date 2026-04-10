@@ -36,7 +36,17 @@ Once the pod is running, open the agent gateway:
 
 Replace `<pod-id>` with your pod ID (shown in the Runpod dashboard) and `<A2GO_AUTH_TOKEN>` with the password you set in step 2.
 
-The media proxy (image gen, TTS, web UI) runs on port 8080. The LLM API is on port 8000 if you need direct model access.
+## Ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 18789 | HTTP | OpenClaw gateway — agent control UI and chat |
+| 8642 | HTTP | Hermes gateway — agent pairing for Telegram, Discord, WhatsApp |
+| 8080 | HTTP | Media proxy — image gen, TTS, STT, and web UI |
+| 8000 | HTTP | LLM API — OpenAI-compatible endpoint (`/v1/chat/completions`) |
+| 22 | TCP | SSH — direct shell access to the pod |
+
+Only one gateway port is active depending on which agent you selected in `A2GO_CONFIG`.
 
 ## Auto-Detect Mode
 
