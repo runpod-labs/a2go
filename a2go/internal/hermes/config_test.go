@@ -130,6 +130,8 @@ func TestSyncSkills_CopiesFiles(t *testing.T) {
 	skillDir := filepath.Join(paths.Skills(), "a2go-image-generate")
 	os.MkdirAll(skillDir, 0755)
 	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# test"), 0644)
+	os.MkdirAll(filepath.Join(skillDir, "references"), 0755)
+	os.WriteFile(filepath.Join(skillDir, "references", "note.md"), []byte("nested"), 0644)
 
 	skillDir2 := filepath.Join(paths.Skills(), "a2go-text-to-speech")
 	os.MkdirAll(skillDir2, 0755)
@@ -142,14 +144,15 @@ func TestSyncSkills_CopiesFiles(t *testing.T) {
 		t.Fatalf("SyncSkills: %v", err)
 	}
 
-	// Check real directories and files exist (not symlinks)
+	// Check real directories and files exist
 	hermesA2goSkills := filepath.Join(paths.HermesState(), "skills", "a2go")
 	for _, tc := range []struct {
-		skill   string
-		content string
+		skill      string
+		content    string
+		nestedFile string
 	}{
-		{"a2go-image-generate", "# test"},
-		{"a2go-text-to-speech", "# test2"},
+		{"a2go-image-generate", "# test", "nested"},
+		{"a2go-text-to-speech", "# test2", ""},
 	} {
 		dir := filepath.Join(hermesA2goSkills, tc.skill)
 		fi, err := os.Lstat(dir)
@@ -163,7 +166,6 @@ func TestSyncSkills_CopiesFiles(t *testing.T) {
 		if !fi.IsDir() {
 			t.Errorf("%s should be a directory", tc.skill)
 		}
-		// Verify SKILL.md was copied with correct content
 		data, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		if err != nil {
 			t.Errorf("read SKILL.md for %s: %v", tc.skill, err)
@@ -171,6 +173,16 @@ func TestSyncSkills_CopiesFiles(t *testing.T) {
 		}
 		if string(data) != tc.content {
 			t.Errorf("SKILL.md content = %q, want %q", string(data), tc.content)
+		}
+		if tc.nestedFile != "" {
+			nested, err := os.ReadFile(filepath.Join(dir, "references", "note.md"))
+			if err != nil {
+				t.Errorf("read nested file for %s: %v", tc.skill, err)
+				continue
+			}
+			if string(nested) != tc.nestedFile {
+				t.Errorf("nested file content = %q, want %q", string(nested), tc.nestedFile)
+			}
 		}
 	}
 }
@@ -183,7 +195,7 @@ func TestSyncSkills_ReplacesExistingSymlinks(t *testing.T) {
 	os.MkdirAll(skillDir, 0755)
 	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# updated"), 0644)
 
-	// Create hermes skills dir with an existing (old-style) symlink
+	// Create hermes skills dir with an existing (possibly stale) symlink
 	hermesA2goSkills := filepath.Join(paths.HermesState(), "skills", "a2go")
 	os.MkdirAll(hermesA2goSkills, 0755)
 	staleLink := filepath.Join(hermesA2goSkills, "a2go-image-generate")
@@ -210,6 +222,27 @@ func TestSyncSkills_ReplacesExistingSymlinks(t *testing.T) {
 	}
 	if string(data) != "# updated" {
 		t.Errorf("SKILL.md content = %q, want %q", string(data), "# updated")
+	}
+}
+
+func TestSyncSkills_RemovesStaleManagedSkills(t *testing.T) {
+	setupTestDirs(t)
+
+	skillDir := filepath.Join(paths.Skills(), "a2go-image-generate")
+	os.MkdirAll(skillDir, 0755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# current"), 0644)
+
+	hermesA2goSkills := filepath.Join(paths.HermesState(), "skills", "a2go")
+	staleDir := filepath.Join(hermesA2goSkills, "removed-skill")
+	os.MkdirAll(staleDir, 0755)
+	os.WriteFile(filepath.Join(staleDir, "SKILL.md"), []byte("# stale"), 0644)
+
+	if err := SyncSkills(); err != nil {
+		t.Fatalf("SyncSkills: %v", err)
+	}
+
+	if _, err := os.Stat(staleDir); !os.IsNotExist(err) {
+		t.Fatalf("stale managed skill should be removed, got err=%v", err)
 	}
 }
 
