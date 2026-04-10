@@ -6,7 +6,7 @@
   "env": [
     {
       "key": "A2GO_CONFIG",
-      "value": ""
+      "value": "{}"
     },
     {
       "key": "A2GO_AUTH_TOKEN",
