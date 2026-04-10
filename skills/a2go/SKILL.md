@@ -3,6 +3,7 @@ name: a2go
 description: Use open weight models (LLM, image, audio) with open source agents on Mac, Linux, and Windows.
 metadata:
   author: runpod
+  version: "0.15.1"
 ---
 
 # a2go
