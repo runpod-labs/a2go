@@ -24,7 +24,9 @@ func hermesAPIKey(token string) string {
 }
 
 // SyncSkills copies a2go skills into the hermes skills directory so hermes can discover them.
-// Creates symlinks from ~/.hermes/skills/a2go/<skill-name> → ~/.a2go/skills/<skill-name>.
+// Copies files from ~/.a2go/skills/<skill-name>/ into ~/.hermes/skills/a2go/<skill-name>/.
+// Uses real copies instead of symlinks because hermes' skill discovery (os.walk without
+// followlinks) does not descend into symlinked directories.
 func SyncSkills() error {
 	srcDir := paths.Skills()
 	dstDir := filepath.Join(paths.HermesState(), "skills", "a2go")
@@ -49,10 +51,35 @@ func SyncSkills() error {
 		src := filepath.Join(srcDir, e.Name())
 		dst := filepath.Join(dstDir, e.Name())
 
-		// Remove existing symlink or dir before creating new one
-		os.Remove(dst)
-		if err := os.Symlink(src, dst); err != nil {
-			return fmt.Errorf("failed to symlink skill %s: %w", e.Name(), err)
+		// Remove existing symlink (from old approach) or stale directory
+		if fi, lErr := os.Lstat(dst); lErr == nil {
+			if fi.Mode()&os.ModeSymlink != 0 {
+				os.Remove(dst)
+			} else if fi.IsDir() {
+				os.RemoveAll(dst)
+			}
+		}
+
+		if err := os.MkdirAll(dst, 0755); err != nil {
+			return fmt.Errorf("failed to create skill dir %s: %w", e.Name(), err)
+		}
+
+		// Copy all files from source skill directory
+		files, err := os.ReadDir(src)
+		if err != nil {
+			continue
+		}
+		for _, f := range files {
+			if f.IsDir() {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(src, f.Name()))
+			if err != nil {
+				return fmt.Errorf("failed to read skill file %s/%s: %w", e.Name(), f.Name(), err)
+			}
+			if err := os.WriteFile(filepath.Join(dst, f.Name()), data, 0644); err != nil {
+				return fmt.Errorf("failed to write skill file %s/%s: %w", e.Name(), f.Name(), err)
+			}
 		}
 	}
 	return nil

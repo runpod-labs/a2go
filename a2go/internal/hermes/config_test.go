@@ -123,7 +123,7 @@ func TestSyncSkills_NoSourceDir(t *testing.T) {
 	}
 }
 
-func TestSyncSkills_CreatesSymlinks(t *testing.T) {
+func TestSyncSkills_CopiesFiles(t *testing.T) {
 	setupTestDirs(t)
 
 	// Create fake a2go skills
@@ -142,57 +142,74 @@ func TestSyncSkills_CreatesSymlinks(t *testing.T) {
 		t.Fatalf("SyncSkills: %v", err)
 	}
 
-	// Check symlinks exist
+	// Check real directories and files exist (not symlinks)
 	hermesA2goSkills := filepath.Join(paths.HermesState(), "skills", "a2go")
-	for _, skill := range []string{"a2go-image-generate", "a2go-text-to-speech"} {
-		link := filepath.Join(hermesA2goSkills, skill)
-		fi, err := os.Lstat(link)
+	for _, tc := range []struct {
+		skill   string
+		content string
+	}{
+		{"a2go-image-generate", "# test"},
+		{"a2go-text-to-speech", "# test2"},
+	} {
+		dir := filepath.Join(hermesA2goSkills, tc.skill)
+		fi, err := os.Lstat(dir)
 		if err != nil {
-			t.Errorf("symlink %s not created: %v", skill, err)
+			t.Errorf("skill dir %s not created: %v", tc.skill, err)
 			continue
 		}
-		if fi.Mode()&os.ModeSymlink == 0 {
-			t.Errorf("%s should be a symlink", skill)
+		if fi.Mode()&os.ModeSymlink != 0 {
+			t.Errorf("%s should be a real directory, not a symlink", tc.skill)
 		}
-		// Verify the symlink target is readable
-		target, err := os.Readlink(link)
+		if !fi.IsDir() {
+			t.Errorf("%s should be a directory", tc.skill)
+		}
+		// Verify SKILL.md was copied with correct content
+		data, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
 		if err != nil {
-			t.Errorf("readlink %s: %v", skill, err)
+			t.Errorf("read SKILL.md for %s: %v", tc.skill, err)
 			continue
 		}
-		if !strings.Contains(target, skill) {
-			t.Errorf("symlink target %q should contain %q", target, skill)
+		if string(data) != tc.content {
+			t.Errorf("SKILL.md content = %q, want %q", string(data), tc.content)
 		}
 	}
 }
 
-func TestSyncSkills_UpdatesExistingSymlinks(t *testing.T) {
+func TestSyncSkills_ReplacesExistingSymlinks(t *testing.T) {
 	setupTestDirs(t)
 
 	// Create a2go skills
 	skillDir := filepath.Join(paths.Skills(), "a2go-image-generate")
 	os.MkdirAll(skillDir, 0755)
+	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# updated"), 0644)
 
-	// Create hermes skills dir with an existing (possibly stale) symlink
+	// Create hermes skills dir with an existing (old-style) symlink
 	hermesA2goSkills := filepath.Join(paths.HermesState(), "skills", "a2go")
 	os.MkdirAll(hermesA2goSkills, 0755)
 	staleLink := filepath.Join(hermesA2goSkills, "a2go-image-generate")
 	os.Symlink("/nonexistent", staleLink)
 
-	// SyncSkills should replace the stale symlink
+	// SyncSkills should replace the stale symlink with a real directory
 	if err := SyncSkills(); err != nil {
 		t.Fatalf("SyncSkills: %v", err)
 	}
 
-	target, err := os.Readlink(staleLink)
+	fi, err := os.Lstat(staleLink)
 	if err != nil {
-		t.Fatalf("readlink: %v", err)
+		t.Fatalf("stat: %v", err)
 	}
-	if target == "/nonexistent" {
-		t.Error("symlink should have been updated from stale target")
+	if fi.Mode()&os.ModeSymlink != 0 {
+		t.Error("should have replaced symlink with a real directory")
 	}
-	if target != skillDir {
-		t.Errorf("symlink target = %q, want %q", target, skillDir)
+	if !fi.IsDir() {
+		t.Error("should be a directory after sync")
+	}
+	data, err := os.ReadFile(filepath.Join(staleLink, "SKILL.md"))
+	if err != nil {
+		t.Fatalf("read SKILL.md: %v", err)
+	}
+	if string(data) != "# updated" {
+		t.Errorf("SKILL.md content = %q, want %q", string(data), "# updated")
 	}
 }
 
