@@ -3,7 +3,9 @@ export interface ModelVram {
   overhead: number
 }
 
-export type OsPlatform = 'linux' | 'windows' | 'mac'
+export const PLATFORMS = ['mac', 'linux', 'windows', 'web'] as const
+export type Platform = (typeof PLATFORMS)[number]
+export type OsPlatform = Platform
 
 export interface CatalogModel {
   id: string
@@ -22,7 +24,7 @@ export interface CatalogModel {
   kvCacheMbPer1kTokens?: number
   contextLength?: number
   tps?: Record<string, number>
-  os: OsPlatform[]
+  os: Platform[]
   isDefault: boolean
   hasVision: boolean
   capabilities?: string[]
@@ -32,7 +34,7 @@ export interface DeviceInfo {
   id: string
   name: string
   vramMb: number
-  os: OsPlatform[]
+  os: Platform[]
 }
 
 const MAC_DEVICES: DeviceInfo[] = [
@@ -133,7 +135,8 @@ interface RawModel {
   tps?: Record<string, number>
   defaults?: { contextLength?: number }
   mmproj?: string
-  platform?: 'nvidia' | 'mlx'
+  platform?: string
+  platforms?: Platform[]
   [key: string]: unknown
 }
 
@@ -149,6 +152,28 @@ interface RawCatalog {
   gpus: RawDevice[]
 }
 
+function resolveModelPlatforms(model: RawModel): Platform[] {
+  const declared = Array.isArray(model.platforms)
+    ? model.platforms.filter((platform): platform is Platform => PLATFORMS.includes(platform))
+    : []
+  if (declared.length > 0) return declared
+
+  switch (model.platform) {
+    case 'mlx':
+    case 'mac':
+      return ['mac']
+    case 'linux':
+      return ['linux']
+    case 'windows':
+      return ['windows']
+    case 'web':
+      return ['web']
+    case 'nvidia':
+    default:
+      return ['linux', 'windows']
+  }
+}
+
 export async function fetchCatalog(): Promise<{ models: CatalogModel[]; devices: DeviceInfo[] }> {
   const res = await fetch(`${import.meta.env.BASE_URL}v1/catalog.json`)
   if (!res.ok) throw new Error(`Failed to load catalog: ${res.status}`)
@@ -157,34 +182,7 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; devices:
   const models: CatalogModel[] = raw.models.flatMap((m) => {
     const hasVision = typeof m.mmproj === 'string' && m.mmproj.length > 0
 
-    // MLX-only models (platform: "mlx") → Mac tab only
-    if (m.platform === 'mlx') {
-      return [{
-        id: m.id,
-        group: m.group,
-        family: m.family,
-        catalogKey: m.catalogKey,
-        name: m.name.toLowerCase(),
-        size: m.size ?? '',
-        type: m.type,
-        engine: m.engine,
-        bits: m.bits,
-        primaryBits: m.bits,
-        status: m.status ?? 'stable',
-        repo: m.repo ?? m.id,
-        vram: m.vram,
-        kvCacheMbPer1kTokens: m.kvCacheMbPer1kTokens,
-        tps: m.tps,
-        contextLength: m.defaults?.contextLength,
-        os: ['mac'] as OsPlatform[],
-        isDefault: (m as Record<string, unknown>).default === true,
-        hasVision: false,
-        capabilities: m.capabilities,
-      }]
-    }
-
-    // GGUF model → Linux/Windows entry
-    const ggufEntry: CatalogModel = {
+    const entry: CatalogModel = {
       id: m.id,
       group: m.group,
       family: m.family,
@@ -201,13 +199,13 @@ export async function fetchCatalog(): Promise<{ models: CatalogModel[]; devices:
       kvCacheMbPer1kTokens: m.kvCacheMbPer1kTokens,
       tps: m.tps,
       contextLength: m.defaults?.contextLength,
-      os: ['linux', 'windows'] as OsPlatform[],
+      os: resolveModelPlatforms(m),
       isDefault: (m as Record<string, unknown>).default === true,
       hasVision,
       capabilities: m.capabilities,
     }
 
-    return [ggufEntry]
+    return [entry]
   })
 
   const devices: DeviceInfo[] = [

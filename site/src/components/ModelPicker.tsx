@@ -9,7 +9,6 @@ export default function CatalogEntryCard({
   selected,
   onToggle,
   wouldExceed,
-  dimmed,
   os,
   accentColor,
 }: {
@@ -17,16 +16,19 @@ export default function CatalogEntryCard({
   selected: boolean
   onToggle: () => void
   wouldExceed: boolean
-  dimmed: boolean
   os: OsPlatform | null
   accentColor: string
 }) {
   const summary = getFamilyEntrySummary(familyEntry, os)
+  const selectedBackground = `${accentColor}1f`
+  const selectedBorder = `${accentColor}66`
+  const selectedBadgeBackground = `${accentColor}26`
 
   return (
     <div
       role="button"
       tabIndex={0}
+      aria-pressed={selected}
       onClick={onToggle}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -57,16 +59,15 @@ export default function CatalogEntryCard({
       }}
       className={cn(
         "group flex w-full cursor-pointer items-center text-left transition-all duration-150",
-        "h-10 px-3 gap-2",
+        "h-10 gap-2 border-l-3 px-3",
         selected
-          ? "bg-foreground/[0.07]"
-          : "hover:bg-foreground/[0.03]",
+          ? "border-transparent"
+          : "border-transparent hover:bg-foreground/[0.03]",
         wouldExceed && !selected && "pointer-events-none opacity-20",
-        dimmed && !selected && "opacity-35",
       )}
       data-model-type={familyEntry.type}
       data-selected={selected || undefined}
-      style={selected ? { boxShadow: `inset 3px 0 0 ${accentColor}` } : undefined}
+      style={selected ? { backgroundColor: selectedBackground, borderLeftColor: accentColor, boxShadow: `inset 0 0 0 1px ${selectedBorder}` } : undefined}
     >
       {/* model name */}
       <span
@@ -80,27 +81,51 @@ export default function CatalogEntryCard({
         {familyEntry.displayName}
       </span>
 
+      {selected && (
+        <span
+          className="shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.16em] text-foreground/90"
+          style={{ backgroundColor: selectedBadgeBackground, color: accentColor }}
+        >
+          selected
+        </span>
+      )}
+
       {/* vision badge */}
       {familyEntry.hasVision && (
-        <span className="shrink-0 bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[8px] font-medium text-foreground/50">
+        <span className={cn(
+          "shrink-0 px-1.5 py-0.5 font-mono text-[8px] font-medium",
+          selected ? "bg-foreground/[0.06] text-foreground/70" : "bg-foreground/[0.04] text-foreground/50",
+        )}>
           vision
         </span>
       )}
 
       {/* capability badges (tts, stt) */}
       {familyEntry.capabilities?.map((cap) => (
-        <span key={cap} className="shrink-0 bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[8px] font-medium text-foreground/50">
+        <span
+          key={cap}
+          className={cn(
+            "shrink-0 px-1.5 py-0.5 font-mono text-[8px] font-medium",
+            selected ? "bg-foreground/[0.06] text-foreground/70" : "bg-foreground/[0.04] text-foreground/50",
+          )}
+        >
           {cap}
         </span>
       ))}
 
       {/* context */}
-      <span className="w-[36px] shrink-0 text-right font-mono text-[10px] tabular-nums text-foreground/60">
+      <span className={cn(
+        "w-[36px] shrink-0 text-right font-mono text-[10px] tabular-nums",
+        selected ? "text-foreground/85" : "text-foreground/60",
+      )}>
         {familyEntry.maxContextLength ? formatContext(familyEntry.maxContextLength) : "--"}
       </span>
 
       {/* tps */}
-      <span className="w-[36px] shrink-0 text-right font-mono text-[10px] tabular-nums text-foreground/60">
+      <span className={cn(
+        "w-[36px] shrink-0 text-right font-mono text-[10px] tabular-nums",
+        selected ? "text-foreground/85" : "text-foreground/60",
+      )}>
         {summary.maxTps != null ? summary.maxTps : "--"}
       </span>
 

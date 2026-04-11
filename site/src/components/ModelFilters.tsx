@@ -1,20 +1,7 @@
 import { useState } from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import { cn } from '../lib/utils'
-import { OsPills } from './PlatformSelector'
-import type { OsPlatform } from '../lib/catalog'
-
-export type TaskChip = 'llm' | 'vision' | 'image' | 'audio'
-
-export interface FilterState {
-  contextMin: number | null
-  task: TaskChip | null
-}
-
-export const EMPTY_FILTERS: FilterState = {
-  contextMin: null,
-  task: null,
-}
+import type { FilterState, TaskChip } from '../lib/model-filters'
 
 export const CONTEXT_TIERS = [
   { label: '32k', value: 32_000 },
@@ -90,13 +77,9 @@ function ContextPicker({
 export default function ModelFilters({
   filters,
   onChange,
-  os,
-  onOsChange,
 }: {
   filters: FilterState
   onChange: (filters: FilterState) => void
-  os: OsPlatform | null
-  onOsChange: (os: OsPlatform) => void
 }) {
   const handleTaskClick = (chip: TaskChip) => {
     const nextTask = filters.task === chip ? null : chip
@@ -106,10 +89,6 @@ export default function ModelFilters({
 
   return (
     <div className="flex shrink-0 items-center gap-1 border-b border-foreground/[0.06] px-3 py-1.5">
-      <OsPills os={os} onChange={onOsChange} />
-
-      <div className="h-3.5 w-px shrink-0 bg-foreground/[0.08]" />
-
       {TASK_CHIPS.map((chip) => (
         <button
           key={chip}

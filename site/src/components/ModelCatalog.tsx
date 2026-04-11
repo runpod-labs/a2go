@@ -2,13 +2,15 @@ import { useMemo, useCallback, useState } from 'react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import CollapsibleSection from './CollapsibleSection'
 import ModelSearch from './ModelSearch'
-import ModelFilters, { type FilterState, type TaskChip, EMPTY_FILTERS } from './ModelFilters'
+import ModelFilters from './ModelFilters'
 import CatalogEntryCard from './ModelPicker'
 import SectionHeader from './SectionHeader'
 import FrameworkSelector from './FrameworkSelector'
-import type { CatalogModel, OsPlatform } from '../lib/catalog'
+import PlatformSelector from './PlatformSelector'
+import type { CatalogModel, Platform } from '../lib/catalog'
 import type { AgentFramework } from '../lib/frameworks'
-import { getFamilyEntrySummary, getVariantForOs, type FamilyEntry } from '../lib/group-models'
+import { EMPTY_FILTERS, type FilterState, type TaskChip } from '../lib/model-filters'
+import { familyEntryHasOs, getFamilyEntrySummary, getVariantForOs, type FamilyEntry } from '../lib/group-models'
 
 type SortColumn = 'name' | 'ctx' | 'tps' | 'memory'
 type SortDirection = 'asc' | 'desc'
@@ -65,8 +67,8 @@ function SortableColumnHeader({
 
 export default function ModelCatalog({
   familyEntries,
-  os,
-  onOsChange,
+  platform,
+  onPlatformChange,
   selectedModelIds,
   selectedModels,
   onToggleModel,
@@ -78,8 +80,8 @@ export default function ModelCatalog({
   onFrameworkSelect,
 }: {
   familyEntries: FamilyEntry[]
-  os: OsPlatform | null
-  onOsChange: (os: OsPlatform) => void
+  platform: Platform
+  onPlatformChange: (platform: Platform) => void
   selectedModelIds: Set<string>
   selectedModels: CatalogModel[]
   onToggleModel: (model: CatalogModel) => void
@@ -103,22 +105,16 @@ export default function ModelCatalog({
 
   const searchLower = search.toLowerCase().trim()
 
-  const lockedTypes = useMemo(() => {
-    const types = new Set<string>()
-    for (const m of selectedModels) types.add(m.type)
-    return types
-  }, [selectedModels])
-
   const visibleTypes = useMemo(() => getVisibleTypes(filters.task), [filters.task])
 
   /** Pre-compute summaries for all family entries */
   const summaryMap = useMemo(() => {
     const map = new Map<string, { maxTps?: number; minVramMb: number }>()
     for (const fe of familyEntries) {
-      map.set(fe.family, getFamilyEntrySummary(fe, os))
+      map.set(fe.family, getFamilyEntrySummary(fe, platform))
     }
     return map
-  }, [familyEntries, os])
+  }, [familyEntries, platform])
 
   /** Sort filtered entries by the active column/direction */
   const sortEntries = useCallback(
@@ -167,7 +163,7 @@ export default function ModelCatalog({
   const filterEntries = useCallback(
     (allFamilies: FamilyEntry[], type: SectionKey): FamilyEntry[] => {
       if (!visibleTypes.has(type)) return []
-      let result = allFamilies.filter((fe) => fe.type === type)
+      let result = allFamilies.filter((fe) => fe.type === type && familyEntryHasOs(fe, platform))
       if (searchLower) {
         result = result.filter(
           (fe) =>
@@ -191,7 +187,7 @@ export default function ModelCatalog({
       }
       return result
     },
-    [searchLower, filters, visibleTypes]
+    [searchLower, filters, visibleTypes, platform]
   )
 
   const modelSections = useMemo(
@@ -230,19 +226,19 @@ export default function ModelCatalog({
 
       // First group with a variant for current OS (smallest bits first)
       let bestGroup = sv.groups.find((g) =>
-        g.variants.some((v) => !os || v.os.includes(os))
+        g.variants.some((v) => v.os.includes(platform))
       )
       // Fall back to first group
       if (!bestGroup) bestGroup = sv.groups[0]
       if (!bestGroup) return
 
-      const variant = getVariantForOs(bestGroup, os)
+      const variant = getVariantForOs(bestGroup, platform)
       onToggleModel(variant.model)
     },
-    [os, selectedModelIds, onToggleModel]
+    [platform, selectedModelIds, onToggleModel]
   )
 
-  const hasActiveFilters = hasSelections || os !== null || filters.task !== null || filters.contextMin !== null || search !== "" || sort.column !== 'name' || sort.direction !== 'asc'
+  const hasActiveFilters = hasSelections || filters.task !== null || filters.contextMin !== null || search !== "" || sort.column !== 'name' || sort.direction !== 'asc'
 
   const handleReset = useCallback(() => {
     setSearch("")
@@ -269,6 +265,15 @@ export default function ModelCatalog({
         <FrameworkSelector selected={framework} onSelect={onFrameworkSelect} />
       </div>
 
+      <div className="border-b border-foreground/[0.06]">
+        <SectionHeader>
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
+            Platform
+          </span>
+        </SectionHeader>
+        <PlatformSelector os={platform} onChange={onPlatformChange} />
+      </div>
+
       <CollapsibleSection title="Models" badge={modelsBadge} className="lg:flex-1 lg:min-h-0 flex flex-col">
         <SectionHeader className="hidden lg:flex">
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
@@ -284,12 +289,7 @@ export default function ModelCatalog({
           )}
         </SectionHeader>
         <ModelSearch value={search} onChange={setSearch} />
-        <ModelFilters
-          filters={filters}
-          onChange={setFilters}
-          os={os}
-          onOsChange={onOsChange}
-        />
+        <ModelFilters filters={filters} onChange={setFilters} />
 
         {/* column headers */}
         <div className="flex shrink-0 items-center gap-2 border-b border-foreground/[0.04] px-3 py-1.5">
@@ -303,7 +303,11 @@ export default function ModelCatalog({
         <div className="overflow-y-auto py-1 max-h-[50vh] lg:max-h-none lg:flex-1" data-model-list>
           {modelSections.length === 0 && (
             <div className="flex items-center justify-center py-12">
-              <span className="font-mono text-[10px] text-foreground/30">no models match</span>
+              <span className="font-mono text-[10px] text-foreground/30">
+                {search || filters.task || filters.contextMin
+                  ? 'no models match'
+                  : `no models for ${platform} yet`}
+              </span>
             </div>
           )}
           {modelSections.map((section) => (
@@ -323,8 +327,6 @@ export default function ModelCatalog({
                   effectiveVramMb > 0 &&
                   !selected &&
                   summary.minVramMb > remainingVramMb
-                const dimmed = !selected && lockedTypes.has(fe.type)
-
                 return (
                   <CatalogEntryCard
                     key={fe.family}
@@ -332,8 +334,7 @@ export default function ModelCatalog({
                     selected={selected}
                     onToggle={() => handleFamilyToggle(fe)}
                     wouldExceed={wouldExceed}
-                    dimmed={dimmed}
-                    os={os}
+                    os={platform}
                     accentColor={section.color}
                   />
                 )
