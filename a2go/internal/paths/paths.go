@@ -27,6 +27,8 @@ func LastConfig() string           { return filepath.Join(InstallDir, "last-conf
 func ContainerID() string          { return filepath.Join(InstallDir, "container-id") }
 func OpenClawState() string        { return filepath.Join(os.Getenv("HOME"), ".openclaw") }
 func HermesState() string          { return filepath.Join(os.Getenv("HOME"), ".hermes") }
+func OpenClawSkills() string       { return filepath.Join(OpenClawState(), "skills", "a2go") }
+func HermesSkills() string         { return filepath.Join(HermesState(), "skills", "a2go") }
 
 func EnsureAll() error {
 	dirs := []string{
