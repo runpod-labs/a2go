@@ -57,7 +57,7 @@ Models download on first start and persist on the volume.
 
 Model names are case-insensitive. Use HuggingFace repo names or short IDs.
 
-Anonymous analytics only include selected models, config buckets, OS/arch, GPU family/count, and RAM bucket. They do not include prompts, tokens, auth tokens, IPs, hostnames, or file paths. On the CLI, disable permanently with `a2go analytics disable`.
+Anonymous analytics only include selected models, context length, OS/arch, GPU family/count, RAM, and VRAM. They do not include prompts, tokens, auth tokens, IPs, hostnames, or file paths. On the CLI, disable permanently with `a2go analytics disable`.
 
 ### Auto-detect
 

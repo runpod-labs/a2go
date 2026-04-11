@@ -50,21 +50,21 @@ type Models struct {
 }
 
 type ConfigInfo struct {
-	ContextLengthBucket   string `json:"contextLengthBucket,omitempty"`
-	MaxOutputTokensBucket string `json:"maxOutputTokensBucket,omitempty"`
+	ContextLength   string `json:"contextLength,omitempty"`
+	MaxOutputTokens string `json:"maxOutputTokens,omitempty"`
 }
 
 type SystemInfo struct {
-	OS        string   `json:"os"`
-	Arch      string   `json:"arch"`
-	RAMBucket string   `json:"ramBucket,omitempty"`
-	GPU       *GPUInfo `json:"gpu,omitempty"`
+	OS   string   `json:"os"`
+	Arch string   `json:"arch"`
+	RAM  string   `json:"ram,omitempty"`
+	GPU  *GPUInfo `json:"gpu,omitempty"`
 }
 
 type GPUInfo struct {
 	Family        string `json:"family,omitempty"`
 	Count         int    `json:"count,omitempty"`
-	VRAMBucket    string `json:"vramBucket,omitempty"`
+	VRAM          string `json:"vram,omitempty"`
 	UnifiedMemory bool   `json:"unifiedMemory,omitempty"`
 }
 
@@ -143,8 +143,8 @@ func buildEvent(version string, cfg *config.Config, source string, backend strin
 		Agent:   cfg.Agent,
 		Models:  models,
 		Config: ConfigInfo{
-			ContextLengthBucket:   bucketTokens(cfg.GetContextLength()),
-			MaxOutputTokensBucket: bucketTokens(cfg.GetMaxOutputTokens()),
+			ContextLength:   bucketTokens(cfg.GetContextLength()),
+			MaxOutputTokens: bucketTokens(cfg.GetMaxOutputTokens()),
 		},
 		System: detectSystem(backend),
 	}
@@ -259,7 +259,7 @@ func detectSystem(backend string) SystemInfo {
 	}
 
 	if ramBytes := detectRAMBytes(); ramBytes > 0 {
-		info.RAMBucket = bucketMemory(ramBytes)
+		info.RAM = bucketMemory(ramBytes)
 	}
 
 	if backend == "mlx" && runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
@@ -320,7 +320,7 @@ func detectNvidiaGPU() *GPUInfo {
 
 	info := &GPUInfo{Family: family, Count: count}
 	if vramMb > 0 {
-		info.VRAMBucket = bucketMemory(int64(vramMb) * 1024 * 1024)
+		info.VRAM = bucketMemory(int64(vramMb) * 1024 * 1024)
 	}
 	return info
 }

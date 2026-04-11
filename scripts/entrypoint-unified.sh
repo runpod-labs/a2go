@@ -304,10 +304,10 @@ def gpu_info(data):
         return None
     info = {"family": normalize_gpu(raw_name), "count": 1}
     if raw_vram:
-        info["vramBucket"] = bucket_memory(int(raw_vram) * 1024 * 1024)
+        info["vram"] = bucket_memory(int(raw_vram) * 1024 * 1024)
     return info
 
-def resolved_context_bucket(data):
+def resolved_context(data):
     if data.get("computedContextLength"):
         return bucket_tokens(data.get("computedContextLength"))
     for svc in data.get("services", []):
@@ -368,14 +368,14 @@ event = {
     "agent": data.get("agent", ""),
     "models": models,
     "config": {
-        "contextLengthBucket": resolved_context_bucket(data),
+        "contextLength": resolved_context(data),
         "profile": (data.get("profile") or {}).get("id", ""),
         "profileSource": (data.get("profile") or {}).get("source", ""),
     },
     "system": {
         "os": platform.system().lower(),
         "arch": platform.machine().lower(),
-        "ramBucket": bucket_memory(read_mem_bytes()),
+        "ram": bucket_memory(read_mem_bytes()),
         "gpu": gpu_info(data),
     },
 }

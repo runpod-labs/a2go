@@ -28,7 +28,7 @@ var analyticsStatusCmd = &cobra.Command{
 		fmt.Printf("  Source:   %s\n", status.Source)
 		fmt.Printf("  Endpoint: %s\n", status.Endpoint)
 		fmt.Println()
-		fmt.Println("  Collected: selected models, config buckets, OS/arch, GPU family/count, RAM bucket")
+		fmt.Println("  Collected: selected models, context length, OS/arch, GPU family/count, RAM, VRAM")
 		fmt.Println("  Not collected: tokens, prompts, auth tokens, IPs, hostnames, file paths")
 		fmt.Println()
 		fmt.Println("  Disable: a2go analytics disable")

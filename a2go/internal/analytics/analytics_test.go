@@ -101,11 +101,11 @@ func TestBuildEventBucketsConfig(t *testing.T) {
 		MaxOutputTokens: &mot,
 	}, "cli", "docker")
 
-	if event.Config.ContextLengthBucket != "131k" {
-		t.Fatalf("ContextLengthBucket = %q, want 131k", event.Config.ContextLengthBucket)
+	if event.Config.ContextLength != "131k" {
+		t.Fatalf("ContextLength = %q, want 131k", event.Config.ContextLength)
 	}
-	if event.Config.MaxOutputTokensBucket != "16k" {
-		t.Fatalf("MaxOutputTokensBucket = %q, want 16k", event.Config.MaxOutputTokensBucket)
+	if event.Config.MaxOutputTokens != "16k" {
+		t.Fatalf("MaxOutputTokens = %q, want 16k", event.Config.MaxOutputTokens)
 	}
 	if event.Models.LLM == "" || event.Models.Image == "" {
 		t.Fatal("expected selected models to be present in payload")
@@ -155,7 +155,7 @@ func TestEventSignatureIgnoresTimestamp(t *testing.T) {
 		Backend: "docker",
 		Agent:   "openclaw",
 		Models:  Models{LLM: "unsloth/model:4bit"},
-		Config:  ConfigInfo{ContextLengthBucket: "32k"},
+		Config:  ConfigInfo{ContextLength: "32k"},
 		System:  SystemInfo{OS: "linux", Arch: "amd64"},
 	}
 	eventB := eventA
@@ -184,8 +184,8 @@ func TestDetectNvidiaGPUParsesCountAndBucket(t *testing.T) {
 	if gpu.Family != "rtx-5090" {
 		t.Fatalf("gpu.Family = %q, want rtx-5090", gpu.Family)
 	}
-	if gpu.VRAMBucket != "32gb" {
-		t.Fatalf("gpu.VRAMBucket = %q, want 32gb", gpu.VRAMBucket)
+	if gpu.VRAM != "32gb" {
+		t.Fatalf("gpu.VRAM = %q, want 32gb", gpu.VRAM)
 	}
 }
 
