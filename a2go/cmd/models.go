@@ -16,6 +16,7 @@ const catalogURL = "https://a2go.run/v1/catalog.json"
 var (
 	flagModelsType    string
 	flagModelsOS      string
+	flagModelsEngine  string
 	flagModelsMaxVRAM int
 )
 
@@ -24,13 +25,14 @@ var modelsCmd = &cobra.Command{
 	Short: "List available models",
 	Long: `List available models from the a2go catalog.
 
-  a2go models                      # All models
-  a2go models --type llm           # LLMs only
-  a2go models --os mac             # Mac/MLX models only
-  a2go models --type llm --os mac  # Mac LLMs only
-  a2go models --max-vram 24        # Models that fit in 24GB
+  a2go models                            # All models
+  a2go models --type llm                 # LLMs only
+  a2go models --os mac                   # Mac/MLX models only
+  a2go models --engine wandler           # Wandler/ONNX models only
+  a2go models --type llm --os mac        # Mac LLMs only
+  a2go models --max-vram 24              # Models that fit in 24GB
 
-Output format: type | os | vram | context | repo:bits | name
+Output format: type | engine | os | vram | context | repo:bits | name
 Use the repo:bits value with --llm, --image, or --audio flags.`,
 	Args: cobra.NoArgs,
 	RunE: runModels,
@@ -39,6 +41,7 @@ Use the repo:bits value with --llm, --image, or --audio flags.`,
 func init() {
 	modelsCmd.Flags().StringVar(&flagModelsType, "type", "", "filter by type (llm, image, audio)")
 	modelsCmd.Flags().StringVar(&flagModelsOS, "os", "", "filter by os (linux, windows, mac)")
+	modelsCmd.Flags().StringVar(&flagModelsEngine, "engine", "", "filter by engine (llamacpp, mlx, wandler)")
 	modelsCmd.Flags().IntVar(&flagModelsMaxVRAM, "max-vram", 0, "max VRAM in GB (e.g. 24 for 24GB GPU)")
 }
 
@@ -75,6 +78,16 @@ var mlxEngines = map[string]bool{
 
 var wandlerEngines = map[string]bool{
 	"wandler": true,
+}
+
+func engineCategory(engine string) string {
+	if mlxEngines[engine] {
+		return "mlx"
+	}
+	if wandlerEngines[engine] {
+		return "wandler"
+	}
+	return "llamacpp"
 }
 
 func modelOS(engine string, platforms []string) string {
@@ -123,14 +136,19 @@ func runModels(cmd *cobra.Command, args []string) error {
 
 	filterType := strings.ToLower(flagModelsType)
 	filterOS := strings.ToLower(flagModelsOS)
+	filterEngine := strings.ToLower(flagModelsEngine)
 
 	for _, m := range catalog.Models {
 		os := modelOS(m.Engine, m.Platforms)
+		engine := engineCategory(m.Engine)
 
 		if filterType != "" && m.Type != filterType {
 			continue
 		}
 		if filterOS != "" && !strings.Contains(os, filterOS) {
+			continue
+		}
+		if filterEngine != "" && engine != filterEngine {
 			continue
 		}
 		if flagModelsMaxVRAM > 0 && m.VRAM != nil {
@@ -145,8 +163,8 @@ func runModels(cmd *cobra.Command, args []string) error {
 			repo = fmt.Sprintf("%s:%dbit", repo, *m.Bits)
 		}
 
-		fmt.Printf("%s | %s | %s | %s | %s | %s\n",
-			m.Type, os, formatVRAM(m.VRAM), formatContext(m.Defaults), repo, m.Name)
+		fmt.Printf("%s | %s | %s | %s | %s | %s | %s\n",
+			m.Type, engine, os, formatVRAM(m.VRAM), formatContext(m.Defaults), repo, m.Name)
 	}
 
 	return nil

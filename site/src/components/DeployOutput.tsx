@@ -217,6 +217,13 @@ function buildCloudConfig(
   contextOverride?: number | null,
 ): { image: string; envVars: { key: string; value: string }[]; ports: { port: string; protocol: string; service: string; note: string | null }[] } {
   const configParts: Record<string, string | number> = { agent: agentId }
+
+  // Include engine when not the default for the platform
+  const engineModel = models.find((m) => m.type === 'llm') ?? models[0]
+  if (engineModel) {
+    configParts['engine'] = engineModel.engineCategory
+  }
+
   for (const m of models) {
     const role = m.type === 'llm' ? 'llm' : m.type === 'image' ? 'image' : m.type === 'audio' ? 'audio' : null
     if (!role) continue
