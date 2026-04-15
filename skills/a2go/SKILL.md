@@ -57,15 +57,43 @@ For direct LLM testing use port **8000** (`/v1/chat/completions`). For TTS/STT u
 ```bash
 a2go models                                # All models
 a2go models --type llm                     # LLMs only
+a2go models --engine wandler               # Wandler/ONNX models only
 a2go models --os mac                       # Mac/MLX models only
 a2go models --max-vram 24                  # Fits in 24GB GPU
-a2go models --type llm --os linux --max-vram 24  # Linux LLMs for 24GB
+a2go models --type llm --engine wandler    # Wandler LLMs only
 ```
 
-Output: `type | os | vram | context | repo:bits | name` — use `repo:bits` as the `--llm`/`--image`/`--audio` value. VRAM = minimum GPU memory needed.
+Output: `type | engine | os | vram | context | repo:bits | name` — use `repo:bits` as the `--llm`/`--image`/`--audio` value.
+
+## Docker (cloud deployment)
+
+The Docker image `runpod/a2go:latest` is configured via the `A2GO_CONFIG` env var:
+
+```bash
+# Minimal: agent + llm
+A2GO_CONFIG='{"agent":"hermes","llm":"unsloth/GLM-4.7-Flash-GGUF:4bit"}'
+
+# With engine (required for wandler):
+A2GO_CONFIG='{"agent":"openclaw","engine":"wandler","llm":"onnx-community/gemma-4-E4B-it-ONNX:4bit"}'
+
+# With audio:
+A2GO_CONFIG='{"agent":"hermes","llm":"unsloth/GLM-4.7-Flash-GGUF:4bit","audio":"LiquidAI/LFM2.5-Audio-1.5B-GGUF:4bit"}'
+
+# With context length override:
+A2GO_CONFIG='{"agent":"hermes","llm":"unsloth/GLM-4.7-Flash-GGUF:4bit","contextLength":200000}'
+```
+
+Fields:
+- `agent` — `hermes` or `openclaw` (required)
+- `engine` — `llamacpp`, `mlx`, or `wandler` (auto-detected from model if omitted)
+- `llm` — LLM model as `repo:bits` from `a2go models`
+- `audio` — Audio model (optional)
+- `image` — Image model (optional)
+- `contextLength` — Override context window (optional)
+
+Also set `A2GO_AUTH_TOKEN` and `A2GO_API_KEY` for authentication.
 
 ## Notes
 
-- **Mac/Apple Silicon:** `a2go run` runs natively via MLX (no Docker). Only MLX-compatible models work. Wandler models also work on Mac.
-- **Wandler engine:** Uses ONNX models via `@huggingface/transformers`. Handles LLM + STT in one process. Pass `--engine wandler --llm <onnx-repo>` to use.
+- **Mac/Apple Silicon:** `a2go run` runs natively via MLX (no Docker). Wandler models also work on Mac.
 - **Browse models visually:** https://a2go.run
