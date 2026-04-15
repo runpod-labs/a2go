@@ -1,6 +1,6 @@
 {
   "id": "liquidai/lfm25-1.2b-instruct-gguf",
-  "group": "lfm25-1.2b",
+  "group": "lfm25-12b",
   "family": "lfm25",
   "catalogKey": "lfm25",
   "name": "LFM 2.5 1.2B Instruct Q4_K_M (4-bit, ~731MB, 128K context)",
