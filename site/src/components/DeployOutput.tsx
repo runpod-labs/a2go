@@ -393,16 +393,20 @@ function buildAgentPrompt(
   const image = models.find((m) => m.type === 'image')
   const audio = models.find((m) => m.type === 'audio')
 
+  const hasWandler = models.some((m) => m.engineCategory === 'wandler')
+
   const parts: string[] = []
   if (llm) parts.push(`${cleanModelLabel(llm, modelIdToGroup)} as llm`)
   if (image) parts.push(`${cleanModelLabel(image, modelIdToGroup)} as image`)
   if (audio) parts.push(`${cleanModelLabel(audio, modelIdToGroup)} as audio`)
 
+  const engineHint = hasWandler ? ' with the wandler engine' : ''
+
   if (parts.length === 0) {
-    return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent`
+    return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent${engineHint}`
   }
 
-  return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent using ${parts.join(', ')}`
+  return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent${engineHint} using ${parts.join(', ')}`
 }
 
 function AgentSkillSteps({
