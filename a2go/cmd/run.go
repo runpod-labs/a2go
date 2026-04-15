@@ -683,8 +683,14 @@ func execRunWandler(cfg *config.Config) error {
 	// but strip for display — Wandler handles precision internally via :q4/:fp16 suffixes)
 	llmModel := cfg.LLM.Model
 
+	// Wandler handles STT in the same process via --stt
+	sttModel := ""
+	if cfg.Audio != nil && cfg.Audio.Model != "" {
+		sttModel = cfg.Audio.Model
+	}
+
 	// Start Wandler
-	llmPid, err := services.StartWandler(llmModel, cfg.GetAuthToken())
+	llmPid, err := services.StartWandler(llmModel, sttModel, cfg.GetAuthToken())
 	if err != nil {
 		return err
 	}

@@ -141,11 +141,14 @@ func StartImage(model string) (int, error) {
 	})
 }
 
-func StartWandler(model string, apiKey string) (int, error) {
+func StartWandler(model string, sttModel string, apiKey string) (int, error) {
 	args := []string{
 		"--llm", model,
 		"--port", fmt.Sprintf("%d", LLM.Port),
 		"--host", "0.0.0.0",
+	}
+	if sttModel != "" {
+		args = append(args, "--stt", sttModel)
 	}
 	if apiKey != "" {
 		args = append(args, "--api-key", apiKey)

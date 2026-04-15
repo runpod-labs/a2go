@@ -317,8 +317,22 @@ print('  Done: $f')
         llm)
           if [ "$ENGINE_TYPE" = "npm-global" ] || [ "$engine_id" = "wandler" ]; then
             # ── LLM via Wandler (ONNX) ──
+            # Wandler runs LLM + STT in one process, so scan for a wandler audio model
+            # and pass --stt alongside --llm
+            WANDLER_STT_REPO="$(python3 -c "
+import sys, json
+data = json.loads('''$RESOLVED_JSON''')
+for svc in data['services']:
+    if svc['role'] == 'audio' and svc.get('engine',{}).get('id','') == 'wandler':
+        print(svc['model']['repo'])
+        break
+" 2>/dev/null)"
+
             echo "Starting Wandler server..."
-            echo "  Model: $MODEL_REPO"
+            echo "  LLM: $MODEL_REPO"
+            if [ -n "$WANDLER_STT_REPO" ]; then
+                echo "  STT: $WANDLER_STT_REPO"
+            fi
             echo "  Port: $port"
 
             # cuDNN is needed by onnxruntime-node CUDA execution provider
@@ -330,15 +344,24 @@ print('  Done: $f')
                 WANDLER_DEVICE="cuda"
             fi
 
-            wandler \
-                --llm "$MODEL_REPO" \
-                --device "$WANDLER_DEVICE" \
-                --port "$port" \
-                --host 0.0.0.0 \
-                --api-key "$A2GO_API_KEY" \
-                2>&1 &
+            WANDLER_ARGS=(
+                --llm "$MODEL_REPO"
+                --device "$WANDLER_DEVICE"
+                --port "$port"
+                --host 0.0.0.0
+                --api-key "$A2GO_API_KEY"
+            )
+            if [ -n "$WANDLER_STT_REPO" ]; then
+                WANDLER_ARGS+=(--stt "$WANDLER_STT_REPO")
+            fi
+
+            wandler "${WANDLER_ARGS[@]}" 2>&1 &
 
             echo "$!" > /tmp/oc_llm_pid
+            # Mark that wandler handles STT so the audio case skips it
+            if [ -n "$WANDLER_STT_REPO" ]; then
+                echo "wandler" > /tmp/oc_wandler_stt
+            fi
 
             PROVIDER_NAME="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('provider',{}).get('name','wandler'))")"
             echo "$PROVIDER_NAME" > /tmp/oc_llm_provider
@@ -441,6 +464,12 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
             ;;
 
         audio)
+            # Skip if Wandler LLM already handles this STT model
+            if [ -f /tmp/oc_wandler_stt ] && [ "$engine_id" = "wandler" ]; then
+                echo "--- Service [audio]: $model_id — handled by Wandler LLM server, skipping ---"
+                continue
+            fi
+
             # Write audio engine metadata so CLI tools can auto-detect the API
             echo "{\"engine\":\"$engine_id\",\"type\":\"$ENGINE_TYPE\",\"port\":$port,\"model\":\"$MODEL_SERVED_AS\"}" > /tmp/oc_audio_engine
 
