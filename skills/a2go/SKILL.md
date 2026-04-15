@@ -67,7 +67,7 @@ Output: `type | engine | os | vram | context | repo:bits | name` — use `repo:b
 
 ## Docker
 
-Image `runpod/a2go:latest`, configured via `A2GO_CONFIG` env var (JSON):
+Image `runpod/a2go:latest`, configured via `A2GO_CONFIG` env var:
 
 ```json
 {"agent":"openclaw", "engine":"wandler", "llm":"onnx-community/gemma-4-E4B-it-ONNX:4bit"}
