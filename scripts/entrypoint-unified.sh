@@ -315,6 +315,62 @@ print('  Done: $f')
     # Start service based on role
     case "$role" in
         llm)
+          if [ "$ENGINE_TYPE" = "npm-global" ] || [ "$engine_id" = "wandler" ]; then
+            # ── LLM via Wandler (ONNX) ──
+            # Wandler runs LLM + STT in one process, so scan for a wandler audio model
+            # and pass --stt alongside --llm
+            WANDLER_STT_REPO="$(python3 -c "
+import sys, json
+data = json.loads('''$RESOLVED_JSON''')
+for svc in data['services']:
+    if svc['role'] == 'audio' and svc.get('engine',{}).get('id','') == 'wandler':
+        print(svc['model']['repo'])
+        break
+" 2>/dev/null)"
+
+            echo "Starting Wandler server..."
+            echo "  LLM: $MODEL_REPO"
+            if [ -n "$WANDLER_STT_REPO" ]; then
+                echo "  STT: $WANDLER_STT_REPO"
+            fi
+            echo "  Port: $port"
+
+            # cuDNN is needed by onnxruntime-node CUDA execution provider
+            export LD_LIBRARY_PATH="/opt/engines/pytorch/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:${LD_LIBRARY_PATH:-}"
+
+            # Use CUDA when an NVIDIA GPU is present, otherwise let wandler auto-detect
+            WANDLER_DEVICE="auto"
+            if command -v nvidia-smi >/dev/null 2>&1; then
+                WANDLER_DEVICE="cuda"
+            fi
+
+            WANDLER_ARGS=(
+                --llm "$MODEL_REPO"
+                --device "$WANDLER_DEVICE"
+                --port "$port"
+                --host 0.0.0.0
+                --api-key "$A2GO_API_KEY"
+            )
+            if [ -n "$WANDLER_STT_REPO" ]; then
+                WANDLER_ARGS+=(--stt "$WANDLER_STT_REPO")
+            fi
+
+            wandler "${WANDLER_ARGS[@]}" 2>&1 &
+
+            echo "$!" > /tmp/oc_llm_pid
+            # Mark that wandler handles STT so the audio case skips it
+            if [ -n "$WANDLER_STT_REPO" ]; then
+                echo "wandler" > /tmp/oc_wandler_stt
+            fi
+
+            PROVIDER_NAME="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('provider',{}).get('name','wandler'))")"
+            echo "$PROVIDER_NAME" > /tmp/oc_llm_provider
+            echo "$port" > /tmp/oc_llm_port
+            echo "$MODEL_SERVED_AS" > /tmp/oc_llm_model_name
+            DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',131072))")"
+            echo "${CONTEXT_LENGTH:-$DEFAULT_CTX}" > /tmp/oc_llm_context
+
+          else
             # ── LLM (standard or vision-as-LLM) via llama-server ──
                 DEFAULT_CTX="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('defaults',{}).get('contextLength',150000))")"
                 DEFAULT_LAYERS="$(echo "$model_json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('startDefaults',{}).get('gpuLayers','999'))")"
@@ -404,9 +460,16 @@ print(' '.join(f'{k}={v}' for k,v in env_vars.items()))
             if [ "$VISION_AS_LLM" = "true" ]; then
                 echo "true" > /tmp/oc_llm_vision
             fi
+          fi
             ;;
 
         audio)
+            # Skip if Wandler LLM already handles this STT model
+            if [ -f /tmp/oc_wandler_stt ] && [ "$engine_id" = "wandler" ]; then
+                echo "--- Service [audio]: $model_id — handled by Wandler LLM server, skipping ---"
+                continue
+            fi
+
             # Write audio engine metadata so CLI tools can auto-detect the API
             echo "{\"engine\":\"$engine_id\",\"type\":\"$ENGINE_TYPE\",\"port\":$port,\"model\":\"$MODEL_SERVED_AS\"}" > /tmp/oc_audio_engine
 

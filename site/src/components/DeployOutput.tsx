@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { cn } from '../lib/utils'
-import { formatVram, type CatalogModel, type OsPlatform } from '../lib/catalog'
+import { formatVram, ENGINE_META, type CatalogModel, type Platform } from '../lib/catalog'
 import { getVariantForOs, findSiblingsWithOs, type ModelGroup } from '../lib/group-models'
 import type { AgentFramework } from '../lib/frameworks'
 import { PlatformIcon } from './PlatformSelector'
@@ -132,7 +132,7 @@ export function CodeBlock({ code, requirements }: { code: string; requirements: 
   )
 }
 
-const TAB_CONFIG: { id: DeployTab; label: string; os: OsPlatform | null; icon?: 'agent' | 'cloud' }[] = [
+const TAB_CONFIG: { id: DeployTab; label: string; os: Platform | null; icon?: 'agent' | 'cloud' }[] = [
   { id: 'agent', label: 'agent', os: null, icon: 'agent' },
   { id: 'linux', label: 'linux', os: 'linux' },
   { id: 'windows', label: 'windows', os: 'windows' },
@@ -140,7 +140,7 @@ const TAB_CONFIG: { id: DeployTab; label: string; os: OsPlatform | null; icon?: 
   { id: 'cloud', label: 'cloud', os: null, icon: 'cloud' },
 ]
 
-function isTabVisible(tab: DeployTab, os: OsPlatform | null): boolean {
+function isTabVisible(tab: DeployTab, os: Platform | null): boolean {
   if (tab === 'agent') return true
   if (os === null) return true
   if (tab === 'cloud') return os !== 'mac'
@@ -163,6 +163,13 @@ function buildCliCommand(
   const doctor = 'a2go doctor'
 
   const flags: string[] = [`--agent ${agentId}`]
+
+  // Auto-detect if any model uses the wandler engine
+  const hasWandler = models.some((m) => m.engineCategory === 'wandler')
+  if (hasWandler) {
+    flags.push('--engine wandler')
+  }
+
   for (const m of models) {
     const role = m.type === 'llm' ? 'llm' : m.type === 'image' ? 'image' : m.type === 'audio' ? 'audio' : null
     if (!role) continue
@@ -386,16 +393,21 @@ function buildAgentPrompt(
   const image = models.find((m) => m.type === 'image')
   const audio = models.find((m) => m.type === 'audio')
 
+  // Always include the engine — determined by the LLM model (primary)
+  const engineModel = llm ?? models[0]
+  const engineLabel = engineModel ? ENGINE_META[engineModel.engineCategory].label : ''
+  const engineHint = engineLabel ? ` with the ${engineLabel.toLowerCase()} engine` : ''
+
   const parts: string[] = []
   if (llm) parts.push(`${cleanModelLabel(llm, modelIdToGroup)} as llm`)
   if (image) parts.push(`${cleanModelLabel(image, modelIdToGroup)} as image`)
   if (audio) parts.push(`${cleanModelLabel(audio, modelIdToGroup)} as audio`)
 
   if (parts.length === 0) {
-    return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent`
+    return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent${engineHint}`
   }
 
-  return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent using ${parts.join(', ')}`
+  return `/a2go deploy with ${frameworkName.toLowerCase()} as the agent${engineHint} using ${parts.join(', ')}`
 }
 
 function AgentSkillSteps({
@@ -568,7 +580,7 @@ export default function DeployCard({
 }: {
   selectedModels: CatalogModel[]
   modelIdToGroup: Map<string, ModelGroup>
-  globalOs: OsPlatform | null
+  globalOs: Platform | null
   contextOverride: number | null
   onToggle?: (model: CatalogModel) => void
   framework: AgentFramework
@@ -591,6 +603,8 @@ export default function DeployCard({
 
   const dockerModels = useMemo(
     () => selectedModels.map((m) => {
+      // If user explicitly selected a wandler variant, keep it (wandler runs on all platforms)
+      if (m.engineCategory === 'wandler') return m
       const group = modelIdToGroup.get(m.id)
       return group ? getVariantForOs(group, 'linux').model : m
     }),
@@ -599,6 +613,8 @@ export default function DeployCard({
 
   const mlxResolvedModels = useMemo(
     () => selectedModels.map((m) => {
+      // If user explicitly selected a wandler variant, keep it (wandler runs on all platforms)
+      if (m.engineCategory === 'wandler') return m
       const group = modelIdToGroup.get(m.id)
       return group ? getVariantForOs(group, 'mac').model : m
     }),
