@@ -689,8 +689,17 @@ func execRunWandler(cfg *config.Config) error {
 		sttModel = cfg.Audio.Model
 	}
 
+	// Use the same API key for Wandler that Hermes/OpenClaw will use to connect.
+	// Hermes blocklists placeholder tokens ("changeme" etc.) and rewrites them,
+	// so Wandler must use the rewritten key too.
+	apiKey := cfg.GetAuthToken()
+	blocked := map[string]bool{"changeme": true, "placeholder": true, "dummy": true, "example": true}
+	if blocked[strings.ToLower(apiKey)] {
+		apiKey = "a2go-local-" + apiKey
+	}
+
 	// Start Wandler
-	llmPid, err := services.StartWandler(llmModel, sttModel, cfg.GetAuthToken())
+	llmPid, err := services.StartWandler(llmModel, sttModel, apiKey)
 	if err != nil {
 		return err
 	}
