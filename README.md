@@ -19,7 +19,7 @@ a2go helps you run open-source AI models on your own hardware — locally, on a 
 
 ## Quick start
 
-1. **Pick models** at [a2go.run](https://a2go.run) — select your GPU and the site shows what fits
+1. **Pick models** at [a2go.getrunpod.io](https://a2go.getrunpod.io) — select your GPU and the site shows what fits
 2. **Read the security guide** — OpenClaw agents can execute shell commands, read/write files, and fetch URLs on your machine. Understand what you're running: [Security Guide](https://trust.openclaw.ai)
 3. **Deploy** — the site generates a ready-to-use command (Docker or MLX)
 4. **Access the UI** — `http://localhost:18789/?token=<A2GO_AUTH_TOKEN>`
@@ -118,7 +118,7 @@ The entrypoint only generates `openclaw.json` if it doesn't exist, so your edits
 
 On a Mac, you don't use Docker. Instead, you run model servers natively using Apple's [MLX](https://github.com/ml-explore/mlx) framework, which is optimized for Apple Silicon.
 
-Select macOS on [a2go.run](https://a2go.run) and the site generates the exact commands for your selected models. Here's what the flow looks like:
+Select macOS on [a2go.getrunpod.io](https://a2go.getrunpod.io) and the site generates the exact commands for your selected models. Here's what the flow looks like:
 
 ```bash
 # 1. Create a virtual environment
@@ -142,7 +142,7 @@ Not all models have MLX variants — the site will tell you which ones do.
 
 ## Resources
 
-- [a2go.run](https://a2go.run) — model configurator
+- [a2go.getrunpod.io](https://a2go.getrunpod.io) — model configurator
 - [Security Guide](https://trust.openclaw.ai) — trust model, access control, hardening
 - [OpenClaw](https://github.com/openclaw/openclaw) — the agent framework
 - [Runpod](https://runpod.io) — GPU cloud

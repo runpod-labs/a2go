@@ -86,4 +86,4 @@ Env vars: `A2GO_AUTH_TOKEN` (gateway auth), `A2GO_API_KEY` (LLM API auth).
 ## Notes
 
 - **Mac/Apple Silicon:** `a2go run` runs natively via MLX (no Docker). Wandler models also work on Mac.
-- **Browse models visually:** https://a2go.run
+- **Browse models visually:** https://a2go.getrunpod.io

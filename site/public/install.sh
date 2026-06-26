@@ -1,7 +1,7 @@
 #!/bin/bash
 # Install the a2go CLI binary.
-# Usage: curl -sSL https://a2go.run/install.sh | bash
-#        curl -sSL https://a2go.run/install.sh | bash -s -- --version dev-feat-foo
+# Usage: curl -sSL https://a2go.getrunpod.io/install.sh | bash
+#        curl -sSL https://a2go.getrunpod.io/install.sh | bash -s -- --version dev-feat-foo
 set -euo pipefail
 
 VERSION_TAG=""

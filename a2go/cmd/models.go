@@ -11,7 +11,7 @@ import (
 	"github.com/runpod-labs/a2go/a2go/internal/catalog"
 )
 
-const catalogURL = "https://a2go.run/v1/catalog.json"
+const catalogURL = "https://a2go.getrunpod.io/v1/catalog.json"
 
 var (
 	flagModelsType    string
