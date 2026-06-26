@@ -1,5 +1,5 @@
 # Install a2go CLI for Windows
-# Usage: irm https://a2go.run/install.ps1 | iex
+# Usage: irm https://a2go.getrunpod.io/install.ps1 | iex
 #        .\install.ps1 -Version dev-feat-foo
 
 param(

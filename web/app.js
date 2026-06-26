@@ -428,7 +428,7 @@ function NotConfiguredSection({ services, currentLlm }) {
           h("div", { className: "unconfigured-role" }, ROLE_LABELS[role]),
           h("div", { className: "unconfigured-hint" },
             "Select a model on ",
-            h("a", { href: "https://a2go.run", target: "_blank", rel: "noopener", style: { color: "var(--primary)" } }, "a2go.run"),
+            h("a", { href: "https://a2go.getrunpod.io", target: "_blank", rel: "noopener", style: { color: "var(--primary)" } }, "a2go.getrunpod.io"),
             " or set ",
             h("code", null, "A2GO_CONFIG"),
             " on your pod:",

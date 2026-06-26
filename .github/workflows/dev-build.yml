@@ -135,7 +135,7 @@ jobs:
 
           ### Install CLI
           \`\`\`bash
-          curl -sSL https://a2go.run/install.sh | bash -s -- --version ${TAG}
+          curl -sSL https://a2go.getrunpod.io/install.sh | bash -s -- --version ${TAG}
           \`\`\`
 
           ### Docker image

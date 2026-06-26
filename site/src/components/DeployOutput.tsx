@@ -157,8 +157,8 @@ function buildCliCommand(
   contextOverride?: number | null,
 ): { install: string; doctor: string; run: string } {
   const install = platform === 'windows'
-    ? 'irm https://a2go.run/install.ps1 | iex'
-    : 'curl -sSL https://a2go.run/install.sh | bash'
+    ? 'irm https://a2go.getrunpod.io/install.ps1 | iex'
+    : 'curl -sSL https://a2go.getrunpod.io/install.sh | bash'
 
   const doctor = 'a2go doctor'
 
